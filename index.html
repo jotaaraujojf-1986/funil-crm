@@ -260,6 +260,7 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
+    gap:10px;
     margin-top:9px;
   }
   .wa-btn{
@@ -847,7 +848,6 @@ function validarCamposObrigatorios(lead){
   }
   if(lead.stage === 'negociacao'){
     if(!(Number(lead.valor) > 0)) return 'Pra mover pra "Negociação", informe um valor estimado maior que zero.';
-    if(!lead.interesse || !lead.interesse.trim()) return 'Pra mover pra "Negociação", informe o interesse/material do negócio.';
   }
   if(lead.stage === 'fechado' && !(Number(lead.valor) > 0)){
     return 'Pra marcar como "Fechado", informe um valor maior que zero.';
@@ -1169,7 +1169,7 @@ function buildWaLink(lead){
   if(!digits) return null;
   // Adiciona DDI do Brasil (55) se o número não vier com ele
   if(digits.length <= 11) digits = '55' + digits;
-  var msg = 'Olá ' + (lead.nome || '') + ', aqui é da loja, sobre ' + (lead.interesse || 'seu orçamento') + '. Podemos conversar?';
+  var msg = 'Olá ' + (lead.nome || '') + ', aqui é da loja. Podemos conversar sobre seu orçamento?';
   var textoCodificado = encodeURIComponent(msg);
   // No computador, tenta abrir o aplicativo desktop instalado (protocolo whatsapp://)
   // No celular, usa wa.me, que abre o app nativo automaticamente
@@ -1470,7 +1470,6 @@ function openModal(id){
       field('Etapa do funil', '<select id="f-stage">' + stageOptions + '</select>') +
     '</div>' +
     '<div id="motivo-perda-area">' + (lead.stage === 'perdido' ? field('Motivo da perda', '<textarea id="f-motivo-perda" placeholder="Por que o negócio não avançou?">' + escapeHtml(lead.motivoPerda) + '</textarea>') : '') + '</div>' +
-    field('Interesse / material', '<input id="f-interesse" type="text" value="' + escapeHtml(lead.interesse) + '" placeholder="Ex: Vergalhão, telha, chapa...">') +
     '<div class="row2">' +
       field('Valor estimado (R$)', '<input id="f-valor" type="number" min="0" value="' + (lead.valor || '') + '">') +
       field('Próximo follow-up', '<input id="f-followup" type="date" value="' + (lead.nextFollowUp || '') + '">') +
@@ -1557,7 +1556,6 @@ function openModal(id){
     lead.nome = nome || 'Sem nome';
     lead.contato = document.getElementById('f-contato').value.trim();
     lead.canal = document.getElementById('f-canal').value;
-    lead.interesse = document.getElementById('f-interesse').value.trim();
     lead.valor = Number(document.getElementById('f-valor').value) || 0;
     setStage(lead, document.getElementById('f-stage').value);
     lead.nextFollowUp = document.getElementById('f-followup').value || null;
@@ -1901,7 +1899,7 @@ async function openClienteModal(clienteId){
     ? negs.map(function(n){
         var st = STAGES.find(function(s){ return s.id === n.stage; }) || STAGES[0];
         return '<div class="negociacao-row" data-leadid="' + n.id + '">' +
-          '<span>' + escapeHtml(n.interesse || n.nome) + ' · ' + fmtMoney(n.valor) + (n.criado ? ' · ' + fmtDateBR(n.criado) : '') + '</span>' +
+          '<span>' + escapeHtml(n.nome) + ' · ' + fmtMoney(n.valor) + (n.criado ? ' · ' + fmtDateBR(n.criado) : '') + '</span>' +
           '<span class="badge-stage" style="background:' + st.color + ';">' + st.label + '</span>' +
         '</div>';
       }).join('')
