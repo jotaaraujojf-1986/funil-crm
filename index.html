@@ -441,6 +441,10 @@
   }
   .kpi .num{ font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:26px; color:var(--ink); }
   .kpi .lbl{ font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.3px; margin-top:2px; }
+  .kpi-delta{ display:block; font-size:11px; font-weight:600; margin-top:6px; }
+  .kpi-delta.positivo{ color:#2E7D4F; }
+  .kpi-delta.negativo{ color:#C0392B; }
+  .kpi-delta.neutro{ color:var(--ink-faint); }
 
   ::-webkit-scrollbar{ height:8px; width:8px; }
   ::-webkit-scrollbar-thumb{ background:#CFCBC0; border-radius:8px; }
@@ -550,6 +554,20 @@
   .interacao-form select{ flex:0 0 130px; }
   .interacao-form input[type="date"]{ flex:0 0 130px; }
   .interacao-form textarea{ flex:1; min-height:38px; }
+
+  .card-extra{ display:flex; flex-wrap:wrap; gap:5px; margin:0 0 7px; }
+  .badge-parado{
+    display:inline-flex; align-items:center; gap:3px;
+    font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px;
+  }
+  .parado-ok{ background:#EEF0F1; color:var(--ink-soft); }
+  .parado-alerta{ background:#FCEFD8; color:var(--amber-dark); }
+  .parado-critico{ background:var(--red-bg); color:var(--red); }
+  .badge-atividade{
+    display:inline-flex; align-items:center; gap:3px;
+    font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px;
+    background:var(--blue-bg); color:var(--blue);
+  }
 </style>
 </head>
 <body>
@@ -712,6 +730,9 @@ function setStage(lead, novoStage){
   } else if(novoStage !== 'fechado'){
     delete lead.fechadoEm;
   }
+  if(novoStage !== lead.stage){
+    lead.etapaAlteradaEm = new Date().toISOString();
+  }
   lead.stage = novoStage;
 }
 
@@ -730,7 +751,10 @@ function fromDb(row){
     fechadoEm: row.fechado_em || undefined,
     anexos: Array.isArray(row.anexos) ? row.anexos : [],
     clienteId: row.cliente_id || null,
-    motivoPerda: row.motivo_perda || ''
+    motivoPerda: row.motivo_perda || '',
+    etapaAlteradaEm: row.etapa_alterada_em || row.created_at,
+    atividadeTipo: row.proxima_atividade_tipo || '',
+    atividadeDesc: row.proxima_atividade_desc || ''
   };
 }
 
@@ -749,7 +773,10 @@ function toDb(lead){
     fechado_em: lead.fechadoEm || null,
     anexos: lead.anexos || [],
     cliente_id: lead.clienteId || null,
-    motivo_perda: lead.motivoPerda || null
+    motivo_perda: lead.motivoPerda || null,
+    etapa_alterada_em: lead.etapaAlteradaEm || new Date().toISOString(),
+    proxima_atividade_tipo: lead.atividadeTipo || null,
+    proxima_atividade_desc: lead.atividadeDesc || null
   };
 }
 
@@ -927,6 +954,28 @@ function followUpBadge(lead){
   return '<span class="badge future">' + fmtDateBR(lead.nextFollowUp) + '</span>';
 }
 
+function diasNaEtapa(lead){
+  if(!lead.etapaAlteradaEm) return 0;
+  var inicio = new Date(lead.etapaAlteradaEm);
+  var agora = new Date();
+  return Math.floor((agora - inicio) / 86400000);
+}
+
+function tempoEtapaBadge(lead){
+  if(lead.stage === 'fechado' || lead.stage === 'perdido') return '';
+  var dias = diasNaEtapa(lead);
+  var cls = 'parado-ok';
+  if(dias >= 14) cls = 'parado-critico';
+  else if(dias >= 7) cls = 'parado-alerta';
+  var texto = dias === 0 ? 'Hoje nesta etapa' : (dias + (dias === 1 ? ' dia' : ' dias') + ' nesta etapa');
+  return '<span class="badge-parado ' + cls + '">⏱ ' + texto + '</span>';
+}
+
+function atividadeBadge(lead){
+  if(!lead.atividadeTipo) return '';
+  return '<span class="badge-atividade" title="' + escapeHtml(lead.atividadeDesc || '') + '">📌 ' + escapeHtml(lead.atividadeTipo) + '</span>';
+}
+
 function escapeHtml(s){
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -1009,6 +1058,47 @@ function getPeriodoRange(){
   return null;
 }
 
+function getPeriodoAnteriorRange(){
+  var hoje = new Date();
+  var ano = hoje.getFullYear();
+  var mes = hoje.getMonth();
+
+  function fmt(d){ return d.toISOString().slice(0,10); }
+
+  if(periodoTipo === 'este_mes'){
+    var inicio = new Date(ano, mes - 1, 1);
+    var fim = new Date(ano, mes, 0);
+    return { inicio: fmt(inicio), fim: fmt(fim) };
+  }
+  if(periodoTipo === 'mes_passado'){
+    var inicio2 = new Date(ano, mes - 2, 1);
+    var fim2 = new Date(ano, mes - 1, 0);
+    return { inicio: fmt(inicio2), fim: fmt(fim2) };
+  }
+  if(periodoTipo === 'este_ano'){
+    return { inicio: (ano-1) + '-01-01', fim: (ano-1) + '-12-31' };
+  }
+  if(periodoTipo === 'personalizado' && periodoInicio && periodoFim){
+    var ini = new Date(periodoInicio + 'T00:00:00');
+    var fimAtual = new Date(periodoFim + 'T00:00:00');
+    var duracaoDias = Math.round((fimAtual - ini) / 86400000) + 1;
+    var fimAnterior = new Date(ini);
+    fimAnterior.setDate(fimAnterior.getDate() - 1);
+    var inicioAnterior = new Date(fimAnterior);
+    inicioAnterior.setDate(inicioAnterior.getDate() - duracaoDias + 1);
+    return { inicio: fmt(inicioAnterior), fim: fmt(fimAnterior) };
+  }
+  return null;
+}
+
+function dentroDoPeriodoAnterior(lead){
+  var range = getPeriodoAnteriorRange();
+  if(!range) return false;
+  var data = lead.criado;
+  if(!data) return false;
+  return data >= range.inicio && data <= range.fim;
+}
+
 function dentroDoPeriodo(lead){
   if(periodoTipo === 'todos') return true;
   var range = getPeriodoRange();
@@ -1016,6 +1106,19 @@ function dentroDoPeriodo(lead){
   var data = lead.criado;
   if(!data) return false;
   return data >= range.inicio && data <= range.fim;
+}
+
+function pctDelta(atual, anterior){
+  if(!anterior) return null;
+  return Math.round(((atual - anterior) / anterior) * 100);
+}
+
+function deltaHtml(delta){
+  if(delta === null) return '';
+  if(delta === 0) return '<span class="kpi-delta neutro">＝ igual ao período anterior</span>';
+  var cls = delta > 0 ? 'positivo' : 'negativo';
+  var seta = delta > 0 ? '▲' : '▼';
+  return '<span class="kpi-delta ' + cls + '">' + seta + ' ' + Math.abs(delta) + '% vs. período anterior</span>';
 }
 
 function filteredLeads(){
@@ -1116,9 +1219,13 @@ function buildCard(lead, stageColor){
         'WhatsApp</a>'
     : '<span style="font-size:11px; color:var(--ink-faint);">sem número válido</span>';
 
+  var tempoEtapa = tempoEtapaBadge(lead);
+  var atividade = atividadeBadge(lead);
+
   card.innerHTML =
     '<p class="name">' + escapeHtml(lead.nome) + '</p>' +
     '<p class="meta">' + escapeHtml(canalLabel) + '<span class="dot"></span><span class="value">' + fmtMoney(lead.valor) + '</span></p>' +
+    (tempoEtapa || atividade ? '<p class="card-extra">' + tempoEtapa + atividade + '</p>' : '') +
     '<div class="card-bottom">' + followUpBadge(lead) + waButtonHtml + '</div>';
 
   card.querySelectorAll('a').forEach(function(a){
@@ -1178,6 +1285,17 @@ function openModal(id){
     '<div class="row2">' +
       field('Valor estimado (R$)', '<input id="f-valor" type="number" min="0" value="' + (lead.valor || '') + '">') +
       field('Próximo follow-up', '<input id="f-followup" type="date" value="' + (lead.nextFollowUp || '') + '">') +
+    '</div>' +
+    '<div class="row2">' +
+      field('Tipo de atividade', '<select id="f-atividade-tipo">' +
+        '<option value="">Nenhuma</option>' +
+        '<option value="Ligar"' + (lead.atividadeTipo==='Ligar'?' selected':'') + '>Ligar</option>' +
+        '<option value="Enviar proposta"' + (lead.atividadeTipo==='Enviar proposta'?' selected':'') + '>Enviar proposta</option>' +
+        '<option value="Reunião"' + (lead.atividadeTipo==='Reunião'?' selected':'') + '>Reunião</option>' +
+        '<option value="Visita"' + (lead.atividadeTipo==='Visita'?' selected':'') + '>Visita</option>' +
+        '<option value="Outro"' + (lead.atividadeTipo==='Outro'?' selected':'') + '>Outro</option>' +
+      '</select>') +
+      field('Descrição da atividade', '<input id="f-atividade-desc" type="text" value="' + escapeHtml(lead.atividadeDesc) + '" placeholder="Ex: Ligar confirmando prazo">') +
     '</div>' +
     field('Notas', '<textarea id="f-notas" placeholder="Detalhes da conversa, objeções, combinados...">' + escapeHtml(lead.notas) + '</textarea>') +
     (isNew
@@ -1242,6 +1360,8 @@ function openModal(id){
     setStage(lead, document.getElementById('f-stage').value);
     lead.nextFollowUp = document.getElementById('f-followup').value || null;
     lead.notas = document.getElementById('f-notas').value.trim();
+    lead.atividadeTipo = document.getElementById('f-atividade-tipo').value;
+    lead.atividadeDesc = document.getElementById('f-atividade-desc').value.trim();
     var motivoEl = document.getElementById('f-motivo-perda');
     lead.motivoPerda = motivoEl ? motivoEl.value.trim() : (lead.stage === 'perdido' ? lead.motivoPerda : '');
 
@@ -1379,11 +1499,29 @@ function renderDashboard(){
   var taxaConversao = totalLeads ? Math.round((fechados.length / totalLeads) * 100) : 0;
   var ticketMedio = fechados.length ? (valorFechado / fechados.length) : 0;
 
+  // Período anterior, para comparação (só calcula se houver um período definido)
+  var temComparacao = periodoTipo !== 'todos' && getPeriodoAnteriorRange() !== null;
+  var deltaTotal = null, deltaConversao = null, deltaTicket = null, deltaAberto = null;
+  if(temComparacao){
+    var leadsAnterior = leads.filter(dentroDoPeriodoAnterior);
+    var totalAnterior = leadsAnterior.length;
+    var fechadosAnterior = leadsAnterior.filter(function(l){ return l.stage === 'fechado'; });
+    var valorFechadoAnterior = fechadosAnterior.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+    var valorAbertoAnterior = leadsAnterior.filter(function(l){ return l.stage !== 'fechado'; }).reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+    var conversaoAnterior = totalAnterior ? Math.round((fechadosAnterior.length / totalAnterior) * 100) : 0;
+    var ticketAnterior = fechadosAnterior.length ? (valorFechadoAnterior / fechadosAnterior.length) : 0;
+
+    deltaTotal = pctDelta(totalLeads, totalAnterior);
+    deltaConversao = pctDelta(taxaConversao, conversaoAnterior);
+    deltaTicket = pctDelta(ticketMedio, ticketAnterior);
+    deltaAberto = pctDelta(valorEmAberto, valorAbertoAnterior);
+  }
+
   document.getElementById('dash-kpis').innerHTML =
-    kpiHtml(totalLeads, 'Clientes no funil') +
-    kpiHtml(taxaConversao + '%', 'Taxa de conversão') +
-    kpiHtml(fmtMoney(ticketMedio), 'Ticket médio (fechados)') +
-    kpiHtml(fmtMoney(valorEmAberto), 'Valor em negociação');
+    kpiHtml(totalLeads, 'Clientes no funil', deltaTotal) +
+    kpiHtml(taxaConversao + '%', 'Taxa de conversão', deltaConversao) +
+    kpiHtml(fmtMoney(ticketMedio), 'Ticket médio (fechados)', deltaTicket) +
+    kpiHtml(fmtMoney(valorEmAberto), 'Valor em negociação', deltaAberto);
 
   // 1. Quantidade por etapa
   try{
@@ -1454,8 +1592,8 @@ function renderDashboard(){
   }catch(e){ console.error('Erro no gráfico de evolução', e); }
 }
 
-function kpiHtml(value, label){
-  return '<div class="kpi"><div class="num">' + value + '</div><div class="lbl">' + label + '</div></div>';
+function kpiHtml(value, label, delta){
+  return '<div class="kpi"><div class="num">' + value + '</div><div class="lbl">' + label + '</div>' + (delta !== undefined ? deltaHtml(delta) : '') + '</div>';
 }
 
 function negociacoesDoCliente(clienteId){
