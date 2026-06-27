@@ -390,7 +390,7 @@
     letter-spacing:0.3px;
   }
   .dash-card .sub{ font-size:12px; color:var(--ink-soft); margin:0 0 14px; }
-  .dash-card canvas{ max-height:260px; }
+  .chart-wrap{ position:relative; height:240px; width:100%; }
   .dash-kpis{
     display:grid;
     grid-template-columns: repeat(4, 1fr);
@@ -519,22 +519,22 @@
     <div class="dash-card">
       <h3>Funil — quantidade por etapa</h3>
       <p class="sub">Quantos clientes estão em cada fase agora</p>
-      <canvas id="chart-funil"></canvas>
+      <div class="chart-wrap"><canvas id="chart-funil"></canvas></div>
     </div>
     <div class="dash-card">
       <h3>Valor em R$ por etapa</h3>
       <p class="sub">Onde está concentrado o dinheiro em aberto</p>
-      <canvas id="chart-valor"></canvas>
+      <div class="chart-wrap"><canvas id="chart-valor"></canvas></div>
     </div>
     <div class="dash-card">
       <h3>Origem dos clientes</h3>
       <p class="sub">Presencial, telefone ou WhatsApp</p>
-      <canvas id="chart-canal"></canvas>
+      <div class="chart-wrap"><canvas id="chart-canal"></canvas></div>
     </div>
     <div class="dash-card">
       <h3>Fechamentos ao longo do tempo</h3>
       <p class="sub">Negócios marcados como "Fechado", por semana</p>
-      <canvas id="chart-evolucao"></canvas>
+      <div class="chart-wrap"><canvas id="chart-evolucao"></canvas></div>
     </div>
   </div>
 </div>
@@ -641,16 +641,6 @@ async function loadLeadsFromDb(){
     return;
   }
   leads = res.data.map(fromDb);
-
-  // primeiro acesso: se não houver nada no banco, popular com exemplos
-  if(leads.length === 0){
-    var exemplos = seed();
-    for(var i=0; i<exemplos.length; i++){
-      await criarLeadNoDb(exemplos[i]);
-    }
-    var res2 = await sb.from('leads').select('*').order('created_at', {ascending:true});
-    leads = (res2.data || []).map(fromDb);
-  }
 }
 
 async function criarLeadNoDb(lead){
@@ -716,19 +706,6 @@ function fmtTamanho(bytes){
   if(!bytes) return '';
   if(bytes < 1024*1024) return Math.round(bytes/1024) + ' KB';
   return (bytes/1024/1024).toFixed(1) + ' MB';
-}
-
-function seed(){
-  var t = todayStr();
-  return [
-    {id:uid(), nome:'Construtora Vale Forte', contato:'(32) 99876-1122', canal:'telefone', interesse:'Vergalhão CA-50 + tela soldada', valor:18500, stage:'proposta', nextFollowUp: addDays(t,1), notas:'Aguardando aprovação do engenheiro. Confirmar preço por telefone.', criado: addDays(t,-6)},
-    {id:uid(), nome:'Serralheria Boa Vista', contato:'(32) 98877-3344', canal:'whatsapp', interesse:'Tubo industrial e cantoneira', valor:4200, stage:'contato', nextFollowUp: t, notas:'Pediu desconto para pagamento em 30 dias.', criado: addDays(t,-3)},
-    {id:uid(), nome:'João — reforma residencial', contato:'(32) 99911-5566', canal:'presencial', interesse:'Ferragens diversas para laje', valor:1350, stage:'lead', nextFollowUp: addDays(t,2), notas:'Veio na loja, pediu cotação por escrito.', criado: t},
-    {id:uid(), nome:'Metalúrgica Sul Mineira', contato:'(32) 98765-4321', canal:'whatsapp', interesse:'Chapa de aço 1/4 — pedido recorrente', valor:9800, stage:'negociacao', nextFollowUp: addDays(t,-1), notas:'Cliente antigo, fechando volume mensal.', criado: addDays(t,-20)},
-    {id:uid(), nome:'Construtora Pilares', contato:'(32) 99222-8899', canal:'telefone', interesse:'Estrutura metálica galpão', valor:42000, stage:'fechado', nextFollowUp: null, notas:'Contrato assinado, entrega agendada.', criado: addDays(t,-28), fechadoEm: addDays(t,-15)},
-    {id:uid(), nome:'Oficina Central', contato:'(32) 99333-1212', canal:'whatsapp', interesse:'Telhas metálicas', valor:6200, stage:'fechado', nextFollowUp: null, notas:'Pagamento à vista.', criado: addDays(t,-25), fechadoEm: addDays(t,-9)},
-    {id:uid(), nome:'Galpão Industrial RM', contato:'(32) 99444-7878', canal:'presencial', interesse:'Perfil estrutural', valor:15800, stage:'fechado', nextFollowUp: null, notas:'Entrega em duas etapas.', criado: addDays(t,-18), fechadoEm: addDays(t,-2)}
-  ];
 }
 
 function fmtMoney(v){
@@ -816,6 +793,11 @@ function render(){
   var visible = filteredLeads();
   var board = document.getElementById('board');
   board.innerHTML = '';
+
+  if(leads.length === 0){
+    board.innerHTML = '<div class="empty-state">Nenhum cliente cadastrado ainda. Clique em <strong>"+ Novo cliente"</strong> para começar.</div>';
+    return;
+  }
 
   STAGES.forEach(function(stage){
     var col = document.createElement('div');
@@ -1126,7 +1108,7 @@ function renderDashboard(){
         labels: STAGES.map(function(s){ return s.label; }),
         datasets: [{ data: countsByStage, backgroundColor: STAGES.map(function(s){ return s.color; }), borderRadius: 6 }]
       },
-      options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
     });
   }catch(e){ console.error('Erro no gráfico de funil', e); }
 
@@ -1141,7 +1123,7 @@ function renderDashboard(){
         labels: STAGES.map(function(s){ return s.label; }),
         datasets: [{ data: valorByStage, backgroundColor: STAGES.map(function(s){ return s.color; }), borderRadius: 6 }]
       },
-      options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$ '+v; } } } } }
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$ '+v; } } } } }
     });
   }catch(e){ console.error('Erro no gráfico de valor', e); }
 
@@ -1155,7 +1137,7 @@ function renderDashboard(){
         labels: canalKeys.map(function(k){ return CANAIS[k]; }),
         datasets: [{ data: canalCounts, backgroundColor: ['#3A4046', '#2B6CA3', '#2E7D4F', '#E8A317'] }]
       },
-      options: { plugins:{ legend:{ position:'bottom' } } }
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
     });
   }catch(e){ console.error('Erro no gráfico de origem', e); }
 
@@ -1181,7 +1163,7 @@ function renderDashboard(){
           pointBackgroundColor: '#E8A317'
         }]
       },
-      options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
     });
   }catch(e){ console.error('Erro no gráfico de evolução', e); }
 }
