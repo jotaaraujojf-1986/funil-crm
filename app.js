@@ -1270,7 +1270,7 @@ async function openClienteModal(clienteId){
       }).join('') +
     '</div>' +
     '<div style="display:flex; gap:8px;">' +
-      '<input type="text" id="modal-client-tags-input" placeholder="Nova tag..." style="flex:1; padding:8px 10px; font-size:13px; border:1px solid var(--line); border-radius:7px; background:#FBFAF7; color:var(--ink);">' +
+      '<input type="text" id="modal-client-tags-input" placeholder="Nova tag..." class="campo-padrao campo-padrao-flex">' +
       '<button type="button" class="btn-primary" id="btn-modal-add-tag" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button>' +
     '</div>' +
   '</div>';

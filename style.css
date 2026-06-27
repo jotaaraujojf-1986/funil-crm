@@ -594,6 +594,32 @@ html[data-theme="dark"] .negociacao-row{ background:#26292D; }
 .interacao-form input[type="date"]{ flex:0 0 130px; }
 .interacao-form textarea{ flex:1; min-height:38px; }
 
+.interacao-form select,
+.interacao-form input[type="date"],
+.interacao-form textarea{
+  font-family:'Inter', sans-serif;
+  font-size:13px;
+  padding:8px 10px;
+  border-radius:7px;
+  border:1px solid var(--line);
+  background:#FBFAF7;
+  color:var(--ink);
+}
+html[data-theme="dark"] .interacao-form select,
+html[data-theme="dark"] .interacao-form input[type="date"],
+html[data-theme="dark"] .interacao-form textarea{
+  background:#26292D;
+  color:var(--ink);
+}
+.interacao-form select:focus,
+.interacao-form input[type="date"]:focus,
+.interacao-form textarea:focus{
+  outline:none;
+  border-color:var(--amber);
+  box-shadow:0 0 0 3px rgba(232,163,23,0.18);
+}
+
+
 .card-extra{ display:flex; flex-wrap:wrap; gap:5px; margin:0 0 7px; }
 .badge-parado{
   display:inline-flex; align-items:center; gap:3px;
@@ -719,4 +745,28 @@ html[data-theme="dark"] .tag-chip-remove {
 html[data-theme="dark"] .tag-chip-pill {
   background: #183a27;
   color: #55d085;
+}
+
+.campo-padrao{
+  width:100%;
+  font-family:'Inter', sans-serif;
+  font-size:13px;
+  padding:8px 10px;
+  border-radius:7px;
+  border:1px solid var(--line);
+  background:#FBFAF7;
+  color:var(--ink);
+}
+html[data-theme="dark"] .campo-padrao{
+  background:#26292D;
+  color:var(--ink);
+}
+.campo-padrao:focus{
+  outline:none;
+  border-color:var(--amber);
+  box-shadow:0 0 0 3px rgba(232,163,23,0.18);
+}
+.campo-padrao-flex {
+  flex:1;
+  width:auto;
 }
