@@ -512,6 +512,27 @@
 
   .clientes-view{ max-width:1320px; margin:0 auto; padding:18px 28px 60px; display:none; }
   .clientes-view.open{ display:block; }
+  .busca-cliente-input{
+    width:100%;
+    max-width:420px;
+    display:block;
+    margin-bottom:16px;
+    padding:10px 14px;
+    font-size:14px;
+    font-family:'Inter', sans-serif;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--panel);
+    color:var(--ink);
+  }
+  .busca-cliente-input:focus{
+    outline:none;
+    border-color:var(--amber);
+    box-shadow:0 0 0 3px rgba(232,163,23,0.18);
+  }
+  .cliente-card .codigo{
+    font-size:11px; color:var(--ink-faint); font-weight:600;
+  }
   .clientes-grid{
     display:grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -715,6 +736,7 @@
 </div>
 
 <div class="clientes-view" id="clientes-view">
+  <input type="text" id="busca-cliente" class="busca-cliente-input" placeholder="Buscar por nome ou número de cadastro...">
   <div class="clientes-grid" id="clientes-grid"></div>
 </div>
 
@@ -880,6 +902,7 @@ function showSyncError(){
 function clienteFromDb(row){
   return {
     id: row.id,
+    codigo: row.codigo,
     nome: row.nome,
     contato: row.contato,
     canal: row.canal,
@@ -1665,6 +1688,8 @@ function negociacoesDoCliente(clienteId){
   return leads.filter(function(l){ return l.clienteId === clienteId; });
 }
 
+var buscaClienteTexto = '';
+
 function renderClientesView(){
   var grid = document.getElementById('clientes-grid');
   if(clientes.length === 0){
@@ -1672,14 +1697,27 @@ function renderClientesView(){
     return;
   }
 
-  grid.innerHTML = clientes.map(function(c){
+  var termo = buscaClienteTexto.trim().toLowerCase();
+  var listaFiltrada = !termo ? clientes : clientes.filter(function(c){
+    var codigoStr = c.codigo ? String(c.codigo) : '';
+    return c.nome.toLowerCase().indexOf(termo) !== -1 || codigoStr.indexOf(termo) !== -1;
+  });
+
+  if(listaFiltrada.length === 0){
+    grid.innerHTML = '<div class="empty-state">Nenhum cliente encontrado para "' + escapeHtml(buscaClienteTexto) + '".</div>';
+    return;
+  }
+
+  grid.innerHTML = listaFiltrada.map(function(c){
     var negs = negociacoesDoCliente(c.id);
     var fechadas = negs.filter(function(n){ return n.stage === 'fechado'; });
     var perdidas = negs.filter(function(n){ return n.stage === 'perdido'; });
     var valorTotal = fechadas.reduce(function(s,n){ return s + (Number(n.valor)||0); }, 0);
     var canalLabel = CANAIS[c.canal] || c.canal || '—';
+    var codigoFmt = c.codigo ? '#' + String(c.codigo).padStart(4, '0') : '';
 
     return '<div class="cliente-card" data-id="' + c.id + '">' +
+      '<p class="codigo">' + codigoFmt + '</p>' +
       '<p class="nome">' + escapeHtml(c.nome) + '</p>' +
       '<p class="meta">' + escapeHtml(canalLabel) + (c.contato ? ' · ' + escapeHtml(c.contato) : '') + '</p>' +
       '<div class="resumo">' +
@@ -1732,7 +1770,7 @@ async function openClienteModal(clienteId){
     : '<p class="anexo-vazio">Nenhuma interação registrada ainda.</p>';
 
   modal.innerHTML =
-    '<h2>' + escapeHtml(cliente.nome) + '</h2>' +
+    '<h2>' + (cliente.codigo ? '#' + String(cliente.codigo).padStart(4,'0') + ' — ' : '') + escapeHtml(cliente.nome) + '</h2>' +
     '<p class="anexo-vazio">' + (CANAIS[cliente.canal] || cliente.canal || '') + (cliente.contato ? ' · ' + escapeHtml(cliente.contato) : '') + '</p>' +
 
     '<p class="cliente-section-title">Negócios</p>' +
@@ -1967,6 +2005,11 @@ document.getElementById('tab-funil').addEventListener('click', function(){ switc
 document.getElementById('tab-dash').addEventListener('click', function(){ switchTab('dash'); });
 document.getElementById('tab-clientes').addEventListener('click', function(){ switchTab('clientes'); });
 document.getElementById('tab-calendario').addEventListener('click', function(){ switchTab('calendario'); });
+
+document.getElementById('busca-cliente').addEventListener('input', function(){
+  buscaClienteTexto = this.value;
+  renderClientesView();
+});
 
 function switchTab(tab){
   document.getElementById('tab-funil').classList.toggle('active', tab === 'funil');
