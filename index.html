@@ -109,7 +109,12 @@
 </div>
 
 <div class="clientes-view" id="clientes-view">
-  <input type="text" id="busca-cliente" class="busca-cliente-input" placeholder="Buscar por nome ou número de cadastro...">
+  <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+    <input type="text" id="busca-cliente" class="busca-cliente-input" placeholder="Buscar por nome ou número de cadastro..." style="flex:1; margin-bottom:0;">
+    <select id="filtro-tag-cliente" class="busca-cliente-input" style="flex:0 0 200px; margin-bottom:0;">
+      <option value="">Todas as tags</option>
+    </select>
+  </div>
   <div class="clientes-grid" id="clientes-grid"></div>
 </div>
 

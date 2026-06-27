@@ -163,7 +163,8 @@ function clienteFromDb(row){
     canal: row.canal,
     notas: row.notas,
     criado: row.criado,
-    cnpj: row.cnpj || ''
+    cnpj: row.cnpj || '',
+    tags: Array.isArray(row.tags) ? row.tags : []
   };
 }
 
@@ -175,7 +176,8 @@ function clienteToDb(cliente){
     canal: cliente.canal || null,
     notas: cliente.notas || null,
     criado: cliente.criado || todayStr(),
-    cnpj: cliente.cnpj || null
+    cnpj: cliente.cnpj || null,
+    tags: cliente.tags || []
   };
 }
 
@@ -675,7 +677,10 @@ function openModal(id){
     '<h2>' + (isNew ? 'Novo negócio' : 'Editar negócio') + '</h2>' +
     (waLinkModal ? '<a class="wa-btn" style="margin-bottom:14px;" href="' + waLinkModal + '" target="_blank" rel="noopener">Abrir conversa no WhatsApp ↗</a>' : '') +
     (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
-    (isNew ? field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') : '') +
+    (isNew ? '<div id="novo-cliente-especifico-fields">' +
+      field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') +
+      field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><input type="text" id="f-tags-input" placeholder="Digite uma tag e aperte Enter" style="width:100%;"></div>') +
+    '</div>' : '') +
     field('Nome / empresa', '<input id="f-nome" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Ex: Construtora Vale Forte">') +
     field('Telefone / contato', '<input id="f-contato" type="text" value="' + escapeHtml(lead.contato) + '" placeholder="(32) 9 9999-9999">') +
     '<div class="row2">' +
@@ -711,6 +716,23 @@ function openModal(id){
       '</div>' +
     '</div>';
 
+  var modalNewClientTags = [];
+  function renderModalNewClientTags() {
+    var chipsContainer = document.getElementById('f-tags-chips');
+    if (!chipsContainer) return;
+    chipsContainer.innerHTML = modalNewClientTags.map(function(tag, idx) {
+      return '<span class="tag-chip">' + escapeHtml(tag) + '<span class="tag-chip-remove" data-idx="' + idx + '">✕</span></span>';
+    }).join('');
+    chipsContainer.querySelectorAll('.tag-chip-remove').forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.stopPropagation();
+        var idx = Number(btn.getAttribute('data-idx'));
+        modalNewClientTags.splice(idx, 1);
+        renderModalNewClientTags();
+      };
+    });
+  }
+
   if(!isNew){
     renderAnexosArea(lead);
   }
@@ -731,7 +753,12 @@ function openModal(id){
   if(isNew){
     document.getElementById('f-cliente-existente').addEventListener('change', function(){
       var cid = this.value;
-      if(!cid){ return; }
+      var specificFields = document.getElementById('novo-cliente-especifico-fields');
+      if(!cid){
+        if (specificFields) specificFields.classList.remove('hidden');
+        return;
+      }
+      if (specificFields) specificFields.classList.add('hidden');
       var c = clientes.find(function(x){ return x.id === cid; });
       if(!c) return;
       document.getElementById('f-nome').value = c.nome;
@@ -751,6 +778,21 @@ function openModal(id){
         if(dados.contato) document.getElementById('f-contato').value = dados.contato;
       }
     });
+
+    var tagsInput = document.getElementById('f-tags-input');
+    if(tagsInput){
+      tagsInput.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          var val = tagsInput.value.trim();
+          if(val && modalNewClientTags.indexOf(val) === -1){
+            modalNewClientTags.push(val);
+            tagsInput.value = '';
+            renderModalNewClientTags();
+          }
+        }
+      });
+    }
   }
 
   if(!isNew){
@@ -794,7 +836,14 @@ function openModal(id){
         lead.clienteId = clienteSelecionado;
       } else {
         var cnpjInput = document.getElementById('f-cnpj');
-        var novoCliente = await criarClienteNoDb({ nome: lead.nome, contato: lead.contato, canal: lead.canal, criado: todayStr(), cnpj: cnpjInput ? cnpjInput.value.replace(/\D/g,'') : '' });
+        var novoCliente = await criarClienteNoDb({
+          nome: lead.nome,
+          contato: lead.contato,
+          canal: lead.canal,
+          criado: todayStr(),
+          cnpj: cnpjInput ? cnpjInput.value.replace(/\D/g,'') : '',
+          tags: modalNewClientTags
+        });
         if(novoCliente){
           clientes.push(novoCliente);
           lead.clienteId = novoCliente.id;
@@ -1086,6 +1135,27 @@ function negociacoesDoCliente(clienteId){
 }
 
 var buscaClienteTexto = '';
+var filtroTagClienteSelecionada = '';
+
+function populateFiltroTagCliente() {
+  var select = document.getElementById('filtro-tag-cliente');
+  if (!select) return;
+  var allTags = [];
+  clientes.forEach(function(c) {
+    if (Array.isArray(c.tags)) {
+      c.tags.forEach(function(tag) {
+        if (allTags.indexOf(tag) === -1) {
+          allTags.push(tag);
+        }
+      });
+    }
+  });
+  allTags.sort();
+  var selectedVal = select.value;
+  select.innerHTML = '<option value="">Todas as tags</option>' + allTags.map(function(tag) {
+    return '<option value="' + escapeHtml(tag) + '"' + (tag === selectedVal ? ' selected' : '') + '>' + escapeHtml(tag) + '</option>';
+  }).join('');
+}
 
 function renderClientesView(){
   var grid = document.getElementById('clientes-grid');
@@ -1094,14 +1164,26 @@ function renderClientesView(){
     return;
   }
 
+  populateFiltroTagCliente();
+
   var termo = buscaClienteTexto.trim().toLowerCase();
-  var listaFiltrada = !termo ? clientes : clientes.filter(function(c){
-    var codigoStr = c.codigo ? String(c.codigo) : '';
-    return c.nome.toLowerCase().indexOf(termo) !== -1 || codigoStr.indexOf(termo) !== -1;
+  var tagFiltro = filtroTagClienteSelecionada;
+
+  var listaFiltrada = clientes.filter(function(c){
+    var matchesSearch = true;
+    if (termo) {
+      var codigoStr = c.codigo ? String(c.codigo) : '';
+      matchesSearch = c.nome.toLowerCase().indexOf(termo) !== -1 || codigoStr.indexOf(termo) !== -1;
+    }
+    var matchesTag = true;
+    if (tagFiltro) {
+      matchesTag = Array.isArray(c.tags) && c.tags.indexOf(tagFiltro) !== -1;
+    }
+    return matchesSearch && matchesTag;
   });
 
   if(listaFiltrada.length === 0){
-    grid.innerHTML = '<div class="empty-state">Nenhum cliente encontrado para "' + escapeHtml(buscaClienteTexto) + '".</div>';
+    grid.innerHTML = '<div class="empty-state">Nenhum cliente encontrado para os filtros ativos.</div>';
     return;
   }
 
@@ -1113,9 +1195,19 @@ function renderClientesView(){
     var canalLabel = CANAIS[c.canal] || c.canal || '—';
     var codigoFmt = c.codigo ? '#' + String(c.codigo).padStart(4, '0') : '';
 
+    var tagsHtml = '';
+    if (Array.isArray(c.tags) && c.tags.length > 0) {
+      tagsHtml = '<div class="cliente-tags-list" style="display:inline-flex; gap:4px; margin-left:8px; flex-wrap:wrap;">' + c.tags.map(function(tag) {
+        return '<span class="tag-chip-pill">' + escapeHtml(tag) + '</span>';
+      }).join('') + '</div>';
+    }
+
     return '<div class="cliente-card" data-id="' + c.id + '">' +
       '<p class="codigo">' + codigoFmt + '</p>' +
-      '<p class="nome">' + escapeHtml(c.nome) + '</p>' +
+      '<div class="nome-container" style="flex:1 1 220px; min-width:0; display:flex; align-items:center;">' +
+        '<p class="nome" style="margin:0; flex:none;">' + escapeHtml(c.nome) + '</p>' +
+        tagsHtml +
+      '</div>' +
       '<p class="meta">' + escapeHtml(canalLabel) + (c.contato ? ' · ' + escapeHtml(c.contato) : '') + '</p>' +
       '<div class="resumo">' +
         '<div><strong>' + negs.length + '</strong>negócios</div>' +
@@ -1166,9 +1258,25 @@ async function openClienteModal(clienteId){
       }).join('')
     : '<p class="anexo-vazio">Nenhuma interação registrada ainda.</p>';
 
+  var clientTags = Array.isArray(cliente.tags) ? cliente.tags : [];
+  var tagsHtml = '<div class="tags-input-container" style="margin-top:8px;">' +
+    '<div class="tags-chips" id="modal-client-tags-chips" style="margin-bottom:8px; display:flex; gap:6px; flex-wrap:wrap;">' +
+      clientTags.map(function(tag) {
+        return '<span class="tag-chip">' + escapeHtml(tag) + '<span class="tag-chip-remove" data-tag-val="' + escapeHtml(tag) + '">✕</span></span>';
+      }).join('') +
+    '</div>' +
+    '<div style="display:flex; gap:8px;">' +
+      '<input type="text" id="modal-client-tags-input" placeholder="Nova tag..." style="flex:1; padding:8px 10px; font-size:13px; border:1px solid var(--line); border-radius:7px; background:#FBFAF7; color:var(--ink);">' +
+      '<button type="button" class="btn-primary" id="btn-modal-add-tag" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button>' +
+    '</div>' +
+  '</div>';
+
   modal.innerHTML =
     '<h2>' + (cliente.codigo ? '#' + String(cliente.codigo).padStart(4,'0') + ' — ' : '') + escapeHtml(cliente.nome) + '</h2>' +
     '<p class="anexo-vazio">' + (CANAIS[cliente.canal] || cliente.canal || '') + (cliente.contato ? ' · ' + escapeHtml(cliente.contato) : '') + '</p>' +
+
+    '<p class="cliente-section-title" style="margin-bottom:4px;">Tags</p>' +
+    tagsHtml +
 
     '<p class="cliente-section-title">Negócios</p>' +
     '<div id="cliente-negs">' + negsHtml + '</div>' +
@@ -1213,7 +1321,6 @@ async function openClienteModal(clienteId){
   document.getElementById('btn-novo-negocio-cliente').addEventListener('click', function(){
     document.getElementById('overlay-cliente').classList.remove('open');
     openModal(null);
-    // pré-seleciona o cliente no formulário recém-aberto
     var sel = document.getElementById('f-cliente-existente');
     if(sel){
       sel.value = clienteId;
@@ -1245,6 +1352,67 @@ async function openClienteModal(clienteId){
     closeClienteModal();
     renderClientesView();
   });
+
+  setupModalClientTagsEvents(cliente);
+}
+
+async function updateClientTags(cliente, newTags) {
+  cliente.tags = newTags;
+  await atualizarClienteNoDb(cliente);
+  renderModalClientTags(cliente);
+  renderClientesView();
+}
+
+function renderModalClientTags(cliente) {
+  var chipsContainer = document.getElementById('modal-client-tags-chips');
+  if (!chipsContainer) return;
+  var clientTags = Array.isArray(cliente.tags) ? cliente.tags : [];
+  chipsContainer.innerHTML = clientTags.map(function(tag) {
+    return '<span class="tag-chip">' + escapeHtml(tag) + '<span class="tag-chip-remove" data-tag-val="' + escapeHtml(tag) + '">✕</span></span>';
+  }).join('');
+  
+  chipsContainer.querySelectorAll('.tag-chip-remove').forEach(function(btn) {
+    btn.onclick = async function(e) {
+      e.stopPropagation();
+      var tagVal = btn.getAttribute('data-tag-val');
+      var currentTags = Array.isArray(cliente.tags) ? cliente.tags.slice() : [];
+      var idx = currentTags.indexOf(tagVal);
+      if (idx !== -1) {
+        currentTags.splice(idx, 1);
+        await updateClientTags(cliente, currentTags);
+      }
+    };
+  });
+}
+
+function setupModalClientTagsEvents(cliente) {
+  var btnAdd = document.getElementById('btn-modal-add-tag');
+  var inputAdd = document.getElementById('modal-client-tags-input');
+  
+  async function addTag() {
+    var val = inputAdd.value.trim();
+    if (!val) return;
+    var currentTags = Array.isArray(cliente.tags) ? cliente.tags.slice() : [];
+    if (currentTags.indexOf(val) === -1) {
+      currentTags.push(val);
+      inputAdd.value = '';
+      await updateClientTags(cliente, currentTags);
+    }
+  }
+  
+  if (btnAdd) {
+    btnAdd.onclick = addTag;
+  }
+  if (inputAdd) {
+    inputAdd.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addTag();
+      }
+    });
+  }
+  
+  renderModalClientTags(cliente);
 }
 
 function closeClienteModal(){
@@ -1405,6 +1573,11 @@ document.getElementById('tab-calendario').addEventListener('click', function(){ 
 
 document.getElementById('busca-cliente').addEventListener('input', function(){
   buscaClienteTexto = this.value;
+  renderClientesView();
+});
+
+document.getElementById('filtro-tag-cliente').addEventListener('change', function(){
+  filtroTagClienteSelecionada = this.value;
   renderClientesView();
 });
 
