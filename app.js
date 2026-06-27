@@ -845,6 +845,10 @@ function openModal(id){
           tags: modalNewClientTags
         });
         if(novoCliente){
+          novoCliente.tags = modalNewClientTags.slice();
+          if(modalNewClientTags.length > 0){
+            await atualizarClienteNoDb(novoCliente);
+          }
           clientes.push(novoCliente);
           lead.clienteId = novoCliente.id;
         }
