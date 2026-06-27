@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Funil de Vendas — Ferro &amp; Aço</title>
+<title>Tractar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -30,6 +30,27 @@
     --shadow: 0 1px 2px rgba(28,31,34,0.06), 0 4px 14px rgba(28,31,34,0.05);
   }
   *{ box-sizing:border-box; }
+  html[data-theme="dark"]{
+    --bg: #16181A;
+    --panel: #1F2225;
+    --ink: #EDEEEF;
+    --ink-soft: #B3B7BB;
+    --ink-faint: #777C81;
+    --line: #34383C;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 14px rgba(0,0,0,0.35);
+  }
+  html[data-theme="dark"] .field input,
+  html[data-theme="dark"] .field select,
+  html[data-theme="dark"] .field textarea{
+    background:#26292D;
+    color:var(--ink);
+  }
+  html[data-theme="dark"] .anexo-item{ background:#26292D; }
+  html[data-theme="dark"] .column{ background:rgba(255,255,255,0.03); }
+  html[data-theme="dark"] .empty-col{ color:var(--ink-faint); }
+  html[data-theme="dark"] .badge.future{ background:#2A2D31; }
+  html[data-theme="dark"] .chip{ background:var(--panel); }
+  html[data-theme="dark"] .anexo-upload-label:hover{ color:var(--ink); }
   body{
     margin:0;
     background:var(--bg);
@@ -96,6 +117,19 @@
     gap:12px;
   }
   .toolbar .filters{ display:flex; gap:8px; flex-wrap:wrap; }
+  .periodo-filtro{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .periodo-filtro select, .periodo-filtro input[type="date"]{
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--ink);
+    font-size:13px;
+    font-weight:500;
+    padding:7px 10px;
+    border-radius:8px;
+    font-family:'Inter', sans-serif;
+  }
+  .periodo-custom{ display:flex; align-items:center; gap:6px; }
+  .periodo-custom span{ font-size:12px; color:var(--ink-faint); }
   .chip{
     border:1px solid var(--line);
     background:var(--panel);
@@ -443,6 +477,12 @@
     font-size:12px; font-weight:600; padding:7px 12px; border-radius:7px; cursor:pointer;
   }
   .logout-btn:hover{ background:rgba(255,255,255,0.1); }
+  .theme-btn{
+    background:transparent; border:1px solid rgba(255,255,255,0.25); color:#fff;
+    font-size:14px; padding:7px 10px; border-radius:7px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .theme-btn:hover{ background:rgba(255,255,255,0.1); }
   .sync-msg{ font-size:12px; color:var(--ink-faint); margin-left:8px; }
 
   .anexos-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
@@ -469,8 +509,8 @@
 
 <div class="login-screen" id="login-screen">
   <div class="login-box">
-    <div class="mark">Fe</div>
-    <h1>Funil de Vendas</h1>
+    <div class="mark">Tr</div>
+    <h1>Tractar</h1>
     <p class="sub">Entre com seu e-mail e senha para acessar seus clientes.</p>
     <div class="login-error" id="login-error"></div>
     <div class="field">
@@ -490,14 +530,15 @@
 
 <div class="header">
   <div class="brand">
-    <div class="mark">Fe</div>
+    <div class="mark">Tr</div>
     <div>
-      <h1>Funil de Vendas</h1>
-      <p>Ferro · Aço · Ferragens · Serralheria</p>
+      <h1>Tractar</h1>
+      <p>Funil de vendas e relacionamento com clientes</p>
     </div>
   </div>
   <div style="display:flex; align-items:center; gap:14px;">
     <div class="stats" id="stats"></div>
+    <button class="theme-btn" id="btn-theme" title="Alternar modo claro/escuro">🌙</button>
     <button class="logout-btn" id="btn-logout">Sair</button>
   </div>
 </div>
@@ -506,6 +547,20 @@
   <div class="tabs">
     <button class="tab active" id="tab-funil" data-tab="funil">Funil</button>
     <button class="tab" id="tab-dash" data-tab="dash">Dashboard</button>
+  </div>
+  <div class="periodo-filtro">
+    <select id="periodo-select">
+      <option value="todos">Todo período</option>
+      <option value="este_mes">Este mês</option>
+      <option value="mes_passado">Mês passado</option>
+      <option value="este_ano">Este ano</option>
+      <option value="personalizado">Personalizado</option>
+    </select>
+    <span class="periodo-custom hidden" id="periodo-custom">
+      <input type="date" id="periodo-inicio">
+      <span>até</span>
+      <input type="date" id="periodo-fim">
+    </span>
   </div>
   <div class="filters" id="filters"></div>
   <button class="btn-primary" id="btn-novo">+ Novo cliente</button>
@@ -570,6 +625,9 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var currentUserId = null;
 var leads = [];
 var filtroAtivo = 'todos';
+var periodoTipo = 'todos';
+var periodoInicio = null;
+var periodoFim = null;
 
 function uid(){ return 'l' + Date.now() + Math.floor(Math.random()*10000); }
 
@@ -776,14 +834,51 @@ function renderFilters(){
   });
 }
 
+function getPeriodoRange(){
+  var hoje = new Date();
+  var ano = hoje.getFullYear();
+  var mes = hoje.getMonth();
+
+  function fmt(d){ return d.toISOString().slice(0,10); }
+
+  if(periodoTipo === 'este_mes'){
+    var inicio = new Date(ano, mes, 1);
+    var fim = new Date(ano, mes + 1, 0);
+    return { inicio: fmt(inicio), fim: fmt(fim) };
+  }
+  if(periodoTipo === 'mes_passado'){
+    var inicio2 = new Date(ano, mes - 1, 1);
+    var fim2 = new Date(ano, mes, 0);
+    return { inicio: fmt(inicio2), fim: fmt(fim2) };
+  }
+  if(periodoTipo === 'este_ano'){
+    return { inicio: ano + '-01-01', fim: ano + '-12-31' };
+  }
+  if(periodoTipo === 'personalizado'){
+    if(periodoInicio && periodoFim) return { inicio: periodoInicio, fim: periodoFim };
+    return null;
+  }
+  return null;
+}
+
+function dentroDoPeriodo(lead){
+  if(periodoTipo === 'todos') return true;
+  var range = getPeriodoRange();
+  if(!range) return true;
+  var data = lead.criado;
+  if(!data) return false;
+  return data >= range.inicio && data <= range.fim;
+}
+
 function filteredLeads(){
+  var base = leads.filter(dentroDoPeriodo);
   if(filtroAtivo === 'atrasados'){
-    return leads.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) < 0 && l.stage !== 'fechado'; });
+    return base.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) < 0 && l.stage !== 'fechado'; });
   }
   if(filtroAtivo === 'hoje'){
-    return leads.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) === 0; });
+    return base.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) === 0; });
   }
-  return leads;
+  return base;
 }
 
 function render(){
@@ -1086,10 +1181,12 @@ function weekKey(dateStr){
 function renderDashboard(){
   destroyCharts();
 
-  var totalLeads = leads.length;
-  var fechados = leads.filter(function(l){ return l.stage === 'fechado'; });
+  var leadsFiltrados = leads.filter(dentroDoPeriodo);
+
+  var totalLeads = leadsFiltrados.length;
+  var fechados = leadsFiltrados.filter(function(l){ return l.stage === 'fechado'; });
   var valorFechado = fechados.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
-  var valorEmAberto = leads.filter(function(l){ return l.stage !== 'fechado'; }).reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+  var valorEmAberto = leadsFiltrados.filter(function(l){ return l.stage !== 'fechado'; }).reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
   var taxaConversao = totalLeads ? Math.round((fechados.length / totalLeads) * 100) : 0;
   var ticketMedio = fechados.length ? (valorFechado / fechados.length) : 0;
 
@@ -1101,7 +1198,7 @@ function renderDashboard(){
 
   // 1. Quantidade por etapa
   try{
-    var countsByStage = STAGES.map(function(s){ return leads.filter(function(l){ return l.stage === s.id; }).length; });
+    var countsByStage = STAGES.map(function(s){ return leadsFiltrados.filter(function(l){ return l.stage === s.id; }).length; });
     charts.funil = new Chart(document.getElementById('chart-funil'), {
       type: 'bar',
       data: {
@@ -1115,7 +1212,7 @@ function renderDashboard(){
   // 2. Valor por etapa
   try{
     var valorByStage = STAGES.map(function(s){
-      return leads.filter(function(l){ return l.stage === s.id; }).reduce(function(sum,l){ return sum + (Number(l.valor)||0); }, 0);
+      return leadsFiltrados.filter(function(l){ return l.stage === s.id; }).reduce(function(sum,l){ return sum + (Number(l.valor)||0); }, 0);
     });
     charts.valor = new Chart(document.getElementById('chart-valor'), {
       type: 'bar',
@@ -1130,7 +1227,7 @@ function renderDashboard(){
   // 3. Origem por canal
   try{
     var canalKeys = Object.keys(CANAIS);
-    var canalCounts = canalKeys.map(function(k){ return leads.filter(function(l){ return l.canal === k; }).length; });
+    var canalCounts = canalKeys.map(function(k){ return leadsFiltrados.filter(function(l){ return l.canal === k; }).length; });
     charts.canal = new Chart(document.getElementById('chart-canal'), {
       type: 'doughnut',
       data: {
@@ -1171,6 +1268,26 @@ function renderDashboard(){
 function kpiHtml(value, label){
   return '<div class="kpi"><div class="num">' + value + '</div><div class="lbl">' + label + '</div></div>';
 }
+
+document.getElementById('periodo-select').addEventListener('change', function(){
+  periodoTipo = this.value;
+  document.getElementById('periodo-custom').classList.toggle('hidden', periodoTipo !== 'personalizado');
+  if(periodoTipo !== 'personalizado'){
+    render();
+    if(document.getElementById('tab-dash').classList.contains('active')) renderDashboard();
+  }
+});
+
+function aplicarPeriodoPersonalizado(){
+  periodoInicio = document.getElementById('periodo-inicio').value || null;
+  periodoFim = document.getElementById('periodo-fim').value || null;
+  if(periodoInicio && periodoFim){
+    render();
+    if(document.getElementById('tab-dash').classList.contains('active')) renderDashboard();
+  }
+}
+document.getElementById('periodo-inicio').addEventListener('change', aplicarPeriodoPersonalizado);
+document.getElementById('periodo-fim').addEventListener('change', aplicarPeriodoPersonalizado);
 
 document.getElementById('tab-funil').addEventListener('click', function(){ switchTab('funil'); });
 document.getElementById('tab-dash').addEventListener('click', function(){ switchTab('dash'); });
@@ -1242,6 +1359,28 @@ document.getElementById('btn-login').addEventListener('click', async function(){
 
   await iniciarApp();
 });
+
+var THEME_KEY = 'tractar-theme';
+
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('btn-theme').textContent = theme === 'dark' ? '☀️' : '🌙';
+  try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+}
+
+function initTheme(){
+  var saved = null;
+  try{ saved = localStorage.getItem(THEME_KEY); }catch(e){}
+  var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(theme);
+}
+
+document.getElementById('btn-theme').addEventListener('click', function(){
+  var atual = document.documentElement.getAttribute('data-theme');
+  applyTheme(atual === 'dark' ? 'light' : 'dark');
+});
+
+initTheme();
 
 document.getElementById('btn-logout').addEventListener('click', async function(){
   await sb.auth.signOut();
