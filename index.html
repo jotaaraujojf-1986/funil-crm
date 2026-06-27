@@ -448,6 +448,12 @@
   .kpi-delta.negativo{ color:#C0392B; }
   .kpi-delta.neutro{ color:var(--ink-faint); }
 
+  .conversao-row{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+  .conversao-row .rotulo{ flex:0 0 220px; font-size:13px; font-weight:600; }
+  .conversao-row .barra-fundo{ flex:1; height:10px; background:var(--line); border-radius:6px; overflow:hidden; }
+  .conversao-row .barra-preenchida{ height:100%; background:var(--amber); border-radius:6px; }
+  .conversao-row .valor{ flex:0 0 70px; text-align:right; font-weight:700; font-size:13px; }
+
   ::-webkit-scrollbar{ height:8px; width:8px; }
   ::-webkit-scrollbar-thumb{ background:#CFCBC0; border-radius:8px; }
 
@@ -532,27 +538,35 @@
   }
   .cliente-card .codigo{
     font-size:11px; color:var(--ink-faint); font-weight:600;
+    flex:0 0 60px;
   }
   .clientes-grid{
-    display:grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap:14px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
   }
   .cliente-card{
     background:var(--panel);
     border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:16px 18px;
+    border-radius:8px;
+    padding:10px 16px;
     box-shadow:var(--shadow);
     cursor:pointer;
-    transition:transform .12s ease;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    transition:border-color .12s ease;
   }
-  .cliente-card:hover{ transform:translateY(-2px); }
-  .cliente-card .nome{ font-weight:700; font-size:14.5px; margin:0 0 4px; }
-  .cliente-card .meta{ font-size:12px; color:var(--ink-soft); margin:0 0 10px; }
-  .cliente-card .resumo{ display:flex; gap:14px; }
-  .cliente-card .resumo div{ font-size:12px; color:var(--ink-soft); }
-  .cliente-card .resumo strong{ display:block; font-size:16px; color:var(--ink); font-family:'Barlow Condensed', sans-serif; }
+  .cliente-card:hover{ border-color:var(--amber); }
+  .cliente-card .nome{ font-weight:700; font-size:14px; margin:0; flex:1 1 220px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cliente-card .meta{ font-size:12px; color:var(--ink-soft); margin:0; flex:0 0 220px; }
+  .cliente-card .resumo{ display:flex; gap:16px; flex:0 0 auto; }
+  .cliente-card .resumo div{ font-size:11px; color:var(--ink-soft); text-align:center; }
+  .cliente-card .resumo strong{ display:block; font-size:14px; color:var(--ink); font-family:'Barlow Condensed', sans-serif; }
+  @media (max-width: 760px){
+    .cliente-card{ flex-wrap:wrap; }
+    .cliente-card .meta{ flex:1 1 100%; }
+  }
 
   .cliente-section-title{
     font-family:'Barlow Condensed', sans-serif;
@@ -678,6 +692,7 @@
   <div style="display:flex; align-items:center; gap:14px;">
     <div class="stats" id="stats"></div>
     <button class="theme-btn" id="btn-theme" title="Alternar modo claro/escuro">🌙</button>
+    <button class="theme-btn" id="btn-config" title="Configurações">⚙️</button>
     <button class="logout-btn" id="btn-logout">Sair</button>
   </div>
 </div>
@@ -732,6 +747,11 @@
       <p class="sub">Negócios marcados como "Fechado", por semana</p>
       <div class="chart-wrap"><canvas id="chart-evolucao"></canvas></div>
     </div>
+    <div class="dash-card" style="grid-column: 1 / -1;">
+      <h3>Conversão por etapa</h3>
+      <p class="sub">Quanto dos negócios que chegam em uma etapa avança pra próxima (não considera negócios perdidos)</p>
+      <div id="conversao-etapas"></div>
+    </div>
   </div>
 </div>
 
@@ -757,6 +777,10 @@
 
 <div class="overlay" id="overlay-cliente">
   <div class="modal" id="modal-cliente" style="width:560px;"></div>
+</div>
+
+<div class="overlay" id="overlay-config">
+  <div class="modal" id="modal-config"></div>
 </div>
 
 </div>
@@ -791,6 +815,12 @@ var filtroAtivo = 'todos';
 var periodoTipo = 'todos';
 var periodoInicio = null;
 var periodoFim = null;
+var limitesEtapa = {
+  lead: {alerta:7, critico:14},
+  contato: {alerta:7, critico:14},
+  proposta: {alerta:5, critico:10},
+  negociacao: {alerta:7, critico:14}
+};
 
 function uid(){ return 'l' + Date.now() + Math.floor(Math.random()*10000); }
 
@@ -809,6 +839,20 @@ function diffDays(dateStr){
   var today = new Date(todayStr() + 'T00:00:00');
   var target = new Date(dateStr + 'T00:00:00');
   return Math.round((target - today) / 86400000);
+}
+
+function validarCamposObrigatorios(lead){
+  if(lead.stage === 'proposta' && !(Number(lead.valor) > 0)){
+    return 'Pra mover pra "Proposta", informe um valor estimado maior que zero.';
+  }
+  if(lead.stage === 'negociacao'){
+    if(!(Number(lead.valor) > 0)) return 'Pra mover pra "Negociação", informe um valor estimado maior que zero.';
+    if(!lead.interesse || !lead.interesse.trim()) return 'Pra mover pra "Negociação", informe o interesse/material do negócio.';
+  }
+  if(lead.stage === 'fechado' && !(Number(lead.valor) > 0)){
+    return 'Pra marcar como "Fechado", informe um valor maior que zero.';
+  }
+  return null;
 }
 
 function setStage(lead, novoStage){
@@ -907,7 +951,8 @@ function clienteFromDb(row){
     contato: row.contato,
     canal: row.canal,
     notas: row.notas,
-    criado: row.criado
+    criado: row.criado,
+    cnpj: row.cnpj || ''
   };
 }
 
@@ -918,8 +963,33 @@ function clienteToDb(cliente){
     contato: cliente.contato || null,
     canal: cliente.canal || null,
     notas: cliente.notas || null,
-    criado: cliente.criado || todayStr()
+    criado: cliente.criado || todayStr(),
+    cnpj: cliente.cnpj || null
   };
+}
+
+async function buscarDadosCnpj(cnpj){
+  var digitos = String(cnpj || '').replace(/\D/g, '');
+  if(digitos.length !== 14){
+    alert('CNPJ inválido. Deve ter 14 números.');
+    return null;
+  }
+  try{
+    var res = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + digitos);
+    if(!res.ok){
+      alert('CNPJ não encontrado na Receita Federal.');
+      return null;
+    }
+    var dados = await res.json();
+    return {
+      nome: dados.nome_fantasia || dados.razao_social || '',
+      contato: dados.ddd_telefone_1 ? dados.ddd_telefone_1.replace(/\D/g,'') : ''
+    };
+  }catch(e){
+    console.error('Erro ao consultar CNPJ', e);
+    alert('Não foi possível consultar o CNPJ agora. Verifique sua internet.');
+    return null;
+  }
 }
 
 async function loadClientesFromDb(){
@@ -972,6 +1042,25 @@ async function criarInteracaoNoDb(interacao){
 async function excluirInteracaoNoDb(id){
   var res = await sb.from('interacoes').delete().eq('id', id);
   if(res.error){ console.error('Erro ao excluir interação', res.error); showSyncError(); }
+}
+
+// ---------- Configurações (limites de tempo por etapa) ----------
+
+async function loadConfiguracoes(){
+  var res = await sb.from('configuracoes').select('*').eq('user_id', currentUserId).maybeSingle();
+  if(res.error){ console.error('Erro ao carregar configurações', res.error); return; }
+  if(res.data && res.data.limites_etapa){
+    limitesEtapa = res.data.limites_etapa;
+  } else {
+    // primeiro acesso: cria a linha de configuração com os valores padrão
+    await sb.from('configuracoes').insert({ user_id: currentUserId, limites_etapa: limitesEtapa });
+  }
+}
+
+async function salvarConfiguracoes(novosLimites){
+  limitesEtapa = novosLimites;
+  var res = await sb.from('configuracoes').upsert({ user_id: currentUserId, limites_etapa: novosLimites });
+  if(res.error){ console.error('Erro ao salvar configurações', res.error); showSyncError(); }
 }
 
 async function uploadAnexo(lead, file){
@@ -1052,9 +1141,10 @@ function diasNaEtapa(lead){
 function tempoEtapaBadge(lead){
   if(lead.stage === 'fechado' || lead.stage === 'perdido') return '';
   var dias = diasNaEtapa(lead);
+  var limites = limitesEtapa[lead.stage] || {alerta:7, critico:14};
   var cls = 'parado-ok';
-  if(dias >= 14) cls = 'parado-critico';
-  else if(dias >= 7) cls = 'parado-alerta';
+  if(dias >= limites.critico) cls = 'parado-critico';
+  else if(dias >= limites.alerta) cls = 'parado-alerta';
   var texto = dias === 0 ? 'Hoje nesta etapa' : (dias + (dias === 1 ? ' dia' : ' dias') + ' nesta etapa');
   return '<span class="badge-parado ' + cls + '">⏱ ' + texto + '</span>';
 }
@@ -1252,7 +1342,17 @@ function render(){
       var id = e.dataTransfer.getData('text/plain');
       var lead = leads.find(function(l){ return l.id === id; });
       if(lead && lead.stage !== stage.id){
+        var stageAnterior = lead.stage;
+        var etapaAnteriorTimestamp = lead.etapaAlteradaEm;
         setStage(lead, stage.id);
+        var erro = validarCamposObrigatorios(lead);
+        if(erro){
+          lead.stage = stageAnterior;
+          lead.etapaAlteradaEm = etapaAnteriorTimestamp;
+          alert(erro + '\n\nAbra o card e complete essa informação antes de mover.');
+          render();
+          return;
+        }
         render();
         atualizarLeadNoDb(lead);
       }
@@ -1362,6 +1462,7 @@ function openModal(id){
     '<h2>' + (isNew ? 'Novo negócio' : 'Editar negócio') + '</h2>' +
     (waLinkModal ? '<a class="wa-btn" style="margin-bottom:14px;" href="' + waLinkModal + '" target="_blank" rel="noopener">Abrir conversa no WhatsApp ↗</a>' : '') +
     (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
+    (isNew ? field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') : '') +
     field('Nome / empresa', '<input id="f-nome" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Ex: Construtora Vale Forte">') +
     field('Telefone / contato', '<input id="f-contato" type="text" value="' + escapeHtml(lead.contato) + '" placeholder="(32) 9 9999-9999">') +
     '<div class="row2">' +
@@ -1425,6 +1526,19 @@ function openModal(id){
       document.getElementById('f-contato').value = c.contato || '';
       document.getElementById('f-canal').value = c.canal || 'whatsapp';
     });
+
+    document.getElementById('btn-buscar-cnpj').addEventListener('click', async function(){
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Buscando...';
+      var dados = await buscarDadosCnpj(document.getElementById('f-cnpj').value);
+      btn.disabled = false;
+      btn.textContent = 'Buscar';
+      if(dados){
+        if(dados.nome) document.getElementById('f-nome').value = dados.nome;
+        if(dados.contato) document.getElementById('f-contato').value = dados.contato;
+      }
+    });
   }
 
   if(!isNew){
@@ -1453,6 +1567,12 @@ function openModal(id){
     var motivoEl = document.getElementById('f-motivo-perda');
     lead.motivoPerda = motivoEl ? motivoEl.value.trim() : (lead.stage === 'perdido' ? lead.motivoPerda : '');
 
+    var erroValidacao = validarCamposObrigatorios(lead);
+    if(erroValidacao){
+      alert(erroValidacao);
+      return;
+    }
+
     var saveBtn = document.getElementById('f-save');
     saveBtn.disabled = true;
     saveBtn.textContent = 'Salvando...';
@@ -1462,7 +1582,8 @@ function openModal(id){
       if(clienteSelecionado){
         lead.clienteId = clienteSelecionado;
       } else {
-        var novoCliente = await criarClienteNoDb({ nome: lead.nome, contato: lead.contato, canal: lead.canal, criado: todayStr() });
+        var cnpjInput = document.getElementById('f-cnpj');
+        var novoCliente = await criarClienteNoDb({ nome: lead.nome, contato: lead.contato, canal: lead.canal, criado: todayStr(), cnpj: cnpjInput ? cnpjInput.value.replace(/\D/g,'') : '' });
         if(novoCliente){
           clientes.push(novoCliente);
           lead.clienteId = novoCliente.id;
@@ -1678,6 +1799,33 @@ function renderDashboard(){
       options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
     });
   }catch(e){ console.error('Erro no gráfico de evolução', e); }
+
+  // 5. Conversão por etapa (cumulativa, ignora negócios perdidos)
+  try{
+    var funilOrdem = ['lead','contato','proposta','negociacao','fechado'];
+    var leadsAtivos = leadsFiltrados.filter(function(l){ return l.stage !== 'perdido'; });
+    var alcancados = funilOrdem.map(function(stageId){
+      var idx = funilOrdem.indexOf(stageId);
+      return leadsAtivos.filter(function(l){ return funilOrdem.indexOf(l.stage) >= idx; }).length;
+    });
+
+    var linhasHtml = '';
+    for(var i = 0; i < funilOrdem.length - 1; i++){
+      var de = STAGES.find(function(s){ return s.id === funilOrdem[i]; });
+      var para = STAGES.find(function(s){ return s.id === funilOrdem[i+1]; });
+      var pct = alcancados[i] > 0 ? Math.round((alcancados[i+1] / alcancados[i]) * 100) : 0;
+      linhasHtml += '<div class="conversao-row">' +
+        '<span class="rotulo">' + de.label + ' → ' + para.label + '</span>' +
+        '<div class="barra-fundo"><div class="barra-preenchida" style="width:' + pct + '%; background:' + para.color + ';"></div></div>' +
+        '<span class="valor">' + pct + '%</span>' +
+      '</div>';
+    }
+    var totalPerdidos = leadsFiltrados.filter(function(l){ return l.stage === 'perdido'; }).length;
+    if(totalPerdidos > 0){
+      linhasHtml += '<p class="anexo-vazio" style="margin-top:10px;">' + totalPerdidos + ' negócio(s) perdido(s) no período não entram nesse cálculo.</p>';
+    }
+    document.getElementById('conversao-etapas').innerHTML = linhasHtml;
+  }catch(e){ console.error('Erro ao calcular conversão por etapa', e); }
 }
 
 function kpiHtml(value, label, delta){
@@ -2107,6 +2255,52 @@ document.getElementById('btn-theme').addEventListener('click', function(){
 
 initTheme();
 
+document.getElementById('btn-config').addEventListener('click', abrirModalConfig);
+
+function abrirModalConfig(){
+  var etapasConfiguraveis = ['lead','contato','proposta','negociacao'];
+  var modal = document.getElementById('modal-config');
+
+  modal.innerHTML = '<h2>Limites de tempo por etapa</h2>' +
+    '<p class="anexo-vazio">Defina, em dias, quando um negócio parado nessa etapa deve virar alerta (amarelo) ou crítico (vermelho).</p>' +
+    etapasConfiguraveis.map(function(stageId){
+      var st = STAGES.find(function(s){ return s.id === stageId; });
+      var lim = limitesEtapa[stageId] || {alerta:7, critico:14};
+      return '<div class="row2" style="align-items:end;">' +
+        field(st.label + ' — Alerta (dias)', '<input type="number" min="1" id="cfg-' + stageId + '-alerta" value="' + lim.alerta + '">') +
+        field(st.label + ' — Crítico (dias)', '<input type="number" min="1" id="cfg-' + stageId + '-critico" value="' + lim.critico + '">') +
+      '</div>';
+    }).join('') +
+    '<div class="modal-actions">' +
+      '<span></span>' +
+      '<div class="right-actions">' +
+        '<button class="btn-ghost" id="btn-cancelar-config">Cancelar</button>' +
+        '<button class="btn-primary" id="btn-salvar-config">Salvar</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('overlay-config').classList.add('open');
+  document.getElementById('btn-cancelar-config').onclick = function(){
+    document.getElementById('overlay-config').classList.remove('open');
+  };
+  document.getElementById('btn-salvar-config').onclick = async function(){
+    var novosLimites = {};
+    etapasConfiguraveis.forEach(function(stageId){
+      novosLimites[stageId] = {
+        alerta: Number(document.getElementById('cfg-' + stageId + '-alerta').value) || 7,
+        critico: Number(document.getElementById('cfg-' + stageId + '-critico').value) || 14
+      };
+    });
+    await salvarConfiguracoes(novosLimites);
+    document.getElementById('overlay-config').classList.remove('open');
+    render();
+  };
+}
+
+document.getElementById('overlay-config').addEventListener('click', function(e){
+  if(e.target.id === 'overlay-config') document.getElementById('overlay-config').classList.remove('open');
+});
+
 document.getElementById('btn-logout').addEventListener('click', async function(){
   await sb.auth.signOut();
   currentUserId = null;
@@ -2124,6 +2318,7 @@ async function iniciarApp(){
   showApp();
   await loadLeadsFromDb();
   await loadClientesFromDb();
+  await loadConfiguracoes();
   render();
 }
 
