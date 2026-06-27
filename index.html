@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funil de Vendas — Ferro &amp; Aço</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #F3F1EC;
+    --panel: #FFFFFF;
+    --ink: #1C1F22;
+    --ink-soft: #565B61;
+    --ink-faint: #8A8F94;
+    --line: #DEDAD0;
+    --steel: #3A4046;
+    --steel-dark: #24272B;
+    --amber: #E8A317;
+    --amber-dark: #B9800D;
+    --red: #C0392B;
+    --red-bg: #FBE7E4;
+    --green: #2E7D4F;
+    --green-bg: #E5F1E9;
+    --blue: #2B6CA3;
+    --blue-bg: #E6EEF5;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(28,31,34,0.06), 0 4px 14px rgba(28,31,34,0.05);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .header{
+    background:linear-gradient(180deg, var(--steel-dark), var(--steel));
+    color:#fff;
+    padding:18px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+    border-bottom:4px solid var(--amber);
+  }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand .mark{
+    width:38px; height:38px; border-radius:6px;
+    background:var(--amber);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:18px;
+    color:var(--steel-dark);
+    transform:rotate(0deg);
+  }
+  .brand h1{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:800;
+    font-size:22px;
+    letter-spacing:0.3px;
+    margin:0;
+    line-height:1.1;
+  }
+  .brand p{
+    margin:0;
+    font-size:12px;
+    color:#C9CDD1;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+  }
+  .stats{ display:flex; gap:10px; flex-wrap:wrap; }
+  .stat{
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:8px;
+    padding:8px 14px;
+    min-width:108px;
+  }
+  .stat .num{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:20px; line-height:1.1; }
+  .stat .lbl{ font-size:11px; color:#C9CDD1; text-transform:uppercase; letter-spacing:0.4px; }
+  .stat.danger .num{ color:#FF9E8F; }
+  .stat.warn .num{ color:var(--amber); }
+
+  .toolbar{
+    max-width:1320px;
+    margin:0 auto;
+    padding:20px 28px 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .toolbar .filters{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--ink-soft);
+    font-size:13px;
+    font-weight:600;
+    padding:7px 14px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .chip:hover{ border-color:var(--ink-faint); }
+  .chip.active{ background:var(--steel-dark); color:#fff; border-color:var(--steel-dark); }
+
+  .btn-primary{
+    background:var(--amber);
+    color:var(--steel-dark);
+    border:none;
+    font-weight:700;
+    font-size:14px;
+    padding:11px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    box-shadow:var(--shadow);
+    transition:transform .1s ease, background .15s ease;
+  }
+  .btn-primary:hover{ background:var(--amber-dark); }
+  .btn-primary:active{ transform:scale(0.97); }
+
+  .board{
+    max-width:1320px;
+    margin:0 auto;
+    padding:18px 28px 60px;
+    display:grid;
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
+    gap:14px;
+    overflow-x:auto;
+  }
+  @media (max-width: 1080px){
+    .board{ grid-template-columns: repeat(5, minmax(240px,1fr)); }
+  }
+
+  .column{
+    background:rgba(0,0,0,0.02);
+    border-radius:var(--radius);
+    padding:10px;
+    min-height:200px;
+    transition:background .15s ease;
+    border:1px dashed transparent;
+  }
+  .column.dragover{
+    background:rgba(232,163,23,0.10);
+    border-color:var(--amber);
+  }
+  .col-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    padding:4px 6px 12px;
+    border-bottom:3px solid var(--stage-color, var(--steel));
+    margin-bottom:10px;
+  }
+  .col-head .title{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:700;
+    font-size:15px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+  }
+  .col-head .count{
+    background:var(--stage-color, var(--steel));
+    color:#fff;
+    font-size:12px;
+    font-weight:700;
+    border-radius:999px;
+    min-width:22px;
+    height:22px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 6px;
+  }
+  .col-total{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin:-6px 0 10px 6px;
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 13px;
+    margin-bottom:9px;
+    cursor:grab;
+    box-shadow:var(--shadow);
+    border-left:4px solid var(--card-accent, var(--steel));
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .card:hover{ transform:translateY(-1px); box-shadow:0 4px 18px rgba(28,31,34,0.10); }
+  .card.dragging{ opacity:0.4; }
+  .card .name{ font-weight:700; font-size:13.5px; margin:0 0 4px; }
+  .card .meta{ font-size:12px; color:var(--ink-soft); margin:0 0 8px; display:flex; align-items:center; gap:5px; }
+  .card .meta .dot{ width:5px; height:5px; border-radius:50%; background:var(--ink-faint); }
+  .card .value{ font-weight:700; color:var(--steel-dark); }
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:11px;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:6px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+  }
+  .badge.overdue{ background:var(--red-bg); color:var(--red); }
+  .badge.today{ background:#FCEFD8; color:var(--amber-dark); }
+  .badge.tomorrow{ background:var(--blue-bg); color:var(--blue); }
+  .badge.future{ background:#F0EEE8; color:var(--ink-soft); }
+  .badge.none{ background:transparent; color:var(--ink-faint); font-weight:600; padding-left:0; }
+
+  .card-bottom{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-top:9px;
+  }
+  .wa-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:12px;
+    font-weight:700;
+    color:#1F8A3D;
+    background:#E5F4E9;
+    border:none;
+    padding:5px 10px;
+    border-radius:7px;
+    cursor:pointer;
+    text-decoration:none;
+  }
+  .wa-btn:hover{ background:#D5EEDC; }
+  .wa-btn svg{ width:13px; height:13px; fill:#1F8A3D; }
+
+  .empty-col{
+    border:1.5px dashed var(--line);
+    border-radius:8px;
+    padding:20px 10px;
+    text-align:center;
+    color:var(--ink-faint);
+    font-size:12px;
+  }
+
+  /* modal */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(28,31,34,0.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:50;
+  }
+  .overlay.open{ display:flex; }
+  .modal{
+    background:var(--panel);
+    border-radius:14px;
+    width:420px;
+    max-width:100%;
+    max-height:90vh;
+    overflow-y:auto;
+    padding:24px 24px 20px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal h2{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:700;
+    font-size:20px;
+    margin:0 0 16px;
+  }
+  .field{ margin-bottom:13px; }
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-bottom:5px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+  }
+  .field input, .field select, .field textarea{
+    width:100%;
+    font-family:'Inter', sans-serif;
+    font-size:14px;
+    padding:9px 11px;
+    border-radius:7px;
+    border:1px solid var(--line);
+    background:#FBFAF7;
+    color:var(--ink);
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:none;
+    border-color:var(--amber);
+    box-shadow:0 0 0 3px rgba(232,163,23,0.18);
+  }
+  .field textarea{ resize:vertical; min-height:64px; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .modal-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:18px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+  }
+  .btn-ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+    font-weight:600;
+    font-size:13px;
+    padding:9px 14px;
+    border-radius:7px;
+    cursor:pointer;
+  }
+  .btn-ghost:hover{ background:#F2F0EA; }
+  .btn-danger{
+    background:transparent;
+    border:1px solid var(--red);
+    color:var(--red);
+    font-weight:600;
+    font-size:13px;
+    padding:9px 14px;
+    border-radius:7px;
+    cursor:pointer;
+  }
+  .btn-danger:hover{ background:var(--red-bg); }
+  .right-actions{ display:flex; gap:8px; }
+
+  .empty-state{
+    max-width:1320px;
+    margin:40px auto;
+    text-align:center;
+    color:var(--ink-faint);
+    font-size:14px;
+  }
+
+  .tabs{ display:flex; gap:6px; }
+  .tab{
+    background:rgba(255,255,255,0.07);
+    color:#C9CDD1;
+    border:1px solid rgba(255,255,255,0.14);
+    font-weight:600;
+    font-size:13px;
+    padding:8px 16px;
+    border-radius:7px;
+    cursor:pointer;
+  }
+  .tab.active{ background:var(--amber); color:var(--steel-dark); border-color:var(--amber); }
+
+  .dash{
+    max-width:1320px;
+    margin:0 auto;
+    padding:18px 28px 60px;
+    display:none;
+  }
+  .dash.open{ display:block; }
+  .dash-grid{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:16px;
+    margin-bottom:16px;
+  }
+  @media (max-width: 880px){ .dash-grid{ grid-template-columns: 1fr; } }
+  .dash-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 20px;
+    box-shadow:var(--shadow);
+  }
+  .dash-card h3{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:700;
+    font-size:16px;
+    margin:0 0 4px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+  }
+  .dash-card .sub{ font-size:12px; color:var(--ink-soft); margin:0 0 14px; }
+  .dash-card canvas{ max-height:260px; }
+  .dash-kpis{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:14px;
+    margin-bottom:16px;
+  }
+  @media (max-width: 880px){ .dash-kpis{ grid-template-columns: repeat(2,1fr); } }
+  .kpi{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    box-shadow:var(--shadow);
+  }
+  .kpi .num{ font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:26px; color:var(--steel-dark); }
+  .kpi .lbl{ font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.3px; margin-top:2px; }
+
+  ::-webkit-scrollbar{ height:8px; width:8px; }
+  ::-webkit-scrollbar-thumb{ background:#CFCBC0; border-radius:8px; }
+
+  .login-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg, var(--steel-dark), var(--steel));
+    padding:20px;
+  }
+  .login-box{
+    background:var(--panel);
+    border-radius:14px;
+    width:380px;
+    max-width:100%;
+    padding:32px 28px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  }
+  .login-box .mark{
+    width:44px; height:44px; border-radius:8px; background:var(--amber);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:20px;
+    color:var(--steel-dark); margin-bottom:14px;
+  }
+  .login-box h1{ font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:22px; margin:0 0 4px; }
+  .login-box p.sub{ font-size:13px; color:var(--ink-soft); margin:0 0 20px; }
+  .login-error{ background:var(--red-bg); color:var(--red); font-size:13px; padding:9px 12px; border-radius:7px; margin-bottom:12px; display:none; }
+  .login-error.show{ display:block; }
+  .hidden{ display:none !important; }
+  .logout-btn{
+    background:transparent; border:1px solid rgba(255,255,255,0.25); color:#fff;
+    font-size:12px; font-weight:600; padding:7px 12px; border-radius:7px; cursor:pointer;
+  }
+  .logout-btn:hover{ background:rgba(255,255,255,0.1); }
+  .sync-msg{ font-size:12px; color:var(--ink-faint); margin-left:8px; }
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="mark">Fe</div>
+    <h1>Funil de Vendas</h1>
+    <p class="sub">Entre com seu e-mail e senha para acessar seus clientes.</p>
+    <div class="login-error" id="login-error"></div>
+    <div class="field">
+      <label>E-mail</label>
+      <input id="login-email" type="email" placeholder="voce@email.com">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input id="login-senha" type="password" placeholder="••••••••">
+    </div>
+    <button class="btn-primary" id="btn-login" style="width:100%; justify-content:center; margin-top:8px;">Entrar</button>
+    <p class="sub" style="margin-top:14px; margin-bottom:0;">Primeiro acesso? <a href="#" id="link-cadastro" style="color:var(--amber-dark); font-weight:600;">Criar minha conta</a></p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+
+<div class="header">
+  <div class="brand">
+    <div class="mark">Fe</div>
+    <div>
+      <h1>Funil de Vendas</h1>
+      <p>Ferro · Aço · Ferragens · Serralheria</p>
+    </div>
+  </div>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <div class="stats" id="stats"></div>
+    <button class="logout-btn" id="btn-logout">Sair</button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="tabs">
+    <button class="tab active" id="tab-funil" data-tab="funil">Funil</button>
+    <button class="tab" id="tab-dash" data-tab="dash">Dashboard</button>
+  </div>
+  <div class="filters" id="filters"></div>
+  <button class="btn-primary" id="btn-novo">+ Novo cliente</button>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="dash" id="dash">
+  <div class="dash-kpis" id="dash-kpis"></div>
+  <div class="dash-grid">
+    <div class="dash-card">
+      <h3>Funil — quantidade por etapa</h3>
+      <p class="sub">Quantos clientes estão em cada fase agora</p>
+      <canvas id="chart-funil"></canvas>
+    </div>
+    <div class="dash-card">
+      <h3>Valor em R$ por etapa</h3>
+      <p class="sub">Onde está concentrado o dinheiro em aberto</p>
+      <canvas id="chart-valor"></canvas>
+    </div>
+    <div class="dash-card">
+      <h3>Origem dos clientes</h3>
+      <p class="sub">Presencial, telefone ou WhatsApp</p>
+      <canvas id="chart-canal"></canvas>
+    </div>
+    <div class="dash-card">
+      <h3>Fechamentos ao longo do tempo</h3>
+      <p class="sub">Negócios marcados como "Fechado", por semana</p>
+      <canvas id="chart-evolucao"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function(){
+
+var STAGES = [
+  {id:'lead', label:'Lead', color:'#8A8F94'},
+  {id:'contato', label:'Em contato', color:'#2B6CA3'},
+  {id:'proposta', label:'Proposta', color:'#E8A317'},
+  {id:'negociacao', label:'Negociação', color:'#C0392B'},
+  {id:'fechado', label:'Fechado', color:'#2E7D4F'}
+];
+
+var CANAIS = {
+  presencial: 'Presencial',
+  telefone: 'Telefone',
+  whatsapp: 'WhatsApp'
+};
+
+var SUPABASE_URL = 'https://atgwsmrottssynagejyw.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0Z3dzbXJvdHRzc3luYWdlanl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NTA3MTAsImV4cCI6MjA5ODEyNjcxMH0.oukOKymd4AY3PM7QqwZ50bzobzQsUhONuc7bWwKsfPk';
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var currentUserId = null;
+var leads = [];
+var filtroAtivo = 'todos';
+
+function uid(){ return 'l' + Date.now() + Math.floor(Math.random()*10000); }
+
+function todayStr(){
+  var d = new Date();
+  return d.toISOString().slice(0,10);
+}
+
+function addDays(dateStr, n){
+  var d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+
+function diffDays(dateStr){
+  var today = new Date(todayStr() + 'T00:00:00');
+  var target = new Date(dateStr + 'T00:00:00');
+  return Math.round((target - today) / 86400000);
+}
+
+function setStage(lead, novoStage){
+  if(novoStage === 'fechado' && lead.stage !== 'fechado'){
+    lead.fechadoEm = todayStr();
+  } else if(novoStage !== 'fechado'){
+    delete lead.fechadoEm;
+  }
+  lead.stage = novoStage;
+}
+
+function fromDb(row){
+  return {
+    id: row.id,
+    nome: row.nome,
+    contato: row.contato,
+    canal: row.canal,
+    interesse: row.interesse,
+    valor: Number(row.valor) || 0,
+    stage: row.stage,
+    nextFollowUp: row.next_follow_up,
+    notas: row.notas,
+    criado: row.criado,
+    fechadoEm: row.fechado_em || undefined
+  };
+}
+
+function toDb(lead){
+  return {
+    user_id: currentUserId,
+    nome: lead.nome,
+    contato: lead.contato || null,
+    canal: lead.canal,
+    interesse: lead.interesse || null,
+    valor: Number(lead.valor) || 0,
+    stage: lead.stage,
+    next_follow_up: lead.nextFollowUp || null,
+    notas: lead.notas || null,
+    criado: lead.criado || todayStr(),
+    fechado_em: lead.fechadoEm || null
+  };
+}
+
+async function loadLeadsFromDb(){
+  var res = await sb.from('leads').select('*').order('created_at', {ascending:true});
+  if(res.error){
+    console.error('Erro ao carregar leads', res.error);
+    leads = [];
+    return;
+  }
+  leads = res.data.map(fromDb);
+
+  // primeiro acesso: se não houver nada no banco, popular com exemplos
+  if(leads.length === 0){
+    var exemplos = seed();
+    for(var i=0; i<exemplos.length; i++){
+      await criarLeadNoDb(exemplos[i]);
+    }
+    var res2 = await sb.from('leads').select('*').order('created_at', {ascending:true});
+    leads = (res2.data || []).map(fromDb);
+  }
+}
+
+async function criarLeadNoDb(lead){
+  var res = await sb.from('leads').insert(toDb(lead)).select().single();
+  if(res.error){ console.error('Erro ao criar lead', res.error); return null; }
+  return fromDb(res.data);
+}
+
+async function atualizarLeadNoDb(lead){
+  var res = await sb.from('leads').update(toDb(lead)).eq('id', lead.id);
+  if(res.error){ console.error('Erro ao atualizar lead', res.error); showSyncError(); }
+}
+
+async function excluirLeadNoDb(id){
+  var res = await sb.from('leads').delete().eq('id', id);
+  if(res.error){ console.error('Erro ao excluir lead', res.error); showSyncError(); }
+}
+
+function showSyncError(){
+  alert('Não foi possível sincronizar com o servidor agora. Verifique sua internet — a alteração pode não ter sido salva.');
+}
+
+function seed(){
+  var t = todayStr();
+  return [
+    {id:uid(), nome:'Construtora Vale Forte', contato:'(32) 99876-1122', canal:'telefone', interesse:'Vergalhão CA-50 + tela soldada', valor:18500, stage:'proposta', nextFollowUp: addDays(t,1), notas:'Aguardando aprovação do engenheiro. Confirmar preço por telefone.', criado: addDays(t,-6)},
+    {id:uid(), nome:'Serralheria Boa Vista', contato:'(32) 98877-3344', canal:'whatsapp', interesse:'Tubo industrial e cantoneira', valor:4200, stage:'contato', nextFollowUp: t, notas:'Pediu desconto para pagamento em 30 dias.', criado: addDays(t,-3)},
+    {id:uid(), nome:'João — reforma residencial', contato:'(32) 99911-5566', canal:'presencial', interesse:'Ferragens diversas para laje', valor:1350, stage:'lead', nextFollowUp: addDays(t,2), notas:'Veio na loja, pediu cotação por escrito.', criado: t},
+    {id:uid(), nome:'Metalúrgica Sul Mineira', contato:'(32) 98765-4321', canal:'whatsapp', interesse:'Chapa de aço 1/4 — pedido recorrente', valor:9800, stage:'negociacao', nextFollowUp: addDays(t,-1), notas:'Cliente antigo, fechando volume mensal.', criado: addDays(t,-20)},
+    {id:uid(), nome:'Construtora Pilares', contato:'(32) 99222-8899', canal:'telefone', interesse:'Estrutura metálica galpão', valor:42000, stage:'fechado', nextFollowUp: null, notas:'Contrato assinado, entrega agendada.', criado: addDays(t,-28), fechadoEm: addDays(t,-15)},
+    {id:uid(), nome:'Oficina Central', contato:'(32) 99333-1212', canal:'whatsapp', interesse:'Telhas metálicas', valor:6200, stage:'fechado', nextFollowUp: null, notas:'Pagamento à vista.', criado: addDays(t,-25), fechadoEm: addDays(t,-9)},
+    {id:uid(), nome:'Galpão Industrial RM', contato:'(32) 99444-7878', canal:'presencial', interesse:'Perfil estrutural', valor:15800, stage:'fechado', nextFollowUp: null, notas:'Entrega em duas etapas.', criado: addDays(t,-18), fechadoEm: addDays(t,-2)}
+  ];
+}
+
+function fmtMoney(v){
+  v = Number(v) || 0;
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+
+function fmtDateBR(dateStr){
+  var d = new Date(dateStr + 'T00:00:00');
+  var dd = String(d.getDate()).padStart(2,'0');
+  var mm = String(d.getMonth()+1).padStart(2,'0');
+  return dd + '/' + mm;
+}
+
+function followUpBadge(lead){
+  if(!lead.nextFollowUp){
+    return '<span class="badge none">Sem follow-up</span>';
+  }
+  var diff = diffDays(lead.nextFollowUp);
+  if(diff < 0) return '<span class="badge overdue">Atrasado ' + Math.abs(diff) + 'd</span>';
+  if(diff === 0) return '<span class="badge today">Hoje</span>';
+  if(diff === 1) return '<span class="badge tomorrow">Amanhã</span>';
+  return '<span class="badge future">' + fmtDateBR(lead.nextFollowUp) + '</span>';
+}
+
+function escapeHtml(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function buildWaLink(lead){
+  var digits = String(lead.contato || '').replace(/\D/g,'');
+  if(!digits) return null;
+  // Adiciona DDI do Brasil (55) se o número não vier com ele
+  if(digits.length <= 11) digits = '55' + digits;
+  var msg = 'Olá ' + (lead.nome || '') + ', aqui é da loja, sobre ' + (lead.interesse || 'seu orçamento') + '. Podemos conversar?';
+  return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(msg);
+}
+
+function renderStats(){
+  var ativos = leads.filter(function(l){ return l.stage !== 'fechado'; });
+  var totalAberto = ativos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+  var hoje = leads.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) === 0; }).length;
+  var atrasados = leads.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) < 0 && l.stage !== 'fechado'; }).length;
+
+  var html = '';
+  html += statHtml('Em aberto', fmtMoney(totalAberto), '');
+  html += statHtml('Follow-up hoje', hoje, hoje>0 ? 'warn' : '');
+  html += statHtml('Atrasados', atrasados, atrasados>0 ? 'danger' : '');
+  document.getElementById('stats').innerHTML = html;
+}
+
+function statHtml(label, value, cls){
+  return '<div class="stat ' + cls + '"><div class="num">' + value + '</div><div class="lbl">' + label + '</div></div>';
+}
+
+function renderFilters(){
+  var html = '<button class="chip ' + (filtroAtivo==='todos'?'active':'') + '" data-filter="todos">Todos</button>';
+  html += '<button class="chip ' + (filtroAtivo==='atrasados'?'active':'') + '" data-filter="atrasados">Atrasados</button>';
+  html += '<button class="chip ' + (filtroAtivo==='hoje'?'active':'') + '" data-filter="hoje">Hoje</button>';
+  document.getElementById('filters').innerHTML = html;
+  Array.prototype.forEach.call(document.querySelectorAll('.chip'), function(chip){
+    chip.onclick = function(){
+      filtroAtivo = chip.getAttribute('data-filter');
+      render();
+    };
+  });
+}
+
+function filteredLeads(){
+  if(filtroAtivo === 'atrasados'){
+    return leads.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) < 0 && l.stage !== 'fechado'; });
+  }
+  if(filtroAtivo === 'hoje'){
+    return leads.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) === 0; });
+  }
+  return leads;
+}
+
+function render(){
+  renderStats();
+  renderFilters();
+
+  var visible = filteredLeads();
+  var board = document.getElementById('board');
+  board.innerHTML = '';
+
+  STAGES.forEach(function(stage){
+    var col = document.createElement('div');
+    col.className = 'column';
+    col.style.setProperty('--stage-color', stage.color);
+    col.setAttribute('data-stage', stage.id);
+
+    col.addEventListener('dragover', function(e){
+      e.preventDefault();
+      col.classList.add('dragover');
+    });
+    col.addEventListener('dragleave', function(){
+      col.classList.remove('dragover');
+    });
+    col.addEventListener('drop', function(e){
+      e.preventDefault();
+      col.classList.remove('dragover');
+      var id = e.dataTransfer.getData('text/plain');
+      var lead = leads.find(function(l){ return l.id === id; });
+      if(lead && lead.stage !== stage.id){
+        setStage(lead, stage.id);
+        render();
+        atualizarLeadNoDb(lead);
+      }
+    });
+
+    var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
+    var stageTotal = stageLeads.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+
+    var head = document.createElement('div');
+    head.className = 'col-head';
+    head.innerHTML = '<span class="title">' + stage.label + '</span><span class="count">' + stageLeads.length + '</span>';
+    col.appendChild(head);
+
+    var total = document.createElement('div');
+    total.className = 'col-total';
+    total.textContent = fmtMoney(stageTotal);
+    col.appendChild(total);
+
+    if(stageLeads.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'empty-col';
+      empty.textContent = 'Arraste um cliente para aqui';
+      col.appendChild(empty);
+    } else {
+      stageLeads
+        .slice()
+        .sort(function(a,b){
+          if(!a.nextFollowUp) return 1;
+          if(!b.nextFollowUp) return -1;
+          return new Date(a.nextFollowUp) - new Date(b.nextFollowUp);
+        })
+        .forEach(function(lead){
+          col.appendChild(buildCard(lead, stage.color));
+        });
+    }
+
+    board.appendChild(col);
+  });
+}
+
+function buildCard(lead, stageColor){
+  var card = document.createElement('div');
+  card.className = 'card';
+  card.draggable = true;
+  card.style.setProperty('--card-accent', stageColor);
+
+  var canalLabel = CANAIS[lead.canal] || lead.canal;
+  var waLink = buildWaLink(lead);
+  var waButtonHtml = waLink
+    ? '<a class="wa-btn" href="' + waLink + '" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">' +
+        '<svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.9-.9-.3-.1-.4-.1-.6.1-.2.2-.7.9-.9 1.1-.2.2-.3.2-.6.1-.9-.4-1.8-1-2.6-1.8-.7-.7-1.4-1.6-1.8-2.5-.1-.3 0-.4.1-.6.2-.2.8-.7 1-1 .1-.2.1-.4 0-.6-.1-.2-.6-1.5-.8-1.9-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.1 1.6 2.5 4 3.6 2 .9 2.4.8 2.8.7.4-.1 1.6-.6 1.8-1.2.2-.6.2-1.1.2-1.2 0-.1-.1-.2-.3-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.5C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18c-1.7 0-3.3-.5-4.7-1.3l-.3-.2-3 .9.9-2.9-.2-.3C3.9 14.9 3.4 13.5 3.4 12c0-4.7 3.9-8.6 8.6-8.6s8.6 3.9 8.6 8.6-3.9 8.6-8.6 8.6z"/></svg>' +
+        'WhatsApp</a>'
+    : '<span style="font-size:11px; color:var(--ink-faint);">sem número válido</span>';
+
+  card.innerHTML =
+    '<p class="name">' + escapeHtml(lead.nome) + '</p>' +
+    '<p class="meta">' + escapeHtml(canalLabel) + '<span class="dot"></span><span class="value">' + fmtMoney(lead.valor) + '</span></p>' +
+    '<div class="card-bottom">' + followUpBadge(lead) + waButtonHtml + '</div>';
+
+  card.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', function(e){ e.stopPropagation(); });
+  });
+
+  card.addEventListener('dragstart', function(e){
+    e.dataTransfer.setData('text/plain', lead.id);
+    card.classList.add('dragging');
+  });
+  card.addEventListener('dragend', function(){
+    card.classList.remove('dragging');
+  });
+  card.addEventListener('click', function(){
+    openModal(lead.id);
+  });
+
+  return card;
+}
+
+function openModal(id){
+  var isNew = !id;
+  var lead = isNew
+    ? {id: uid(), nome:'', contato:'', canal:'whatsapp', interesse:'', valor:'', stage:'lead', nextFollowUp: todayStr(), notas:'', criado: todayStr()}
+    : leads.find(function(l){ return l.id === id; });
+
+  if(!lead) return;
+
+  var stageOptions = STAGES.map(function(s){
+    return '<option value="' + s.id + '" ' + (lead.stage===s.id?'selected':'') + '>' + s.label + '</option>';
+  }).join('');
+
+  var canalOptions = Object.keys(CANAIS).map(function(k){
+    return '<option value="' + k + '" ' + (lead.canal===k?'selected':'') + '>' + CANAIS[k] + '</option>';
+  }).join('');
+
+  var modal = document.getElementById('modal');
+  var waLinkModal = !isNew ? buildWaLink(lead) : null;
+  modal.innerHTML =
+    '<h2>' + (isNew ? 'Novo cliente' : 'Editar cliente') + '</h2>' +
+    (waLinkModal ? '<a class="wa-btn" style="margin-bottom:14px;" href="' + waLinkModal + '" target="_blank" rel="noopener">Abrir conversa no WhatsApp ↗</a>' : '') +
+    field('Nome / empresa', '<input id="f-nome" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Ex: Construtora Vale Forte">') +
+    field('Telefone / contato', '<input id="f-contato" type="text" value="' + escapeHtml(lead.contato) + '" placeholder="(32) 9 9999-9999">') +
+    '<div class="row2">' +
+      field('Canal', '<select id="f-canal">' + canalOptions + '</select>') +
+      field('Etapa do funil', '<select id="f-stage">' + stageOptions + '</select>') +
+    '</div>' +
+    field('Interesse / material', '<input id="f-interesse" type="text" value="' + escapeHtml(lead.interesse) + '" placeholder="Ex: Vergalhão, telha, chapa...">') +
+    '<div class="row2">' +
+      field('Valor estimado (R$)', '<input id="f-valor" type="number" min="0" value="' + (lead.valor || '') + '">') +
+      field('Próximo follow-up', '<input id="f-followup" type="date" value="' + (lead.nextFollowUp || '') + '">') +
+    '</div>' +
+    field('Notas', '<textarea id="f-notas" placeholder="Detalhes da conversa, objeções, combinados...">' + escapeHtml(lead.notas) + '</textarea>') +
+    '<div class="modal-actions">' +
+      (isNew ? '<span></span>' : '<button class="btn-danger" id="f-del">Excluir</button>') +
+      '<div class="right-actions">' +
+        '<button class="btn-ghost" id="f-cancel">Cancelar</button>' +
+        '<button class="btn-primary" id="f-save">Salvar</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('overlay').classList.add('open');
+
+  document.getElementById('f-cancel').onclick = closeModal;
+
+  if(!isNew){
+    document.getElementById('f-del').onclick = function(){
+      if(confirm('Excluir este cliente do funil?')){
+        leads = leads.filter(function(l){ return l.id !== lead.id; });
+        render();
+        closeModal();
+        excluirLeadNoDb(lead.id);
+      }
+    };
+  }
+
+  document.getElementById('f-save').onclick = async function(){
+    var nome = document.getElementById('f-nome').value.trim();
+    lead.nome = nome || 'Sem nome';
+    lead.contato = document.getElementById('f-contato').value.trim();
+    lead.canal = document.getElementById('f-canal').value;
+    lead.interesse = document.getElementById('f-interesse').value.trim();
+    lead.valor = Number(document.getElementById('f-valor').value) || 0;
+    setStage(lead, document.getElementById('f-stage').value);
+    lead.nextFollowUp = document.getElementById('f-followup').value || null;
+    lead.notas = document.getElementById('f-notas').value.trim();
+
+    var saveBtn = document.getElementById('f-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando...';
+
+    if(isNew){
+      var criado = await criarLeadNoDb(lead);
+      if(criado){
+        lead.id = criado.id;
+        leads.push(lead);
+      } else {
+        showSyncError();
+      }
+    } else {
+      await atualizarLeadNoDb(lead);
+    }
+
+    render();
+    closeModal();
+  };
+}
+
+function field(label, inputHtml){
+  return '<div class="field"><label>' + label + '</label>' + inputHtml + '</div>';
+}
+
+function closeModal(){
+  document.getElementById('overlay').classList.remove('open');
+}
+
+document.getElementById('btn-novo').addEventListener('click', function(){ openModal(null); });
+document.getElementById('overlay').addEventListener('click', function(e){
+  if(e.target.id === 'overlay') closeModal();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeModal();
+});
+
+var charts = {};
+var CHART_COLORS = {
+  lead:'#8A8F94', contato:'#2B6CA3', proposta:'#E8A317', negociacao:'#C0392B', fechado:'#2E7D4F'
+};
+
+function destroyCharts(){
+  Object.keys(charts).forEach(function(k){ if(charts[k]) charts[k].destroy(); });
+  charts = {};
+}
+
+function weekKey(dateStr){
+  var d = new Date(dateStr + 'T00:00:00');
+  var jan1 = new Date(d.getFullYear(), 0, 1);
+  var dayNum = Math.floor((d - jan1) / 86400000) + 1;
+  var week = Math.ceil((dayNum + jan1.getDay()) / 7);
+  return d.getFullYear() + '-S' + String(week).padStart(2,'0');
+}
+
+function renderDashboard(){
+  destroyCharts();
+
+  var totalLeads = leads.length;
+  var fechados = leads.filter(function(l){ return l.stage === 'fechado'; });
+  var valorFechado = fechados.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+  var valorEmAberto = leads.filter(function(l){ return l.stage !== 'fechado'; }).reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+  var taxaConversao = totalLeads ? Math.round((fechados.length / totalLeads) * 100) : 0;
+  var ticketMedio = fechados.length ? (valorFechado / fechados.length) : 0;
+
+  document.getElementById('dash-kpis').innerHTML =
+    kpiHtml(totalLeads, 'Clientes no funil') +
+    kpiHtml(taxaConversao + '%', 'Taxa de conversão') +
+    kpiHtml(fmtMoney(ticketMedio), 'Ticket médio (fechados)') +
+    kpiHtml(fmtMoney(valorEmAberto), 'Valor em negociação');
+
+  // 1. Quantidade por etapa
+  var countsByStage = STAGES.map(function(s){ return leads.filter(function(l){ return l.stage === s.id; }).length; });
+  charts.funil = new Chart(document.getElementById('chart-funil'), {
+    type: 'bar',
+    data: {
+      labels: STAGES.map(function(s){ return s.label; }),
+      datasets: [{ data: countsByStage, backgroundColor: STAGES.map(function(s){ return s.color; }), borderRadius: 6 }]
+    },
+    options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
+  });
+
+  // 2. Valor por etapa
+  var valorByStage = STAGES.map(function(s){
+    return leads.filter(function(l){ return l.stage === s.id; }).reduce(function(sum,l){ return sum + (Number(l.valor)||0); }, 0);
+  });
+  charts.valor = new Chart(document.getElementById('chart-valor'), {
+    type: 'bar',
+    data: {
+      labels: STAGES.map(function(s){ return s.label; }),
+      datasets: [{ data: valorByStage, backgroundColor: STAGES.map(function(s){ return s.color; }), borderRadius: 6 }]
+    },
+    options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$ '+v; } } } } }
+  });
+
+  // 3. Origem por canal
+  var canalKeys = Object.keys(CANAIS);
+  var canalCounts = canalKeys.map(function(k){ return leads.filter(function(l){ return l.canal === k; }).length; });
+  charts.canal = new Chart(document.getElementById('chart-canal'), {
+    type: 'doughnut',
+    data: {
+      labels: canalKeys.map(function(k){ return CANAIS[k]; }),
+      datasets: [{ data: canalCounts, backgroundColor: ['#3A4046', '#2B6CA3', '#2E7D4F'] }]
+    },
+    options: { plugins:{ legend:{ position:'bottom' } } }
+  });
+
+  // 4. Evolução de fechamentos por semana
+  var fechadosComData = fechados.filter(function(l){ return l.fechadoEm; });
+  var porSemana = {};
+  fechadosComData.forEach(function(l){
+    var k = weekKey(l.fechadoEm);
+    porSemana[k] = (porSemana[k] || 0) + 1;
+  });
+  var semanasOrdenadas = Object.keys(porSemana).sort();
+  charts.evolucao = new Chart(document.getElementById('chart-evolucao'), {
+    type: 'line',
+    data: {
+      labels: semanasOrdenadas.length ? semanasOrdenadas : ['Sem dados ainda'],
+      datasets: [{
+        data: semanasOrdenadas.length ? semanasOrdenadas.map(function(k){ return porSemana[k]; }) : [0],
+        borderColor: '#E8A317',
+        backgroundColor: 'rgba(232,163,23,0.15)',
+        fill: true,
+        tension: 0.3,
+        pointBackgroundColor: '#E8A317'
+      }]
+    },
+    options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
+  });
+}
+
+function kpiHtml(value, label){
+  return '<div class="kpi"><div class="num">' + value + '</div><div class="lbl">' + label + '</div></div>';
+}
+
+document.getElementById('tab-funil').addEventListener('click', function(){ switchTab('funil'); });
+document.getElementById('tab-dash').addEventListener('click', function(){ switchTab('dash'); });
+
+function switchTab(tab){
+  document.getElementById('tab-funil').classList.toggle('active', tab === 'funil');
+  document.getElementById('tab-dash').classList.toggle('active', tab === 'dash');
+  document.getElementById('board').style.display = tab === 'funil' ? 'grid' : 'none';
+  document.getElementById('dash').classList.toggle('open', tab === 'dash');
+  document.querySelector('.filters').style.display = tab === 'funil' ? 'flex' : 'none';
+  if(tab === 'dash') renderDashboard();
+}
+
+function showLogin(){
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
+}
+
+function showApp(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+}
+
+function setLoginError(msg){
+  var el = document.getElementById('login-error');
+  if(!msg){ el.classList.remove('show'); el.textContent=''; return; }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+var modoCadastro = false;
+
+document.getElementById('link-cadastro').addEventListener('click', function(e){
+  e.preventDefault();
+  modoCadastro = !modoCadastro;
+  document.getElementById('btn-login').textContent = modoCadastro ? 'Criar conta' : 'Entrar';
+  e.target.textContent = modoCadastro ? 'Já tenho conta, fazer login' : 'Criar minha conta';
+  setLoginError(null);
+});
+
+document.getElementById('btn-login').addEventListener('click', async function(){
+  var email = document.getElementById('login-email').value.trim();
+  var senha = document.getElementById('login-senha').value;
+  setLoginError(null);
+
+  if(!email || !senha){
+    setLoginError('Preencha e-mail e senha.');
+    return;
+  }
+
+  var btn = document.getElementById('btn-login');
+  btn.disabled = true;
+
+  var result = modoCadastro
+    ? await sb.auth.signUp({ email: email, password: senha })
+    : await sb.auth.signInWithPassword({ email: email, password: senha });
+
+  btn.disabled = false;
+
+  if(result.error){
+    setLoginError(result.error.message || 'Não foi possível entrar. Verifique seus dados.');
+    return;
+  }
+
+  if(modoCadastro && result.data && !result.data.session){
+    setLoginError('Conta criada! Verifique seu e-mail para confirmar antes de entrar.');
+    return;
+  }
+
+  await iniciarApp();
+});
+
+document.getElementById('btn-logout').addEventListener('click', async function(){
+  await sb.auth.signOut();
+  currentUserId = null;
+  showLogin();
+});
+
+async function iniciarApp(){
+  var sessionRes = await sb.auth.getSession();
+  var session = sessionRes.data.session;
+  if(!session){
+    showLogin();
+    return;
+  }
+  currentUserId = session.user.id;
+  showApp();
+  await loadLeadsFromDb();
+  render();
+}
+
+iniciarApp();
+})();
+</script>
+</body>
+</html>
