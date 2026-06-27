@@ -444,6 +444,25 @@
   }
   .logout-btn:hover{ background:rgba(255,255,255,0.1); }
   .sync-msg{ font-size:12px; color:var(--ink-faint); margin-left:8px; }
+
+  .anexos-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+  .anexo-item{
+    display:flex; align-items:center; justify-content:space-between;
+    background:#F5F3EE; border:1px solid var(--line); border-radius:7px;
+    padding:7px 10px; font-size:12.5px;
+  }
+  .anexo-item a{ color:var(--blue); text-decoration:none; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px; }
+  .anexo-item a:hover{ text-decoration:underline; }
+  .anexo-del{ background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:13px; padding:2px 4px; }
+  .anexo-del:hover{ color:var(--red); }
+  .anexo-upload-label{
+    display:inline-flex; align-items:center; gap:6px;
+    border:1.5px dashed var(--line); border-radius:7px;
+    padding:9px 12px; font-size:12.5px; color:var(--ink-soft);
+    cursor:pointer; width:100%; justify-content:center;
+  }
+  .anexo-upload-label:hover{ border-color:var(--amber); color:var(--ink); }
+  .anexo-vazio{ font-size:12px; color:var(--ink-faint); margin:0 0 8px; }
 </style>
 </head>
 <body>
@@ -592,7 +611,8 @@ function fromDb(row){
     nextFollowUp: row.next_follow_up,
     notas: row.notas,
     criado: row.criado,
-    fechadoEm: row.fechado_em || undefined
+    fechadoEm: row.fechado_em || undefined,
+    anexos: Array.isArray(row.anexos) ? row.anexos : []
   };
 }
 
@@ -608,7 +628,8 @@ function toDb(lead){
     next_follow_up: lead.nextFollowUp || null,
     notas: lead.notas || null,
     criado: lead.criado || todayStr(),
-    fechado_em: lead.fechadoEm || null
+    fechado_em: lead.fechadoEm || null,
+    anexos: lead.anexos || []
   };
 }
 
@@ -650,6 +671,51 @@ async function excluirLeadNoDb(id){
 
 function showSyncError(){
   alert('Não foi possível sincronizar com o servidor agora. Verifique sua internet — a alteração pode não ter sido salva.');
+}
+
+async function uploadAnexo(lead, file){
+  if(file.size > 10 * 1024 * 1024){
+    alert('Arquivo muito grande. O limite é 10MB por arquivo.');
+    return null;
+  }
+  var caminho = currentUserId + '/' + lead.id + '/' + Date.now() + '_' + file.name.replace(/[^\w.\-]/g, '_');
+  var res = await sb.storage.from('anexos').upload(caminho, file);
+  if(res.error){
+    console.error('Erro ao enviar anexo', res.error);
+    alert('Não foi possível enviar o arquivo. Tente novamente.');
+    return null;
+  }
+  var anexo = { path: caminho, nome: file.name, tamanho: file.size, enviadoEm: new Date().toISOString() };
+  lead.anexos = lead.anexos || [];
+  lead.anexos.push(anexo);
+  await atualizarLeadNoDb(lead);
+  return anexo;
+}
+
+async function excluirAnexo(lead, anexo){
+  var res = await sb.storage.from('anexos').remove([anexo.path]);
+  if(res.error){
+    console.error('Erro ao excluir anexo', res.error);
+    showSyncError();
+    return;
+  }
+  lead.anexos = (lead.anexos || []).filter(function(a){ return a.path !== anexo.path; });
+  await atualizarLeadNoDb(lead);
+}
+
+async function abrirAnexo(anexo){
+  var res = await sb.storage.from('anexos').createSignedUrl(anexo.path, 60);
+  if(res.error || !res.data){
+    alert('Não foi possível abrir o arquivo agora.');
+    return;
+  }
+  window.open(res.data.signedUrl, '_blank');
+}
+
+function fmtTamanho(bytes){
+  if(!bytes) return '';
+  if(bytes < 1024*1024) return Math.round(bytes/1024) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
 }
 
 function seed(){
@@ -881,6 +947,10 @@ function openModal(id){
       field('Próximo follow-up', '<input id="f-followup" type="date" value="' + (lead.nextFollowUp || '') + '">') +
     '</div>' +
     field('Notas', '<textarea id="f-notas" placeholder="Detalhes da conversa, objeções, combinados...">' + escapeHtml(lead.notas) + '</textarea>') +
+    (isNew
+      ? '<p class="anexo-vazio">Salve o cliente primeiro para poder anexar arquivos.</p>'
+      : field('Anexos', '<div id="anexos-area"></div>')
+    ) +
     '<div class="modal-actions">' +
       (isNew ? '<span></span>' : '<button class="btn-danger" id="f-del">Excluir</button>') +
       '<div class="right-actions">' +
@@ -888,6 +958,10 @@ function openModal(id){
         '<button class="btn-primary" id="f-save">Salvar</button>' +
       '</div>' +
     '</div>';
+
+  if(!isNew){
+    renderAnexosArea(lead);
+  }
 
   document.getElementById('overlay').classList.add('open');
 
@@ -940,6 +1014,56 @@ function field(label, inputHtml){
   return '<div class="field"><label>' + label + '</label>' + inputHtml + '</div>';
 }
 
+function renderAnexosArea(lead){
+  var area = document.getElementById('anexos-area');
+  if(!area) return;
+
+  var anexos = lead.anexos || [];
+  var listaHtml = anexos.length
+    ? '<div class="anexos-list">' + anexos.map(function(a, idx){
+        return '<div class="anexo-item">' +
+          '<a href="#" data-idx="' + idx + '" class="anexo-abrir">📎 ' + escapeHtml(a.nome) + ' <span style="color:var(--ink-faint); font-weight:400;">(' + fmtTamanho(a.tamanho) + ')</span></a>' +
+          '<button class="anexo-del" data-idx="' + idx + '" title="Excluir anexo">✕</button>' +
+        '</div>';
+      }).join('') + '</div>'
+    : '<p class="anexo-vazio">Nenhum arquivo anexado ainda.</p>';
+
+  area.innerHTML =
+    listaHtml +
+    '<label class="anexo-upload-label">📎 Adicionar arquivo (PDF, imagem, etc. — até 10MB)' +
+      '<input type="file" id="f-anexo-input" style="display:none;">' +
+    '</label>';
+
+  area.querySelectorAll('.anexo-abrir').forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      var idx = Number(a.getAttribute('data-idx'));
+      abrirAnexo(lead.anexos[idx]);
+    });
+  });
+
+  area.querySelectorAll('.anexo-del').forEach(function(btn){
+    btn.addEventListener('click', async function(){
+      var idx = Number(btn.getAttribute('data-idx'));
+      var anexo = lead.anexos[idx];
+      if(!confirm('Excluir o arquivo "' + anexo.nome + '"?')) return;
+      btn.disabled = true;
+      await excluirAnexo(lead, anexo);
+      renderAnexosArea(lead);
+    });
+  });
+
+  var input = document.getElementById('f-anexo-input');
+  input.addEventListener('change', async function(){
+    var file = input.files[0];
+    if(!file) return;
+    var label = input.closest('.anexo-upload-label');
+    label.textContent = 'Enviando...';
+    await uploadAnexo(lead, file);
+    renderAnexosArea(lead);
+  });
+}
+
 function closeModal(){
   document.getElementById('overlay').classList.remove('open');
 }
@@ -960,6 +1084,13 @@ var CHART_COLORS = {
 function destroyCharts(){
   Object.keys(charts).forEach(function(k){ if(charts[k]) charts[k].destroy(); });
   charts = {};
+  // segurança extra: garante que nenhum canvas fique com instância órfã do Chart.js
+  ['chart-funil','chart-valor','chart-canal','chart-evolucao'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    var existing = Chart.getChart(el);
+    if(existing) existing.destroy();
+  });
 }
 
 function weekKey(dateStr){
@@ -987,64 +1118,72 @@ function renderDashboard(){
     kpiHtml(fmtMoney(valorEmAberto), 'Valor em negociação');
 
   // 1. Quantidade por etapa
-  var countsByStage = STAGES.map(function(s){ return leads.filter(function(l){ return l.stage === s.id; }).length; });
-  charts.funil = new Chart(document.getElementById('chart-funil'), {
-    type: 'bar',
-    data: {
-      labels: STAGES.map(function(s){ return s.label; }),
-      datasets: [{ data: countsByStage, backgroundColor: STAGES.map(function(s){ return s.color; }), borderRadius: 6 }]
-    },
-    options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
-  });
+  try{
+    var countsByStage = STAGES.map(function(s){ return leads.filter(function(l){ return l.stage === s.id; }).length; });
+    charts.funil = new Chart(document.getElementById('chart-funil'), {
+      type: 'bar',
+      data: {
+        labels: STAGES.map(function(s){ return s.label; }),
+        datasets: [{ data: countsByStage, backgroundColor: STAGES.map(function(s){ return s.color; }), borderRadius: 6 }]
+      },
+      options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
+    });
+  }catch(e){ console.error('Erro no gráfico de funil', e); }
 
   // 2. Valor por etapa
-  var valorByStage = STAGES.map(function(s){
-    return leads.filter(function(l){ return l.stage === s.id; }).reduce(function(sum,l){ return sum + (Number(l.valor)||0); }, 0);
-  });
-  charts.valor = new Chart(document.getElementById('chart-valor'), {
-    type: 'bar',
-    data: {
-      labels: STAGES.map(function(s){ return s.label; }),
-      datasets: [{ data: valorByStage, backgroundColor: STAGES.map(function(s){ return s.color; }), borderRadius: 6 }]
-    },
-    options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$ '+v; } } } } }
-  });
+  try{
+    var valorByStage = STAGES.map(function(s){
+      return leads.filter(function(l){ return l.stage === s.id; }).reduce(function(sum,l){ return sum + (Number(l.valor)||0); }, 0);
+    });
+    charts.valor = new Chart(document.getElementById('chart-valor'), {
+      type: 'bar',
+      data: {
+        labels: STAGES.map(function(s){ return s.label; }),
+        datasets: [{ data: valorByStage, backgroundColor: STAGES.map(function(s){ return s.color; }), borderRadius: 6 }]
+      },
+      options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$ '+v; } } } } }
+    });
+  }catch(e){ console.error('Erro no gráfico de valor', e); }
 
   // 3. Origem por canal
-  var canalKeys = Object.keys(CANAIS);
-  var canalCounts = canalKeys.map(function(k){ return leads.filter(function(l){ return l.canal === k; }).length; });
-  charts.canal = new Chart(document.getElementById('chart-canal'), {
-    type: 'doughnut',
-    data: {
-      labels: canalKeys.map(function(k){ return CANAIS[k]; }),
-      datasets: [{ data: canalCounts, backgroundColor: ['#3A4046', '#2B6CA3', '#2E7D4F', '#E8A317'] }]
-    },
-    options: { plugins:{ legend:{ position:'bottom' } } }
-  });
+  try{
+    var canalKeys = Object.keys(CANAIS);
+    var canalCounts = canalKeys.map(function(k){ return leads.filter(function(l){ return l.canal === k; }).length; });
+    charts.canal = new Chart(document.getElementById('chart-canal'), {
+      type: 'doughnut',
+      data: {
+        labels: canalKeys.map(function(k){ return CANAIS[k]; }),
+        datasets: [{ data: canalCounts, backgroundColor: ['#3A4046', '#2B6CA3', '#2E7D4F', '#E8A317'] }]
+      },
+      options: { plugins:{ legend:{ position:'bottom' } } }
+    });
+  }catch(e){ console.error('Erro no gráfico de origem', e); }
 
   // 4. Evolução de fechamentos por semana
-  var fechadosComData = fechados.filter(function(l){ return l.fechadoEm; });
-  var porSemana = {};
-  fechadosComData.forEach(function(l){
-    var k = weekKey(l.fechadoEm);
-    porSemana[k] = (porSemana[k] || 0) + 1;
-  });
-  var semanasOrdenadas = Object.keys(porSemana).sort();
-  charts.evolucao = new Chart(document.getElementById('chart-evolucao'), {
-    type: 'line',
-    data: {
-      labels: semanasOrdenadas.length ? semanasOrdenadas : ['Sem dados ainda'],
-      datasets: [{
-        data: semanasOrdenadas.length ? semanasOrdenadas.map(function(k){ return porSemana[k]; }) : [0],
-        borderColor: '#E8A317',
-        backgroundColor: 'rgba(232,163,23,0.15)',
-        fill: true,
-        tension: 0.3,
-        pointBackgroundColor: '#E8A317'
-      }]
-    },
-    options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
-  });
+  try{
+    var fechadosComData = fechados.filter(function(l){ return l.fechadoEm; });
+    var porSemana = {};
+    fechadosComData.forEach(function(l){
+      var k = weekKey(l.fechadoEm);
+      porSemana[k] = (porSemana[k] || 0) + 1;
+    });
+    var semanasOrdenadas = Object.keys(porSemana).sort();
+    charts.evolucao = new Chart(document.getElementById('chart-evolucao'), {
+      type: 'line',
+      data: {
+        labels: semanasOrdenadas.length ? semanasOrdenadas : ['Sem dados ainda'],
+        datasets: [{
+          data: semanasOrdenadas.length ? semanasOrdenadas.map(function(k){ return porSemana[k]; }) : [0],
+          borderColor: '#E8A317',
+          backgroundColor: 'rgba(232,163,23,0.15)',
+          fill: true,
+          tension: 0.3,
+          pointBackgroundColor: '#E8A317'
+        }]
+      },
+      options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
+    });
+  }catch(e){ console.error('Erro no gráfico de evolução', e); }
 }
 
 function kpiHtml(value, label){
