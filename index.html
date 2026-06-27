@@ -541,7 +541,8 @@ var STAGES = [
 var CANAIS = {
   presencial: 'Presencial',
   telefone: 'Telefone',
-  whatsapp: 'WhatsApp'
+  whatsapp: 'WhatsApp',
+  indicacao: 'Indicação'
 };
 
 var SUPABASE_URL = 'https://atgwsmrottssynagejyw.supabase.co';
@@ -1016,7 +1017,7 @@ function renderDashboard(){
     type: 'doughnut',
     data: {
       labels: canalKeys.map(function(k){ return CANAIS[k]; }),
-      datasets: [{ data: canalCounts, backgroundColor: ['#3A4046', '#2B6CA3', '#2E7D4F'] }]
+      datasets: [{ data: canalCounts, backgroundColor: ['#3A4046', '#2B6CA3', '#2E7D4F', '#E8A317'] }]
     },
     options: { plugins:{ legend:{ position:'bottom' } } }
   });
