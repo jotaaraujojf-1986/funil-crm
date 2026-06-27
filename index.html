@@ -384,15 +384,16 @@
 
   .tabs{ display:flex; gap:6px; }
   .tab{
-    background:rgba(255,255,255,0.07);
-    color:#C9CDD1;
-    border:1px solid rgba(255,255,255,0.14);
+    background:var(--panel);
+    color:var(--ink-soft);
+    border:1px solid var(--line);
     font-weight:600;
     font-size:13px;
     padding:8px 16px;
     border-radius:7px;
     cursor:pointer;
   }
+  .tab:hover{ border-color:var(--ink-faint); }
   .tab.active{ background:var(--amber); color:var(--steel-dark); border-color:var(--amber); }
 
   .dash{
