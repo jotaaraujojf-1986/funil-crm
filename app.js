@@ -181,7 +181,8 @@ function clienteFromDb(row){
     notas: row.notas,
     criado: row.criado,
     cnpj: row.cnpj || '',
-    tags: Array.isArray(row.tags) ? row.tags : []
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    responsavel: row.responsavel || ''
   };
 }
 
@@ -194,7 +195,8 @@ function clienteToDb(cliente){
     notas: cliente.notas || null,
     criado: cliente.criado || todayStr(),
     cnpj: cliente.cnpj || null,
-    tags: cliente.tags || []
+    tags: cliente.tags || [],
+    responsavel: cliente.responsavel || null
   };
 }
 
@@ -717,6 +719,7 @@ function openModal(id){
     (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
     (isNew ? '<div id="novo-cliente-especifico-fields">' +
       field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') +
+      field('Responsável (opcional)', '<input id="f-responsavel" type="text" placeholder="Nome de quem você fala na empresa">') +
       field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button></div></div>') +
     '</div>' : '') +
     field('Nome / empresa', '<input id="f-nome" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Ex: Construtora Vale Forte">') +
@@ -889,7 +892,8 @@ function openModal(id){
           canal: lead.canal,
           criado: todayStr(),
           cnpj: cnpjInput ? cnpjInput.value.replace(/\D/g,'') : '',
-          tags: modalNewClientTags
+          tags: modalNewClientTags,
+          responsavel: document.getElementById('f-responsavel') ? document.getElementById('f-responsavel').value.trim() : ''
         });
         if(novoCliente){
           novoCliente.tags = modalNewClientTags.slice();
@@ -1325,6 +1329,7 @@ async function openClienteModal(clienteId){
   modal.innerHTML =
     '<h2>' + (cliente.codigo ? '#' + String(cliente.codigo).padStart(4,'0') + ' — ' : '') + escapeHtml(cliente.nome) + '</h2>' +
     '<p class="anexo-vazio">' + (CANAIS[cliente.canal] || cliente.canal || '') + (cliente.contato ? ' · ' + escapeHtml(cliente.contato) : '') + '</p>' +
+    (cliente.responsavel ? '<p class="anexo-vazio">Responsável: ' + escapeHtml(cliente.responsavel) + '</p>' : '') +
 
     '<p class="cliente-section-title" style="margin-bottom:4px;">Tags</p>' +
     tagsHtml +
