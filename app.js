@@ -848,7 +848,7 @@ function openModal(id){
         '</div>' +
 
         (isNew
-          ? '<p class="anexo-vazio">Salve o negócio primeiro para poder anexar arquivos.</p>'
+          ? '<p class="aviso-info">💡 Salve o negócio primeiro para poder anexar arquivos.</p>'
           : '<div class="modal-trello-secao"><span class="modal-trello-secao-label">Anexos</span><div id="anexos-area"></div></div>'
         ) +
 
