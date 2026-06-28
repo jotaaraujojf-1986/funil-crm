@@ -717,7 +717,7 @@ function openModal(id){
     (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
     (isNew ? '<div id="novo-cliente-especifico-fields">' +
       field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') +
-      field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><input type="text" id="f-tags-input" placeholder="Digite uma tag e aperte Enter" style="width:100%;"></div>') +
+      field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag e aperte Enter" style="width:100%;"></div>') +
     '</div>' : '') +
     field('Nome / empresa', '<input id="f-nome" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Ex: Construtora Vale Forte">') +
     field('Telefone / contato', '<input id="f-contato" type="text" value="' + escapeHtml(lead.contato) + '" placeholder="(32) 9 9999-9999">') +
@@ -819,25 +819,14 @@ function openModal(id){
 
     var tagsInput = document.getElementById('f-tags-input');
     if(tagsInput){
-      var debugBox = document.createElement('div');
-      debugBox.id = 'debug-tags-box';
-      debugBox.style = 'background:#222; color:#0f0; font-size:11px; padding:6px; margin-top:4px; font-family:monospace; white-space:pre-wrap; border-radius:4px;';
-      debugBox.textContent = 'Aguardando digitação...';
-      tagsInput.parentNode.appendChild(debugBox);
-
       tagsInput.addEventListener('keydown', function(e){
-        debugBox.textContent = 'Tecla: "' + e.key + '" | valor atual do campo: "' + tagsInput.value + '"';
         if(e.key === 'Enter'){
           e.preventDefault();
           var val = tagsInput.value.trim();
-          debugBox.textContent += '\nENTER detectado! valor a adicionar: "' + val + '"';
           if(val && modalNewClientTags.indexOf(val) === -1){
             modalNewClientTags.push(val);
             tagsInput.value = '';
             renderModalNewClientTags();
-            debugBox.textContent += '\nTag adicionada. Array agora: ' + JSON.stringify(modalNewClientTags);
-          } else {
-            debugBox.textContent += '\nNADA ACONTECEU (valor vazio ou já existe na lista).';
           }
         }
       });
