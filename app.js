@@ -787,6 +787,7 @@ function openModal(id){
       '<div class="right-actions">' +
         (isNew ? '' : '<button class="btn-danger" id="f-del">Excluir</button>') +
         '<button class="btn-ghost" id="f-cancel">Fechar</button>' +
+        '<button class="btn-primary" id="f-save">Salvar</button>' +
       '</div>' +
     '</div>' +
     '<div class="modal-trello-body">' +
@@ -850,10 +851,7 @@ function openModal(id){
           : '<div class="modal-trello-secao"><span class="modal-trello-secao-label">Anexos</span><div id="anexos-area"></div></div>'
         ) +
 
-        '<div class="modal-actions" style="border-top:none; margin-top:8px; padding-top:0;">' +
-          '<span></span>' +
-          '<button class="btn-primary" id="f-save">Salvar</button>' +
-        '</div>' +
+
 
       '</div>' +
       '<div class="modal-trello-col-atividade">' +

@@ -876,6 +876,8 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
   justify-content: space-between;
   padding: 14px 20px;
   border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .modal-trello-body{
   display: flex;
