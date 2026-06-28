@@ -816,7 +816,7 @@ function openModal(id){
 
         '<div class="modal-trello-secao">' +
           '<span class="modal-trello-secao-label">Canal</span>' +
-          '<select id="f-canal">' + canalOptions + '</select>' +
+          '<div class="field"><select id="f-canal">' + canalOptions + '</select></div>' +
         '</div>' +
 
         '<div class="modal-trello-secao">' +
@@ -844,7 +844,7 @@ function openModal(id){
 
         '<div class="modal-trello-secao">' +
           '<span class="modal-trello-secao-label">Descrição / Notas</span>' +
-          '<textarea id="f-notas" placeholder="Detalhes da conversa, objeções, combinados...">' + escapeHtml(lead.notes || lead.notas) + '</textarea>' +
+          '<div class="field" style="margin:0;"><textarea id="f-notas" placeholder="Detalhes da conversa, objeções, combinados...">' + escapeHtml(lead.notas) + '</textarea></div>' +
         '</div>' +
 
         (isNew
