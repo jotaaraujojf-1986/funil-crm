@@ -34,6 +34,40 @@ var limitesEtapa = {
 };
 var metaMensal = 0;
 
+function toast(mensagem, tipo){
+  tipo = tipo || 'info';
+  var container = document.getElementById('toast-container');
+  var el = document.createElement('div');
+  el.className = 'toast ' + tipo;
+  el.textContent = mensagem;
+  container.appendChild(el);
+  setTimeout(function(){
+    el.classList.add('saindo');
+    setTimeout(function(){ el.remove(); }, 250);
+  }, 4000);
+}
+
+function customConfirm(mensagem, titulo){
+  return new Promise(function(resolve){
+    document.getElementById('confirm-titulo').textContent = titulo || 'Confirmar ação';
+    document.getElementById('confirm-mensagem').textContent = mensagem;
+    var overlay = document.getElementById('overlay-confirm');
+    overlay.classList.add('open');
+
+    var btnConfirmar = document.getElementById('confirm-btn-confirmar');
+    var btnCancelar = document.getElementById('confirm-btn-cancelar');
+
+    function limpar(resultado){
+      overlay.classList.remove('open');
+      btnConfirmar.onclick = null;
+      btnCancelar.onclick = null;
+      resolve(resultado);
+    }
+    btnConfirmar.onclick = function(){ limpar(true); };
+    btnCancelar.onclick = function(){ limpar(false); };
+  });
+}
+
 function uid(){ return 'l' + Date.now() + Math.floor(Math.random()*10000); }
 
 function todayStr(){
@@ -166,7 +200,7 @@ async function excluirLeadNoDb(id){
 }
 
 function showSyncError(){
-  alert('Não foi possível sincronizar com o servidor agora. Verifique sua internet — a alteração pode não ter sido salva.');
+  toast('Não foi possível sincronizar com o servidor agora. Verifique sua internet — a alteração pode não ter sido salva.', 'erro');
 }
 
 // ---------- Clientes ----------
@@ -203,13 +237,13 @@ function clienteToDb(cliente){
 async function buscarDadosCnpj(cnpj){
   var digitos = String(cnpj || '').replace(/\D/g, '');
   if(digitos.length !== 14){
-    alert('CNPJ inválido. Deve ter 14 números.');
+    toast('CNPJ inválido. Deve ter 14 números.', 'erro');
     return null;
   }
   try{
     var res = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + digitos);
     if(!res.ok){
-      alert('CNPJ não encontrado na Receita Federal.');
+      toast('CNPJ não encontrado na Receita Federal.', 'erro');
       return null;
     }
     var dados = await res.json();
@@ -219,7 +253,7 @@ async function buscarDadosCnpj(cnpj){
     };
   }catch(e){
     console.error('Erro ao consultar CNPJ', e);
-    alert('Não foi possível consultar o CNPJ agora. Verifique sua internet.');
+    toast('Não foi possível consultar o CNPJ agora. Verifique sua internet.', 'erro');
     return null;
   }
 }
@@ -299,14 +333,14 @@ async function salvarConfiguracoes(novosLimites, novaMeta){
 
 async function uploadAnexo(lead, file){
   if(file.size > 10 * 1024 * 1024){
-    alert('Arquivo muito grande. O limite é 10MB por arquivo.');
+    toast('Arquivo muito grande. O limite é 10MB por arquivo.', 'erro');
     return null;
   }
   var caminho = currentUserId + '/' + lead.id + '/' + Date.now() + '_' + file.name.replace(/[^\w.\-]/g, '_');
   var res = await sb.storage.from('anexos').upload(caminho, file);
   if(res.error){
     console.error('Erro ao enviar anexo', res.error);
-    alert('Não foi possível enviar o arquivo. Tente novamente.');
+    toast('Não foi possível enviar o arquivo. Tente novamente.', 'erro');
     return null;
   }
   var anexo = { path: caminho, nome: file.name, tamanho: file.size, enviadoEm: new Date().toISOString() };
@@ -330,7 +364,7 @@ async function excluirAnexo(lead, anexo){
 async function abrirAnexo(anexo){
   var res = await sb.storage.from('anexos').createSignedUrl(anexo.path, 60);
   if(res.error || !res.data){
-    alert('Não foi possível abrir o arquivo agora.');
+    toast('Não foi possível abrir o arquivo agora.', 'erro');
     return;
   }
   window.open(res.data.signedUrl, '_blank');
@@ -597,7 +631,7 @@ function render(){
         if(erro){
           lead.stage = stageAnterior;
           lead.etapaAlteradaEm = etapaAnteriorTimestamp;
-          alert(erro + '\n\nAbra o card e complete essa informação antes de mover.');
+          toast(erro + ' Abra o card e complete essa informação antes de mover.', 'erro');
           render();
           return;
         }
@@ -846,12 +880,14 @@ function openModal(id){
   }
 
   if(!isNew){
-    document.getElementById('f-del').onclick = function(){
-      if(confirm('Excluir este negócio do funil? (o cadastro do cliente não será excluído)')){
+    document.getElementById('f-del').onclick = async function(){
+      var ok = await customConfirm('O cadastro do cliente não será excluído.', 'Excluir este negócio do funil?');
+      if(ok){
         leads = leads.filter(function(l){ return l.id !== lead.id; });
         render();
         closeModal();
-        excluirLeadNoDb(lead.id);
+        await excluirLeadNoDb(lead.id);
+        toast('Negócio excluído.', 'sucesso');
       }
     };
   }
@@ -872,7 +908,7 @@ function openModal(id){
 
     var erroValidacao = validarCamposObrigatorios(lead);
     if(erroValidacao){
-      alert(erroValidacao);
+      toast(erroValidacao, 'erro');
       return;
     }
 
@@ -915,6 +951,7 @@ function openModal(id){
       await atualizarLeadNoDb(lead);
     }
 
+    toast('Negócio salvo com sucesso!', 'sucesso');
     render();
     closeModal();
   };
@@ -956,7 +993,8 @@ function renderAnexosArea(lead){
     btn.addEventListener('click', async function(){
       var idx = Number(btn.getAttribute('data-idx'));
       var anexo = lead.anexos[idx];
-      if(!confirm('Excluir o arquivo "' + anexo.nome + '"?')) return;
+      var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir o arquivo "' + anexo.nome + '"?');
+      if(!ok) return;
       btn.disabled = true;
       await excluirAnexo(lead, anexo);
       renderAnexosArea(lead);
@@ -1368,7 +1406,8 @@ async function openClienteModal(clienteId){
   modal.querySelectorAll('.interacao-del').forEach(function(btn){
     btn.addEventListener('click', async function(e){
       e.stopPropagation();
-      if(!confirm('Excluir este registro de interação?')) return;
+      var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir este registro de interação?');
+      if(!ok) return;
       await excluirInteracaoNoDb(btn.getAttribute('data-interid'));
       openClienteModal(clienteId);
     });
@@ -1399,14 +1438,16 @@ async function openClienteModal(clienteId){
 
   document.getElementById('btn-del-cliente').addEventListener('click', async function(){
     if(negs.length > 0){
-      alert('Este cliente tem ' + negs.length + ' negócio(s) vinculado(s). Exclua ou desvincule os negócios antes de excluir o cliente.');
+      toast('Este cliente tem ' + negs.length + ' negócio(s) vinculado(s). Exclua ou desvincule os negócios antes de excluir o cliente.', 'erro');
       return;
     }
-    if(!confirm('Excluir definitivamente este cliente e todo o histórico de interações?')) return;
+    var ok = await customConfirm('Isso também exclui todo o histórico de interações. Essa ação não pode ser desfeita.', 'Excluir definitivamente este cliente?');
+    if(!ok) return;
     await excluirClienteNoDb(clienteId);
     clientes = clientes.filter(function(c){ return c.id !== clienteId; });
     closeClienteModal();
     renderClientesView();
+    toast('Cliente excluído.', 'sucesso');
   });
 
   setupModalClientTagsEvents(cliente);

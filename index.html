@@ -146,6 +146,22 @@
 
 </div>
 
+<div id="toast-container"></div>
+
+<div class="overlay" id="overlay-confirm">
+  <div class="modal" id="modal-confirm" style="width:380px;">
+    <h2 id="confirm-titulo">Confirmar ação</h2>
+    <p id="confirm-mensagem" style="font-size:14px; color:var(--ink-soft); margin:0 0 18px;"></p>
+    <div class="modal-actions">
+      <span></span>
+      <div class="right-actions">
+        <button class="btn-ghost" id="confirm-btn-cancelar">Cancelar</button>
+        <button class="btn-danger" id="confirm-btn-confirmar" style="background:var(--red); color:#fff; border-color:var(--red);">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="app.js?v=3"></script>
 </body>
