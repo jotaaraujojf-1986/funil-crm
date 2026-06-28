@@ -431,15 +431,17 @@ function maskTelefone(valor){
 
 function maskValor(valor){
   var digitos = valor.replace(/\D/g, '');
+  digitos = digitos.replace(/^0+/, '');
   if(!digitos) return '';
-  var numero = parseInt(digitos, 10);
+  var numero = parseInt(digitos, 10) / 100;
   return numero.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
 function parseValorMascarado(valor){
   if(!valor) return 0;
-  var parteInteira = String(valor).split(',')[0].replace(/\./g, '');
-  return Number(parteInteira) || 0;
+  var digitos = String(valor).replace(/\D/g, '');
+  if(!digitos) return 0;
+  return parseInt(digitos, 10) / 100;
 }
 
 function formatValorParaInput(numero){
