@@ -804,27 +804,28 @@ function openModal(id){
         (isNew ? field('Responsável (opcional)', '<input id="f-responsavel" type="text" placeholder="Nome de quem você fala na empresa">') : '') +
         (isNew ? field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button></div></div>') : '') +
 
-        '<div class="modal-trello-secao">' +
-          '<span class="modal-trello-secao-label">Etiquetas</span>' +
-          '<div class="etiquetas-row">' +
-            '<span class="etiqueta-pill" style="background:' + stageAtual.color + ';">' + stageAtual.label + '</span>' +
-            (clienteVinculado && clienteVinculado.tags && clienteVinculado.tags.length
-              ? clienteVinculado.tags.map(function(t){ return '<span class="etiqueta-pill" style="background:var(--steel);">' + escapeHtml(t) + '</span>'; }).join('')
-              : '') +
+        '<div class="row2" style="align-items:start;">' +
+          '<div class="modal-trello-secao" style="margin-bottom:0;">' +
+            '<span class="modal-trello-secao-label">Etiquetas</span>' +
+            '<div class="etiquetas-row">' +
+              '<span class="etiqueta-pill" style="background:' + stageAtual.color + ';">' + stageAtual.label + '</span>' +
+              (clienteVinculado && clienteVinculado.tags && clienteVinculado.tags.length
+                ? clienteVinculado.tags.map(function(t){ return '<span class="etiqueta-pill" style="background:var(--steel);">' + escapeHtml(t) + '</span>'; }).join('')
+                : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="modal-trello-secao" style="margin-bottom:0;">' +
+            '<span class="modal-trello-secao-label">Follow-up</span>' +
+            '<div class="data-entrega-box">' +
+              '<input type="date" id="f-followup" value="' + (lead.nextFollowUp || '') + '" style="border:none; background:transparent; color:var(--ink); width:100%;">' +
+              (lead.nextFollowUp ? followUpBadge(lead) : '') +
+            '</div>' +
           '</div>' +
         '</div>' +
 
         '<div class="row2">' +
           field('Telefone / contato', '<input id="f-contato" type="text" inputmode="numeric" value="' + maskTelefone(lead.contato || '') + '" placeholder="(32) 99999-9999">') +
           field('Canal', '<select id="f-canal">' + canalOptions + '</select>') +
-        '</div>' +
-
-        '<div class="modal-trello-secao">' +
-          '<span class="modal-trello-secao-label">Follow-up</span>' +
-          '<div class="data-entrega-box">' +
-            '<input type="date" id="f-followup" value="' + (lead.nextFollowUp || '') + '" style="border:none; background:transparent; color:var(--ink);">' +
-            (lead.nextFollowUp ? followUpBadge(lead) : '') +
-          '</div>' +
         '</div>' +
 
         '<div id="motivo-perda-area">' + (lead.stage === 'perdido' ? field('Motivo da perda', '<textarea id="f-motivo-perda" placeholder="Por que o negócio não avançou?">' + escapeHtml(lead.motivoPerda) + '</textarea>') : '') + '</div>' +
