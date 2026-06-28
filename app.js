@@ -378,7 +378,7 @@ function fmtTamanho(bytes){
 
 function fmtMoney(v){
   v = Number(v) || 0;
-  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 function fmtDateBR(dateStr){
