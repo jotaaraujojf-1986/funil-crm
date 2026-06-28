@@ -819,23 +819,28 @@ function openModal(id){
 
     var tagsInput = document.getElementById('f-tags-input');
     if(tagsInput){
-      alert('Campo de tags encontrado com sucesso no DOM.');
+      var debugBox = document.createElement('div');
+      debugBox.id = 'debug-tags-box';
+      debugBox.style = 'background:#222; color:#0f0; font-size:11px; padding:6px; margin-top:4px; font-family:monospace; white-space:pre-wrap; border-radius:4px;';
+      debugBox.textContent = 'Aguardando digitação...';
+      tagsInput.parentNode.appendChild(debugBox);
+
       tagsInput.addEventListener('keydown', function(e){
-        alert('Tecla pressionada: "' + e.key + '"');
+        debugBox.textContent = 'Tecla: "' + e.key + '" | valor atual do campo: "' + tagsInput.value + '"';
         if(e.key === 'Enter'){
           e.preventDefault();
           var val = tagsInput.value.trim();
-          alert('Valor digitado: "' + val + '" — array antes de adicionar tem ' + modalNewClientTags.length + ' itens.');
+          debugBox.textContent += '\nENTER detectado! valor a adicionar: "' + val + '"';
           if(val && modalNewClientTags.indexOf(val) === -1){
             modalNewClientTags.push(val);
             tagsInput.value = '';
             renderModalNewClientTags();
-            alert('Tag adicionada! Array agora tem ' + modalNewClientTags.length + ' itens: ' + JSON.stringify(modalNewClientTags));
+            debugBox.textContent += '\nTag adicionada. Array agora: ' + JSON.stringify(modalNewClientTags);
+          } else {
+            debugBox.textContent += '\nNADA ACONTECEU (valor vazio ou já existe na lista).';
           }
         }
       });
-    } else {
-      alert('ERRO: o campo de tags (f-tags-input) não foi encontrado no DOM.');
     }
   }
 
