@@ -422,6 +422,31 @@ function atividadeBadge(lead){
   return '<span class="badge-atividade" title="' + escapeHtml(lead.atividadeDesc || '') + '">📌 ' + escapeHtml(lead.atividadeTipo) + '</span>';
 }
 
+function maskTelefone(valor){
+  var digitos = valor.replace(/\D/g, '').slice(0, 11);
+  if(digitos.length <= 2) return digitos.replace(/^(\d{0,2})/, '($1');
+  if(digitos.length <= 7) return digitos.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+  return digitos.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+}
+
+function maskValor(valor){
+  var digitos = valor.replace(/\D/g, '');
+  if(!digitos) return '';
+  var numero = parseInt(digitos, 10);
+  return numero.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function parseValorMascarado(valor){
+  if(!valor) return 0;
+  var parteInteira = String(valor).split(',')[0].replace(/\./g, '');
+  return Number(parteInteira) || 0;
+}
+
+function formatValorParaInput(numero){
+  if(!numero) return '';
+  return Math.round(Number(numero)).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
 function escapeHtml(s){
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -757,14 +782,14 @@ function openModal(id){
       field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button></div></div>') +
     '</div>' : '') +
     field('Nome / empresa', '<input id="f-nome" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Ex: Construtora Vale Forte">') +
-    field('Telefone / contato', '<input id="f-contato" type="text" value="' + escapeHtml(lead.contato) + '" placeholder="(32) 9 9999-9999">') +
+    field('Telefone / contato', '<input id="f-contato" type="text" inputmode="numeric" value="' + maskTelefone(lead.contato || '') + '" placeholder="(32) 99999-9999">') +
     '<div class="row2">' +
       field('Canal', '<select id="f-canal">' + canalOptions + '</select>') +
       field('Etapa do funil', '<select id="f-stage">' + stageOptions + '</select>') +
     '</div>' +
     '<div id="motivo-perda-area">' + (lead.stage === 'perdido' ? field('Motivo da perda', '<textarea id="f-motivo-perda" placeholder="Por que o negócio não avançou?">' + escapeHtml(lead.motivoPerda) + '</textarea>') : '') + '</div>' +
     '<div class="row2">' +
-      field('Valor estimado (R$)', '<input id="f-valor" type="number" min="0" value="' + (lead.valor || '') + '">') +
+      field('Valor estimado (R$)', '<input id="f-valor" type="text" inputmode="numeric" value="' + formatValorParaInput(lead.valor) + '" placeholder="0,00">') +
       field('Próximo follow-up', '<input id="f-followup" type="date" value="' + (lead.nextFollowUp || '') + '">') +
     '</div>' +
     '<div class="row2">' +
@@ -813,6 +838,24 @@ function openModal(id){
   }
 
   document.getElementById('overlay').classList.add('open');
+
+  var inputContato = document.getElementById('f-contato');
+  if(inputContato){
+    inputContato.addEventListener('input', function(){
+      var posicaoCursor = this.selectionStart;
+      var tamanhoAntes = this.value.length;
+      this.value = maskTelefone(this.value);
+      var diferenca = this.value.length - tamanhoAntes;
+      this.setSelectionRange(posicaoCursor + diferenca, posicaoCursor + diferenca);
+    });
+  }
+
+  var inputValor = document.getElementById('f-valor');
+  if(inputValor){
+    inputValor.addEventListener('input', function(){
+      this.value = maskValor(this.value);
+    });
+  }
 
   document.getElementById('f-cancel').onclick = closeModal;
 
@@ -898,7 +941,7 @@ function openModal(id){
     lead.nome = nome || 'Sem nome';
     lead.contato = document.getElementById('f-contato').value.trim();
     lead.canal = document.getElementById('f-canal').value;
-    lead.valor = Number(document.getElementById('f-valor').value) || 0;
+    lead.valor = parseValorMascarado(document.getElementById('f-valor').value);
     setStage(lead, document.getElementById('f-stage').value);
     lead.nextFollowUp = document.getElementById('f-followup').value || null;
     lead.notas = document.getElementById('f-notas').value.trim();
