@@ -353,7 +353,8 @@ body{
   border-radius:7px;
   cursor:pointer;
 }
-.btn-ghost:hover{ background:#F2F0EA; }
+.btn-ghost:hover{ background:var(--line); }
+html[data-theme="dark"] .btn-ghost:hover{ background:#2A2D31; }
 .btn-danger{
   background:transparent;
   border:1px solid var(--red);
@@ -365,6 +366,7 @@ body{
   cursor:pointer;
 }
 .btn-danger:hover{ background:var(--red-bg); }
+html[data-theme="dark"] .btn-danger:hover{ background:#3A2020; }
 .right-actions{ display:flex; gap:8px; }
 
 .empty-state{
