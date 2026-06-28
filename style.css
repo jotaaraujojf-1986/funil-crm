@@ -154,7 +154,7 @@ body{
 .board{
   max-width:1320px;
   margin:0 auto;
-  padding:0 28px 60px;
+  padding:18px 28px 60px;
   display:grid;
   grid-template-columns: repeat(6, minmax(190px, 1fr));
   gap:14px;
@@ -173,7 +173,6 @@ body{
   background:rgba(0,0,0,0.02);
   border-radius:var(--radius);
   padding:10px;
-  padding-top:10px;
   min-height:200px;
   transition:background .15s ease;
   border:1px dashed transparent;
@@ -797,7 +796,7 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
 
 .col-head-wrap{
   position: sticky;
-  top: var(--sticky-offset);
+  top: calc(var(--sticky-offset) + 1px);
   background: var(--bg);
   z-index: 10;
   padding-top: 4px;

@@ -1816,8 +1816,17 @@ function ajustarOffsetSticky(){
     document.documentElement.style.setProperty('--sticky-offset', topBar.offsetHeight + 'px');
   }
 }
+
+if(window.ResizeObserver){
+  var topBarEl = document.getElementById('sticky-top');
+  if(topBarEl){
+    var roSticky = new ResizeObserver(function(){ ajustarOffsetSticky(); });
+    roSticky.observe(topBarEl);
+  }
+}
 window.addEventListener('resize', ajustarOffsetSticky);
 window.addEventListener('load', ajustarOffsetSticky);
+document.fonts.ready.then(ajustarOffsetSticky);
 
 iniciarApp();
 ajustarOffsetSticky();
