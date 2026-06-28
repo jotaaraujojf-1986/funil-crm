@@ -884,7 +884,7 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
 }
 .modal-trello-col-principal{
   flex: 1 1 65%;
-  padding: 18px 28px;
+  padding: 18px 28px 28px;
   border-right: 1px solid var(--line);
   min-width: 0;
 }
