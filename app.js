@@ -717,7 +717,7 @@ function openModal(id){
     (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
     (isNew ? '<div id="novo-cliente-especifico-fields">' +
       field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') +
-      field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag e aperte Enter" style="width:100%;"></div>') +
+      field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button></div></div>') +
     '</div>' : '') +
     field('Nome / empresa', '<input id="f-nome" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Ex: Construtora Vale Forte">') +
     field('Telefone / contato', '<input id="f-contato" type="text" value="' + escapeHtml(lead.contato) + '" placeholder="(32) 9 9999-9999">') +
@@ -818,18 +818,27 @@ function openModal(id){
     });
 
     var tagsInput = document.getElementById('f-tags-input');
+    var btnAddTagNovo = document.getElementById('btn-add-tag-novo-negocio');
+
+    function adicionarTagNovoNegocio(){
+      var val = tagsInput.value.trim();
+      if(val && modalNewClientTags.indexOf(val) === -1){
+        modalNewClientTags.push(val);
+        tagsInput.value = '';
+        renderModalNewClientTags();
+      }
+    }
+
     if(tagsInput){
       tagsInput.addEventListener('keydown', function(e){
         if(e.key === 'Enter'){
           e.preventDefault();
-          var val = tagsInput.value.trim();
-          if(val && modalNewClientTags.indexOf(val) === -1){
-            modalNewClientTags.push(val);
-            tagsInput.value = '';
-            renderModalNewClientTags();
-          }
+          adicionarTagNovoNegocio();
         }
       });
+    }
+    if(btnAddTagNovo){
+      btnAddTagNovo.addEventListener('click', adicionarTagNovoNegocio);
     }
   }
 
