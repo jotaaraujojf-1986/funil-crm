@@ -859,3 +859,78 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
 .toast.saindo{ animation: toast-out 0.25s ease forwards; }
 @keyframes toast-in{ from{ opacity:0; transform:translateX(20px); } to{ opacity:1; transform:translateX(0); } }
 @keyframes toast-out{ from{ opacity:1; } to{ opacity:0; transform:translateX(20px); } }
+
+.modal-trello{
+  width: 760px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.modal-trello-topbar{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.modal-trello-body{
+  display: flex;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+.modal-trello-col-principal{
+  flex: 1 1 60%;
+  padding: 20px 24px;
+  border-right: 1px solid var(--line);
+  min-width: 0;
+}
+.modal-trello-col-atividade{
+  flex: 1 1 40%;
+  padding: 20px 24px;
+  background: rgba(0,0,0,0.015);
+  min-width: 0;
+}
+html[data-theme="dark"] .modal-trello-col-atividade{ background: rgba(255,255,255,0.02); }
+.modal-trello-titulo{
+  font-family:'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  border: none;
+  background: transparent;
+  width: 100%;
+  color: var(--ink);
+  padding: 4px 0;
+  margin-bottom: 4px;
+}
+.modal-trello-titulo:focus{ outline: none; border-bottom: 2px solid var(--amber); }
+.modal-trello-sub{ font-size:12px; color:var(--ink-faint); margin-bottom:18px; }
+.modal-trello-secao{ margin-bottom: 20px; }
+.modal-trello-secao-label{
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--ink-soft); margin-bottom: 8px; display:block;
+}
+.etiquetas-row{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.etiqueta-pill{
+  font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 5px; color: #fff;
+}
+.data-entrega-box{
+  display:inline-flex; align-items:center; gap:10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 12px;
+}
+.atividade-item{
+  display:flex; gap:10px; margin-bottom: 14px; font-size: 13px;
+}
+.atividade-avatar{
+  flex: 0 0 32px; height: 32px; border-radius: 50%; background: var(--steel);
+  color: #fff; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:13px;
+}
+.atividade-texto{ flex:1; min-width:0; }
+.atividade-texto .autor{ font-weight:700; }
+.atividade-texto .quando{ font-size:11px; color:var(--ink-faint); }
+.atividade-comentario-box{
+  display:flex; gap:10px; margin-bottom: 18px;
+}

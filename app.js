@@ -753,10 +753,13 @@ function buildCard(lead, stageColor){
 function openModal(id){
   var isNew = !id;
   var lead = isNew
-    ? {id: uid(), nome:'', contato:'', canal:'whatsapp', interesse:'', valor:'', stage:'lead', nextFollowUp: null, notas:'', criado: todayStr(), clienteId:null, motivoPerda:''}
+    ? {id: uid(), nome:'', contato:'', canal:'whatsapp', interesse:'', valor:'', stage:'lead', nextFollowUp: null, notas:'', criado: todayStr(), clienteId:null, motivoPerda:'', anexos:[]}
     : leads.find(function(l){ return l.id === id; });
 
   if(!lead) return;
+
+  var clienteVinculado = lead.clienteId ? clientes.find(function(c){ return c.id === lead.clienteId; }) : null;
+  var iniciais = (lead.nome || '?').trim().slice(0,2).toUpperCase();
 
   var stageOptions = STAGES.map(function(s){
     return '<option value="' + s.id + '" ' + (lead.stage===s.id?'selected':'') + '>' + s.label + '</option>';
@@ -772,74 +775,114 @@ function openModal(id){
       }).join('')
     : '';
 
-  var modal = document.getElementById('modal');
+  var stageAtual = STAGES.find(function(s){ return s.id === lead.stage; }) || STAGES[0];
   var waLinkModal = !isNew ? buildWaLink(lead) : null;
+
+  var modal = document.getElementById('modal');
+  modal.className = 'modal modal-trello';
+
   modal.innerHTML =
-    '<h2>' + (isNew ? 'Novo negócio' : 'Editar negócio') + '</h2>' +
-    (waLinkModal ? '<a class="wa-btn" style="margin-bottom:14px;" href="' + waLinkModal + '" target="_blank" rel="noopener">Abrir conversa no WhatsApp ↗</a>' : '') +
-    (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
-    (isNew ? '<div id="novo-cliente-especifico-fields">' +
-      field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') +
-      field('Responsável (opcional)', '<input id="f-responsavel" type="text" placeholder="Nome de quem você fala na empresa">') +
-      field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button></div></div>') +
-    '</div>' : '') +
-    field('Nome / empresa', '<input id="f-nome" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Ex: Construtora Vale Forte">') +
-    field('Telefone / contato', '<input id="f-contato" type="text" inputmode="numeric" value="' + maskTelefone(lead.contato || '') + '" placeholder="(32) 99999-9999">') +
-    '<div class="row2">' +
-      field('Canal', '<select id="f-canal">' + canalOptions + '</select>') +
-      field('Etapa do funil', '<select id="f-stage">' + stageOptions + '</select>') +
-    '</div>' +
-    '<div id="motivo-perda-area">' + (lead.stage === 'perdido' ? field('Motivo da perda', '<textarea id="f-motivo-perda" placeholder="Por que o negócio não avançou?">' + escapeHtml(lead.motivoPerda) + '</textarea>') : '') + '</div>' +
-    '<div class="row2">' +
-      field('Valor estimado (R$)', '<input id="f-valor" type="text" inputmode="numeric" value="' + formatValorParaInput(lead.valor) + '" placeholder="0,00">') +
-      field('Próximo follow-up', '<input id="f-followup" type="date" value="' + (lead.nextFollowUp || '') + '">') +
-    '</div>' +
-    '<div class="row2">' +
-      field('Tipo de atividade', '<select id="f-atividade-tipo">' +
-        '<option value="">Nenhuma</option>' +
-        '<option value="Ligar"' + (lead.atividadeTipo==='Ligar'?' selected':'') + '>Ligar</option>' +
-        '<option value="Enviar proposta"' + (lead.atividadeTipo==='Enviar proposta'?' selected':'') + '>Enviar proposta</option>' +
-        '<option value="Reunião"' + (lead.atividadeTipo==='Reunião'?' selected':'') + '>Reunião</option>' +
-        '<option value="Visita"' + (lead.atividadeTipo==='Visita'?' selected':'') + '>Visita</option>' +
-        '<option value="Outro"' + (lead.atividadeTipo==='Outro'?' selected':'') + '>Outro</option>' +
-      '</select>') +
-      field('Descrição da atividade', '<input id="f-atividade-desc" type="text" value="' + escapeHtml(lead.atividadeDesc) + '" placeholder="Ex: Ligar confirmando prazo">') +
-    '</div>' +
-    field('Notas', '<textarea id="f-notas" placeholder="Detalhes da conversa, objeções, combinados...">' + escapeHtml(lead.notas) + '</textarea>') +
-    (isNew
-      ? '<p class="anexo-vazio">Salve o negócio primeiro para poder anexar arquivos.</p>'
-      : field('Anexos', '<div id="anexos-area"></div>')
-    ) +
-    '<div class="modal-actions">' +
-      (isNew ? '<span></span>' : '<button class="btn-danger" id="f-del">Excluir</button>') +
+    '<div class="modal-trello-topbar">' +
+      '<select id="f-stage" style="font-weight:700; border:none; background:' + stageAtual.color + '; color:#fff; padding:6px 12px; border-radius:6px;">' + stageOptions + '</select>' +
       '<div class="right-actions">' +
-        '<button class="btn-ghost" id="f-cancel">Cancelar</button>' +
-        '<button class="btn-primary" id="f-save">Salvar</button>' +
+        (isNew ? '' : '<button class="btn-danger" id="f-del">Excluir</button>') +
+        '<button class="btn-ghost" id="f-cancel">Fechar</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="modal-trello-body">' +
+      '<div class="modal-trello-col-principal">' +
+
+        '<input id="f-nome" class="modal-trello-titulo" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Nome / empresa">' +
+        '<p class="modal-trello-sub">' + (clienteVinculado ? 'Cliente: ' + escapeHtml(clienteVinculado.nome) : 'Negócio novo') + (lead.contato ? ' · ' + escapeHtml(lead.contato) : '') + '</p>' +
+
+        (waLinkModal ? '<a class="wa-btn" style="margin-bottom:16px;" href="' + waLinkModal + '" target="_blank" rel="noopener">Abrir conversa no WhatsApp ↗</a>' : '') +
+
+        (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
+        (isNew ? field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') : '') +
+        (isNew ? field('Telefone / contato', '<input id="f-contato" type="text" inputmode="numeric" value="' + maskTelefone(lead.contato || '') + '" placeholder="(32) 99999-9999">') : '') +
+        (isNew ? field('Responsável (opcional)', '<input id="f-responsavel" type="text" placeholder="Nome de quem você fala na empresa">') : '') +
+        (isNew ? field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button></div></div>') : '') +
+        (!isNew ? field('Telefone / contato', '<input id="f-contato" type="text" inputmode="numeric" value="' + maskTelefone(lead.contato || '') + '" placeholder="(32) 99999-9999">') : '') +
+
+        '<div class="modal-trello-secao">' +
+          '<span class="modal-trello-secao-label">Etiquetas</span>' +
+          '<div class="etiquetas-row">' +
+            '<span class="etiqueta-pill" style="background:' + stageAtual.color + ';">' + stageAtual.label + '</span>' +
+            (clienteVinculado && clienteVinculado.tags && clienteVinculado.tags.length
+              ? clienteVinculado.tags.map(function(t){ return '<span class="etiqueta-pill" style="background:var(--steel);">' + escapeHtml(t) + '</span>'; }).join('')
+              : '') +
+          '</div>' +
+        '</div>' +
+
+        '<div class="modal-trello-secao">' +
+          '<span class="modal-trello-secao-label">Canal</span>' +
+          '<select id="f-canal">' + canalOptions + '</select>' +
+        '</div>' +
+
+        '<div class="modal-trello-secao">' +
+          '<span class="modal-trello-secao-label">Follow-up</span>' +
+          '<div class="data-entrega-box">' +
+            '<input type="date" id="f-followup" value="' + (lead.nextFollowUp || '') + '" style="border:none; background:transparent; color:var(--ink);">' +
+            (lead.nextFollowUp ? followUpBadge(lead) : '') +
+          '</div>' +
+        '</div>' +
+
+        '<div id="motivo-perda-area">' + (lead.stage === 'perdido' ? field('Motivo da perda', '<textarea id="f-motivo-perda" placeholder="Por que o negócio não avançou?">' + escapeHtml(lead.motivoPerda) + '</textarea>') : '') + '</div>' +
+
+        '<div class="row2">' +
+          field('Valor estimado (R$)', '<input id="f-valor" type="text" inputmode="numeric" value="' + formatValorParaInput(lead.valor) + '" placeholder="0,00">') +
+          field('Tipo de atividade', '<select id="f-atividade-tipo">' +
+            '<option value="">Nenhuma</option>' +
+            '<option value="Ligar"' + (lead.atividadeTipo==='Ligar'?' selected':'') + '>Ligar</option>' +
+            '<option value="Enviar proposta"' + (lead.atividadeTipo==='Enviar proposta'?' selected':'') + '>Enviar proposta</option>' +
+            '<option value="Reunião"' + (lead.atividadeTipo==='Reunião'?' selected':'') + '>Reunião</option>' +
+            '<option value="Visita"' + (lead.atividadeTipo==='Visita'?' selected':'') + '>Visita</option>' +
+            '<option value="Outro"' + (lead.atividadeTipo==='Outro'?' selected':'') + '>Outro</option>' +
+          '</select>') +
+        '</div>' +
+        field('Descrição da atividade', '<input id="f-atividade-desc" type="text" value="' + escapeHtml(lead.atividadeDesc) + '" placeholder="Ex: Ligar confirmando prazo">') +
+
+        '<div class="modal-trello-secao">' +
+          '<span class="modal-trello-secao-label">Descrição / Notas</span>' +
+          '<textarea id="f-notas" placeholder="Detalhes da conversa, objeções, combinados...">' + escapeHtml(lead.notes || lead.notas) + '</textarea>' +
+        '</div>' +
+
+        (isNew
+          ? '<p class="anexo-vazio">Salve o negócio primeiro para poder anexar arquivos.</p>'
+          : '<div class="modal-trello-secao"><span class="modal-trello-secao-label">Anexos</span><div id="anexos-area"></div></div>'
+        ) +
+
+        '<div class="modal-actions" style="border-top:none; margin-top:8px; padding-top:0;">' +
+          '<span></span>' +
+          '<button class="btn-primary" id="f-save">Salvar</button>' +
+        '</div>' +
+
+      '</div>' +
+      '<div class="modal-trello-col-atividade">' +
+        '<span class="modal-trello-secao-label">Atividade</span>' +
+        '<div id="atividade-lead-area"><p class="anexo-vazio">Carregando...</p></div>' +
       '</div>' +
     '</div>';
 
-  var modalNewClientTags = [];
-  function renderModalNewClientTags() {
-    var chipsContainer = document.getElementById('f-tags-chips');
-    if (!chipsContainer) return;
-    chipsContainer.innerHTML = modalNewClientTags.map(function(tag, idx) {
-      return '<span class="tag-chip">' + escapeHtml(tag) + '<span class="tag-chip-remove" data-idx="' + idx + '">✕</span></span>';
-    }).join('');
-    chipsContainer.querySelectorAll('.tag-chip-remove').forEach(function(btn) {
-      btn.onclick = function(e) {
-        e.stopPropagation();
-        var idx = Number(btn.getAttribute('data-idx'));
-        modalNewClientTags.splice(idx, 1);
-        renderModalNewClientTags();
-      };
-    });
-  }
+  document.getElementById('overlay').classList.add('open');
 
   if(!isNew){
     renderAnexosArea(lead);
+    carregarAtividadeDoLead(lead);
+  } else {
+    document.getElementById('atividade-lead-area').innerHTML = '<p class="anexo-vazio">A atividade aparece aqui depois que o negócio for salvo.</p>';
   }
 
-  document.getElementById('overlay').classList.add('open');
+  document.getElementById('f-cancel').onclick = closeModal;
+
+  document.getElementById('f-stage').addEventListener('change', function(){
+    var area = document.getElementById('motivo-perda-area');
+    if(this.value === 'perdido'){
+      area.innerHTML = field('Motivo da perda', '<textarea id="f-motivo-perda" placeholder="Por que o negócio não avançou?">' + escapeHtml(lead.motivoPerda || '') + '</textarea>');
+    } else {
+      area.innerHTML = '';
+    }
+  });
 
   var inputContato = document.getElementById('f-contato');
   if(inputContato){
@@ -859,30 +902,30 @@ function openModal(id){
     });
   }
 
-  document.getElementById('f-cancel').onclick = closeModal;
-
-  document.getElementById('f-stage').addEventListener('change', function(){
-    var area = document.getElementById('motivo-perda-area');
-    if(this.value === 'perdido'){
-      area.innerHTML = field('Motivo da perda', '<textarea id="f-motivo-perda" placeholder="Por que o negócio não avançou?">' + escapeHtml(lead.motivoPerda || '') + '</textarea>');
-    } else {
-      area.innerHTML = '';
-    }
-  });
+  var modalNewClientTags = [];
+  function renderModalNewClientTags(){
+    var chipsContainer = document.getElementById('f-tags-chips');
+    if(!chipsContainer) return;
+    chipsContainer.innerHTML = modalNewClientTags.map(function(t, idx){
+      return '<span class="etiqueta-pill" style="background:var(--steel); display:inline-flex; align-items:center; gap:6px;">' + escapeHtml(t) + ' <span data-idx="' + idx + '" class="remover-tag-modal" style="cursor:pointer;">✕</span></span>';
+    }).join('');
+    chipsContainer.querySelectorAll('.remover-tag-modal').forEach(function(span){
+      span.addEventListener('click', function(){
+        modalNewClientTags.splice(Number(span.getAttribute('data-idx')), 1);
+        renderModalNewClientTags();
+      });
+    });
+  }
 
   if(isNew){
     document.getElementById('f-cliente-existente').addEventListener('change', function(){
       var cid = this.value;
       var specificFields = document.getElementById('novo-cliente-especifico-fields');
-      if(!cid){
-        if (specificFields) specificFields.classList.remove('hidden');
-        return;
-      }
-      if (specificFields) specificFields.classList.add('hidden');
+      if(!cid){ return; }
       var c = clientes.find(function(x){ return x.id === cid; });
       if(!c) return;
       document.getElementById('f-nome').value = c.nome;
-      document.getElementById('f-contato').value = c.contato || '';
+      document.getElementById('f-contato').value = maskTelefone(c.contato || '');
       document.getElementById('f-canal').value = c.canal || 'whatsapp';
     });
 
@@ -895,13 +938,12 @@ function openModal(id){
       btn.textContent = 'Buscar';
       if(dados){
         if(dados.nome) document.getElementById('f-nome').value = dados.nome;
-        if(dados.contato) document.getElementById('f-contato').value = dados.contato;
+        if(dados.contato) document.getElementById('f-contato').value = maskTelefone(dados.contato);
       }
     });
 
     var tagsInput = document.getElementById('f-tags-input');
     var btnAddTagNovo = document.getElementById('btn-add-tag-novo-negocio');
-
     function adicionarTagNovoNegocio(){
       var val = tagsInput.value.trim();
       if(val && modalNewClientTags.indexOf(val) === -1){
@@ -910,7 +952,6 @@ function openModal(id){
         renderModalNewClientTags();
       }
     }
-
     if(tagsInput){
       tagsInput.addEventListener('keydown', function(e){
         if(e.key === 'Enter'){
@@ -974,8 +1015,8 @@ function openModal(id){
           canal: lead.canal,
           criado: todayStr(),
           cnpj: cnpjInput ? cnpjInput.value.replace(/\D/g,'') : '',
-          tags: modalNewClientTags,
-          responsavel: document.getElementById('f-responsavel') ? document.getElementById('f-responsavel').value.trim() : ''
+          responsavel: document.getElementById('f-responsavel') ? document.getElementById('f-responsavel').value.trim() : '',
+          tags: modalNewClientTags
         });
         if(novoCliente){
           novoCliente.tags = modalNewClientTags.slice();
@@ -1002,6 +1043,35 @@ function openModal(id){
     renderClientesView();
     closeModal();
   };
+}
+
+async function carregarAtividadeDoLead(lead){
+  var area = document.getElementById('atividade-lead-area');
+  var interacoesLead = await loadInteracoesDoLead(lead.id);
+
+  var eventos = [];
+
+  eventos.push({ data: lead.criado, texto: 'criou este negócio', icone: '✛' });
+
+  if(lead.stage === 'fechado' && lead.fechadoEm){
+    eventos.push({ data: lead.fechadoEm, texto: 'marcou este negócio como Fechado', icone: '✓' });
+  }
+  if(lead.stage === 'perdido'){
+    eventos.push({ data: lead.etapaAlteradaEm ? lead.etapaAlteradaEm.slice(0,10) : lead.criado, texto: 'marcou este negócio como Perdido' + (lead.motivoPerda ? ' — "' + lead.motivoPerda + '"' : ''), icone: '✕' });
+  }
+
+  interacoesLead.forEach(function(it){
+    eventos.push({ data: it.data, texto: 'registrou uma interação (' + it.tipo + ')' + (it.nota ? ': "' + it.nota + '"' : ''), icone: '💬' });
+  });
+
+  eventos.sort(function(a,b){ return new Date(b.data) - new Date(a.data); });
+
+  area.innerHTML = eventos.map(function(ev){
+    return '<div class="atividade-item">' +
+      '<div class="atividade-avatar">' + ev.icone + '</div>' +
+      '<div class="atividade-texto"><span class="autor">Você</span> ' + ev.texto + '<div class="quando">' + fmtDateBR(ev.data) + '</div></div>' +
+    '</div>';
+  }).join('') || '<p class="anexo-vazio">Nenhuma atividade registrada ainda.</p>';
 }
 
 function field(label, inputHtml){
