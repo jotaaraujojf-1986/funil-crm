@@ -623,6 +623,18 @@ function render(){
 
     board.appendChild(col);
   });
+
+  document.querySelectorAll('.btn-concluir-followup').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var leadId = btn.getAttribute('data-lead-id');
+      var leadAlvo = leads.find(function(l){ return l.id === leadId; });
+      if(!leadAlvo) return;
+      btn.disabled = true;
+      await concluirFollowUp(leadAlvo);
+      render();
+    });
+  });
 }
 
 function buildCard(lead, stageColor){
@@ -644,7 +656,7 @@ function buildCard(lead, stageColor){
 
   var followUpGroupHtml = '<div style="display:inline-flex; align-items:center; gap:5px;">' + followUpBadge(lead);
   if(lead.nextFollowUp){
-    followUpGroupHtml += '<button class="btn-concluir-followup" title="Concluir follow-up">✓</button>';
+    followUpGroupHtml += '<button class="btn-concluir-followup" data-lead-id="' + lead.id + '" title="Marcar como concluído">✓</button>';
   }
   followUpGroupHtml += '</div>';
 
@@ -656,14 +668,6 @@ function buildCard(lead, stageColor){
 
   card.querySelectorAll('a').forEach(function(a){
     a.addEventListener('click', function(e){ e.stopPropagation(); });
-  });
-
-  card.querySelectorAll('.btn-concluir-followup').forEach(function(btn){
-    btn.addEventListener('click', async function(e){
-      e.stopPropagation();
-      await concluirFollowUp(lead);
-      render();
-    });
   });
 
   card.addEventListener('dragstart', function(e){
@@ -1554,7 +1558,7 @@ function renderDetalheDoDia(dataStr){
           '<span>' + (l.atividadeTipo ? '📌 ' + escapeHtml(l.atividadeTipo) + ' — ' : '') + escapeHtml(l.nome) + ' · ' + fmtMoney(l.valor) + '</span>' +
           '<div style="display:inline-flex; align-items:center; gap:8px;">' +
             '<span class="badge-stage" style="background:' + (STAGES.find(function(s){return s.id===l.stage;})||STAGES[0]).color + ';">' + (STAGES.find(function(s){return s.id===l.stage;})||STAGES[0]).label + '</span>' +
-            (l.nextFollowUp ? '<button class="btn-concluir-followup" title="Concluir follow-up">✓</button>' : '') +
+            (l.nextFollowUp ? '<button class="btn-concluir-followup" data-lead-id="' + l.id + '" title="Marcar como concluído">✓</button>' : '') +
           '</div>' +
         '</div>';
       }).join('')
@@ -1572,12 +1576,12 @@ function renderDetalheDoDia(dataStr){
   box.querySelectorAll('.btn-concluir-followup').forEach(function(btn){
     btn.addEventListener('click', async function(e){
       e.stopPropagation();
-      var leadId = btn.closest('.negociacao-row').getAttribute('data-leadid');
-      var lead = leads.find(function(x){ return x.id === leadId; });
-      if(lead){
-        await concluirFollowUp(lead);
-        renderCalendario();
-      }
+      var leadId = btn.getAttribute('data-lead-id');
+      var leadAlvo = leads.find(function(l){ return l.id === leadId; });
+      if(!leadAlvo) return;
+      btn.disabled = true;
+      await concluirFollowUp(leadAlvo);
+      renderCalendario();
     });
   });
 }
