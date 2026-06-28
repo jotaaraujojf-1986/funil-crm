@@ -593,6 +593,7 @@ function render(){
     var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
     var stageTotal = stageLeads.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
 
+    // Cabeçalho fixado da coluna (etapa e total em R$)
     var headWrap = document.createElement('div');
     headWrap.className = 'col-head-wrap';
 
