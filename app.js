@@ -690,7 +690,7 @@ function buildCard(lead, stageColor){
 function openModal(id){
   var isNew = !id;
   var lead = isNew
-    ? {id: uid(), nome:'', contato:'', canal:'whatsapp', interesse:'', valor:'', stage:'lead', nextFollowUp: todayStr(), notas:'', criado: todayStr(), clienteId:null, motivoPerda:''}
+    ? {id: uid(), nome:'', contato:'', canal:'whatsapp', interesse:'', valor:'', stage:'lead', nextFollowUp: null, notas:'', criado: todayStr(), clienteId:null, motivoPerda:''}
     : leads.find(function(l){ return l.id === id; });
 
   if(!lead) return;
