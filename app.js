@@ -799,10 +799,8 @@ function openModal(id){
 
         (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
         (isNew ? field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') : '') +
-        (isNew ? field('Telefone / contato', '<input id="f-contato" type="text" inputmode="numeric" value="' + maskTelefone(lead.contato || '') + '" placeholder="(32) 99999-9999">') : '') +
         (isNew ? field('Responsável (opcional)', '<input id="f-responsavel" type="text" placeholder="Nome de quem você fala na empresa">') : '') +
         (isNew ? field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button></div></div>') : '') +
-        (!isNew ? field('Telefone / contato', '<input id="f-contato" type="text" inputmode="numeric" value="' + maskTelefone(lead.contato || '') + '" placeholder="(32) 99999-9999">') : '') +
 
         '<div class="modal-trello-secao">' +
           '<span class="modal-trello-secao-label">Etiquetas</span>' +
@@ -814,9 +812,9 @@ function openModal(id){
           '</div>' +
         '</div>' +
 
-        '<div class="modal-trello-secao">' +
-          '<span class="modal-trello-secao-label">Canal</span>' +
-          '<div class="field"><select id="f-canal">' + canalOptions + '</select></div>' +
+        '<div class="row2">' +
+          field('Telefone / contato', '<input id="f-contato" type="text" inputmode="numeric" value="' + maskTelefone(lead.contato || '') + '" placeholder="(32) 99999-9999">') +
+          field('Canal', '<select id="f-canal">' + canalOptions + '</select>') +
         '</div>' +
 
         '<div class="modal-trello-secao">' +
