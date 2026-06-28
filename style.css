@@ -158,10 +158,15 @@ body{
   display:grid;
   grid-template-columns: repeat(6, minmax(190px, 1fr));
   gap:14px;
-  overflow-x:auto;
 }
 @media (max-width: 1080px){
-  .board{ grid-template-columns: repeat(6, minmax(190px,1fr)); }
+  .board{
+    grid-template-columns: repeat(6, minmax(190px,1fr));
+    overflow-x: auto;
+  }
+  .board .col-head-wrap{
+    position: static;
+  }
 }
 
 .column{
