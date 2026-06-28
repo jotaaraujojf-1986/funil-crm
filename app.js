@@ -424,6 +424,7 @@ function atividadeBadge(lead){
 
 function maskTelefone(valor){
   var digitos = valor.replace(/\D/g, '').slice(0, 11);
+  if(!digitos) return '';
   if(digitos.length <= 2) return digitos.replace(/^(\d{0,2})/, '($1');
   if(digitos.length <= 7) return digitos.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
   return digitos.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
