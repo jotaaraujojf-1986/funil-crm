@@ -1045,6 +1045,12 @@ function openModal(id){
   };
 }
 
+async function loadInteracoesDoLead(leadId){
+  var res = await sb.from('interacoes').select('*').eq('lead_id', leadId).order('data', {ascending:false});
+  if(res.error){ console.error('Erro ao carregar atividade do negócio', res.error); return []; }
+  return res.data.map(interacaoFromDb);
+}
+
 async function carregarAtividadeDoLead(lead){
   var area = document.getElementById('atividade-lead-area');
   var interacoesLead = await loadInteracoesDoLead(lead.id);

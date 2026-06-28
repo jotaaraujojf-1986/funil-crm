@@ -308,7 +308,7 @@ body{
   font-size:20px;
   margin:0 0 16px;
 }
-.field{ margin-bottom:13px; }
+.field{ margin-bottom:10px; }
 .field label{
   display:block;
   font-size:12px;
@@ -333,7 +333,7 @@ body{
   border-color:var(--amber);
   box-shadow:0 0 0 3px rgba(232,163,23,0.18);
 }
-.field textarea{ resize:vertical; min-height:64px; }
+.field textarea{ resize:vertical; min-height:130px; }
 .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .modal-actions{
   display:flex;
@@ -884,13 +884,13 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
 }
 .modal-trello-col-principal{
   flex: 1 1 60%;
-  padding: 20px 24px;
+  padding: 16px 22px;
   border-right: 1px solid var(--line);
   min-width: 0;
 }
 .modal-trello-col-atividade{
   flex: 1 1 40%;
-  padding: 20px 24px;
+  padding: 16px 22px;
   background: rgba(0,0,0,0.015);
   min-width: 0;
 }
@@ -908,7 +908,7 @@ html[data-theme="dark"] .modal-trello-col-atividade{ background: rgba(255,255,25
 }
 .modal-trello-titulo:focus{ outline: none; border-bottom: 2px solid var(--amber); }
 .modal-trello-sub{ font-size:12px; color:var(--ink-faint); margin-bottom:18px; }
-.modal-trello-secao{ margin-bottom: 20px; }
+.modal-trello-secao{ margin-bottom: 12px; }
 .modal-trello-secao-label{
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
   color: var(--ink-soft); margin-bottom: 8px; display:block;
