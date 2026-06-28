@@ -885,6 +885,7 @@ function openModal(id){
       if(ok){
         leads = leads.filter(function(l){ return l.id !== lead.id; });
         render();
+        renderClientesView();
         closeModal();
         await excluirLeadNoDb(lead.id);
         toast('Negócio excluído.', 'sucesso');
@@ -953,6 +954,7 @@ function openModal(id){
 
     toast('Negócio salvo com sucesso!', 'sucesso');
     render();
+    renderClientesView();
     closeModal();
   };
 }
