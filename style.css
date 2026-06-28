@@ -779,3 +779,10 @@ html[data-theme="dark"] .campo-padrao{
 }
 .btn-concluir-followup:hover{ background:#D5EEDC; }
 html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d085; }
+
+#sticky-top{
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg);
+}
