@@ -786,3 +786,13 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
   z-index: 40;
   background: var(--bg);
 }
+
+:root{ --sticky-offset: 140px; }
+
+.col-head-wrap{
+  position: sticky;
+  top: var(--sticky-offset);
+  background: var(--bg);
+  z-index: 10;
+  padding-top: 4px;
+}

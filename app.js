@@ -593,15 +593,20 @@ function render(){
     var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
     var stageTotal = stageLeads.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
 
+    var headWrap = document.createElement('div');
+    headWrap.className = 'col-head-wrap';
+
     var head = document.createElement('div');
     head.className = 'col-head';
     head.innerHTML = '<span class="title">' + stage.label + '</span><span class="count">' + stageLeads.length + '</span>';
-    col.appendChild(head);
+    headWrap.appendChild(head);
 
     var total = document.createElement('div');
     total.className = 'col-total';
     total.textContent = fmtMoney(stageTotal);
-    col.appendChild(total);
+    headWrap.appendChild(total);
+
+    col.appendChild(headWrap);
 
     if(stageLeads.length === 0){
       var empty = document.createElement('div');
@@ -635,6 +640,7 @@ function render(){
       render();
     });
   });
+  ajustarOffsetSticky();
 }
 
 function buildCard(lead, stageColor){
@@ -1803,5 +1809,15 @@ async function iniciarApp(){
   render();
 }
 
+function ajustarOffsetSticky(){
+  var topBar = document.getElementById('sticky-top');
+  if(topBar){
+    document.documentElement.style.setProperty('--sticky-offset', topBar.offsetHeight + 'px');
+  }
+}
+window.addEventListener('resize', ajustarOffsetSticky);
+window.addEventListener('load', ajustarOffsetSticky);
+
 iniciarApp();
+ajustarOffsetSticky();
 })();
