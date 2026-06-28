@@ -551,8 +551,22 @@ function render(){
   board.innerHTML = '';
 
   if(leads.length === 0){
+    var headersRow = document.getElementById('board-headers');
+    if (headersRow) headersRow.innerHTML = '';
     board.innerHTML = '<div class="empty-state">Nenhum negócio cadastrado ainda. Clique em <strong>"+ Novo negócio"</strong> para começar.</div>';
     return;
+  }
+
+  var headersRow = document.getElementById('board-headers');
+  if (headersRow) {
+    headersRow.innerHTML = STAGES.map(function(stage){
+      var stageLeadsCount = visible.filter(function(l){ return l.stage === stage.id; }).length;
+      var stageTotalValor = visible.filter(function(l){ return l.stage === stage.id; }).reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+      return '<div class="col-head-cell" style="--cell-color:' + stage.color + ';">' +
+        '<span class="title">' + stage.label + '</span><span class="count">' + stageLeadsCount + '</span>' +
+        '<span class="total">' + fmtMoney(stageTotalValor) + '</span>' +
+      '</div>';
+    }).join('');
   }
 
   STAGES.forEach(function(stage){
@@ -591,23 +605,6 @@ function render(){
     });
 
     var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
-    var stageTotal = stageLeads.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
-
-    // Cabeçalho fixado da coluna (etapa e total em R$)
-    var headWrap = document.createElement('div');
-    headWrap.className = 'col-head-wrap';
-
-    var head = document.createElement('div');
-    head.className = 'col-head';
-    head.innerHTML = '<span class="title">' + stage.label + '</span><span class="count">' + stageLeads.length + '</span>';
-    headWrap.appendChild(head);
-
-    var total = document.createElement('div');
-    total.className = 'col-total';
-    total.textContent = fmtMoney(stageTotal);
-    headWrap.appendChild(total);
-
-    col.appendChild(headWrap);
 
     if(stageLeads.length === 0){
       var empty = document.createElement('div');
@@ -641,7 +638,6 @@ function render(){
       render();
     });
   });
-  ajustarOffsetSticky();
 }
 
 function buildCard(lead, stageColor){
@@ -1648,6 +1644,8 @@ function switchTab(tab){
   document.getElementById('tab-clientes').classList.toggle('active', tab === 'clientes');
   document.getElementById('tab-calendario').classList.toggle('active', tab === 'calendario');
   document.getElementById('board').style.display = tab === 'funil' ? 'grid' : 'none';
+  var headersRow = document.getElementById('board-headers');
+  if (headersRow) headersRow.style.display = tab === 'funil' ? 'grid' : 'none';
   document.getElementById('dash').classList.toggle('open', tab === 'dash');
   document.getElementById('clientes-view').classList.toggle('open', tab === 'clientes');
   document.getElementById('calendario-view').classList.toggle('open', tab === 'calendario');
@@ -1810,24 +1808,5 @@ async function iniciarApp(){
   render();
 }
 
-function ajustarOffsetSticky(){
-  var topBar = document.getElementById('sticky-top');
-  if(topBar){
-    document.documentElement.style.setProperty('--sticky-offset', topBar.offsetHeight + 'px');
-  }
-}
-
-if(window.ResizeObserver){
-  var topBarEl = document.getElementById('sticky-top');
-  if(topBarEl){
-    var roSticky = new ResizeObserver(function(){ ajustarOffsetSticky(); });
-    roSticky.observe(topBarEl);
-  }
-}
-window.addEventListener('resize', ajustarOffsetSticky);
-window.addEventListener('load', ajustarOffsetSticky);
-document.fonts.ready.then(ajustarOffsetSticky);
-
 iniciarApp();
-ajustarOffsetSticky();
 })();
