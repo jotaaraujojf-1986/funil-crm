@@ -819,17 +819,23 @@ function openModal(id){
 
     var tagsInput = document.getElementById('f-tags-input');
     if(tagsInput){
+      alert('Campo de tags encontrado com sucesso no DOM.');
       tagsInput.addEventListener('keydown', function(e){
+        alert('Tecla pressionada: "' + e.key + '"');
         if(e.key === 'Enter'){
           e.preventDefault();
           var val = tagsInput.value.trim();
+          alert('Valor digitado: "' + val + '" — array antes de adicionar tem ' + modalNewClientTags.length + ' itens.');
           if(val && modalNewClientTags.indexOf(val) === -1){
             modalNewClientTags.push(val);
             tagsInput.value = '';
             renderModalNewClientTags();
+            alert('Tag adicionada! Array agora tem ' + modalNewClientTags.length + ' itens: ' + JSON.stringify(modalNewClientTags));
           }
         }
       });
+    } else {
+      alert('ERRO: o campo de tags (f-tags-input) não foi encontrado no DOM.');
     }
   }
 
