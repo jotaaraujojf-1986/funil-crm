@@ -227,9 +227,9 @@ body{
 .card:hover{ transform:translateY(-1px); box-shadow:0 4px 18px rgba(28,31,34,0.10); }
 .card.dragging{ opacity:0.4; }
 .card .name{ font-weight:700; font-size:13.5px; margin:0 0 4px; }
-.card .meta{ font-size:12px; color:var(--ink-soft); margin:0 0 8px; display:flex; align-items:center; gap:5px; }
+.card .meta{ font-size:12px; color:var(--ink-soft); margin:0 0 8px; display:flex; align-items:center; gap:5px; flex-wrap: wrap; }
 .card .meta .dot{ width:5px; height:5px; border-radius:50%; background:var(--ink-faint); }
-.card .value{ font-weight:700; color:var(--ink); }
+.card .value{ font-weight:700; color:var(--ink); white-space: nowrap; }
 .badge{
   display:inline-flex;
   align-items:center;
