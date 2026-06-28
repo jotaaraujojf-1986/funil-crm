@@ -78,6 +78,23 @@ function setStage(lead, novoStage){
   lead.stage = novoStage;
 }
 
+async function concluirFollowUp(lead){
+  if(lead.clienteId){
+    var tipoInteracao = 'outro';
+    if(lead.atividadeTipo === 'Ligar') tipoInteracao = 'ligacao';
+    else if(lead.atividadeTipo === 'Visita') tipoInteracao = 'visita';
+    else if(lead.atividadeTipo === 'Reunião') tipoInteracao = 'outro';
+    else if(lead.atividadeTipo === 'Enviar proposta') tipoInteracao = 'outro';
+
+    var nota = 'Follow-up concluído' + (lead.atividadeTipo ? ' — ' + lead.atividadeTipo : '') + (lead.atividadeDesc ? ': ' + lead.atividadeDesc : '');
+    await criarInteracaoNoDb({ clienteId: lead.clienteId, leadId: lead.id, tipo: tipoInteracao, nota: nota, data: todayStr() });
+  }
+  lead.nextFollowUp = null;
+  lead.atividadeTipo = '';
+  lead.atividadeDesc = '';
+  await atualizarLeadNoDb(lead);
+}
+
 function fromDb(row){
   return {
     id: row.id,
@@ -625,14 +642,28 @@ function buildCard(lead, stageColor){
   var tempoEtapa = tempoEtapaBadge(lead);
   var atividade = atividadeBadge(lead);
 
+  var followUpGroupHtml = '<div style="display:inline-flex; align-items:center; gap:5px;">' + followUpBadge(lead);
+  if(lead.nextFollowUp){
+    followUpGroupHtml += '<button class="btn-concluir-followup" title="Concluir follow-up">✓</button>';
+  }
+  followUpGroupHtml += '</div>';
+
   card.innerHTML =
     '<p class="name">' + escapeHtml(lead.nome) + '</p>' +
     '<p class="meta">' + escapeHtml(canalLabel) + '<span class="dot"></span><span class="value">' + fmtMoney(lead.valor) + '</span></p>' +
     (tempoEtapa || atividade ? '<p class="card-extra">' + tempoEtapa + atividade + '</p>' : '') +
-    '<div class="card-bottom">' + followUpBadge(lead) + waButtonHtml + '</div>';
+    '<div class="card-bottom">' + followUpGroupHtml + waButtonHtml + '</div>';
 
   card.querySelectorAll('a').forEach(function(a){
     a.addEventListener('click', function(e){ e.stopPropagation(); });
+  });
+
+  card.querySelectorAll('.btn-concluir-followup').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      await concluirFollowUp(lead);
+      render();
+    });
   });
 
   card.addEventListener('dragstart', function(e){
@@ -1521,7 +1552,10 @@ function renderDetalheDoDia(dataStr){
     ? itens.map(function(l){
         return '<div class="negociacao-row" data-leadid="' + l.id + '">' +
           '<span>' + (l.atividadeTipo ? '📌 ' + escapeHtml(l.atividadeTipo) + ' — ' : '') + escapeHtml(l.nome) + ' · ' + fmtMoney(l.valor) + '</span>' +
-          '<span class="badge-stage" style="background:' + (STAGES.find(function(s){return s.id===l.stage;})||STAGES[0]).color + ';">' + (STAGES.find(function(s){return s.id===l.stage;})||STAGES[0]).label + '</span>' +
+          '<div style="display:inline-flex; align-items:center; gap:8px;">' +
+            '<span class="badge-stage" style="background:' + (STAGES.find(function(s){return s.id===l.stage;})||STAGES[0]).color + ';">' + (STAGES.find(function(s){return s.id===l.stage;})||STAGES[0]).label + '</span>' +
+            (l.nextFollowUp ? '<button class="btn-concluir-followup" title="Concluir follow-up">✓</button>' : '') +
+          '</div>' +
         '</div>';
       }).join('')
     : '<p class="anexo-vazio">Nenhum follow-up ou atividade agendada para este dia.</p>';
@@ -1532,6 +1566,18 @@ function renderDetalheDoDia(dataStr){
   box.querySelectorAll('.negociacao-row').forEach(function(row){
     row.addEventListener('click', function(){
       openModal(row.getAttribute('data-leadid'));
+    });
+  });
+
+  box.querySelectorAll('.btn-concluir-followup').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var leadId = btn.closest('.negociacao-row').getAttribute('data-leadid');
+      var lead = leads.find(function(x){ return x.id === leadId; });
+      if(lead){
+        await concluirFollowUp(lead);
+        renderCalendario();
+      }
     });
   });
 }
