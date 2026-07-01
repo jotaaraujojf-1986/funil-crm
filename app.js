@@ -1636,6 +1636,7 @@ async function openClienteModal(clienteId){
       var idx = clientes.findIndex(function(c){ return c.id === cliente.id; });
       if(idx !== -1) clientes[idx] = cliente;
       toast('Dados do cliente atualizados.', 'sucesso');
+      renderClientesView();
       openClienteModal(cliente.id);
     });
   });
