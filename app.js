@@ -1634,7 +1634,7 @@ async function openClienteModal(clienteId){
       cliente.notas = cliente.notes;
       await atualizarClienteNoDb(cliente);
       var idx = clientes.findIndex(function(c){ return c.id === cliente.id; });
-      if(idx !== -1) clientes[idx] = cliente;
+      if(idx !== -1) clientes[idx] = Object.assign({}, cliente);
       toast('Dados do cliente atualizados.', 'sucesso');
       renderClientesView();
       openClienteModal(cliente.id);
