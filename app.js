@@ -216,7 +216,8 @@ function clienteFromDb(row){
     criado: row.criado,
     cnpj: row.cnpj || '',
     tags: Array.isArray(row.tags) ? row.tags : [],
-    responsavel: row.responsavel || ''
+    responsavel: row.responsavel || '',
+    tipo: row.tipo || 'juridica'
   };
 }
 
@@ -230,7 +231,8 @@ function clienteToDb(cliente){
     criado: cliente.criado || todayStr(),
     cnpj: cliente.cnpj || null,
     tags: cliente.tags || [],
-    responsavel: cliente.responsavel || null
+    responsavel: cliente.responsavel || null,
+    tipo: cliente.tipo || 'juridica'
   };
 }
 
@@ -800,6 +802,7 @@ function openModal(id){
         (waLinkModal ? '<a class="wa-btn" style="margin-bottom:16px;" href="' + waLinkModal + '" target="_blank" rel="noopener">Abrir conversa no WhatsApp ↗</a>' : '') +
 
         (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
+        (isNew ? field('Tipo de cliente', '<select id="f-tipo-cliente"><option value="juridica">Pessoa Jurídica</option><option value="fisica">Pessoa Física</option></select>') : '') +
         (isNew ? field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') : '') +
         (isNew ? field('Responsável (opcional)', '<input id="f-responsavel" type="text" placeholder="Nome de quem você fala na empresa">') : '') +
         (isNew ? field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button></div></div>') : '') +
@@ -940,6 +943,22 @@ function openModal(id){
       }
     });
 
+    var tipoSelect = document.getElementById('f-tipo-cliente');
+    if(tipoSelect){
+      tipoSelect.addEventListener('change', function(){
+        var cnpjField = document.getElementById('f-cnpj');
+        var cnpjWrapper = cnpjField ? cnpjField.closest('.field') : null;
+        var responsavelInput = document.getElementById('f-responsavel');
+        if(this.value === 'fisica'){
+          if(cnpjWrapper) cnpjWrapper.style.display = 'none';
+          if(responsavelInput) responsavelInput.placeholder = 'Nome completo';
+        } else {
+          if(cnpjWrapper) cnpjWrapper.style.display = '';
+          if(responsavelInput) responsavelInput.placeholder = 'Nome de quem você fala na empresa';
+        }
+      });
+    }
+
     var tagsInput = document.getElementById('f-tags-input');
     var btnAddTagNovo = document.getElementById('btn-add-tag-novo-negocio');
     function adicionarTagNovoNegocio(){
@@ -1014,7 +1033,8 @@ function openModal(id){
           criado: todayStr(),
           cnpj: cnpjInput ? cnpjInput.value.replace(/\D/g,'') : '',
           responsavel: document.getElementById('f-responsavel') ? document.getElementById('f-responsavel').value.trim() : '',
-          tags: modalNewClientTags
+          tags: modalNewClientTags,
+          tipo: document.getElementById('f-tipo-cliente') ? document.getElementById('f-tipo-cliente').value : 'juridica'
         });
         if(novoCliente){
           novoCliente.tags = modalNewClientTags.slice();
@@ -1409,6 +1429,10 @@ function renderClientesView(){
     var canalLabel = CANAIS[c.canal] || c.canal || '—';
     var codigoFmt = c.codigo ? '#' + String(c.codigo).padStart(4, '0') : '';
 
+    var tipoPilula = c.tipo === 'fisica'
+      ? '<span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; background:var(--blue-bg); color:var(--blue);">PF</span>'
+      : '<span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; background:var(--green-bg); color:var(--green);">PJ</span>';
+
     var tagsHtml = '';
     if (Array.isArray(c.tags) && c.tags.length > 0) {
       tagsHtml = '<div class="cliente-tags-list" style="display:inline-flex; gap:4px; margin-left:8px; flex-wrap:wrap;">' + c.tags.map(function(tag) {
@@ -1417,7 +1441,7 @@ function renderClientesView(){
     }
 
     return '<div class="cliente-card" data-id="' + c.id + '">' +
-      '<p class="codigo">' + codigoFmt + '</p>' +
+      '<p class="codigo">' + codigoFmt + ' ' + tipoPilula + '</p>' +
       '<div class="nome-container" style="flex:1 1 220px; min-width:0; display:flex; align-items:center;">' +
         '<p class="nome" style="margin:0; flex:none;">' + escapeHtml(c.nome) + '</p>' +
         tagsHtml +
@@ -1489,6 +1513,8 @@ async function openClienteModal(clienteId){
     '<h2>' + (cliente.codigo ? '#' + String(cliente.codigo).padStart(4,'0') + ' — ' : '') + escapeHtml(cliente.nome) + '</h2>' +
     '<p class="anexo-vazio">' + (CANAIS[cliente.canal] || cliente.canal || '') + (cliente.contato ? ' · ' + escapeHtml(cliente.contato) : '') + '</p>' +
     (cliente.responsavel ? '<p class="anexo-vazio">Responsável: ' + escapeHtml(cliente.responsavel) + '</p>' : '') +
+    '<button class="btn-ghost" id="btn-editar-cliente" style="margin-bottom:12px;">✏️ Editar dados</button>' +
+    '<div id="form-editar-cliente" style="display:none; background:var(--bg); border-radius:8px; padding:14px; margin-bottom:14px;"></div>' +
 
     '<p class="cliente-section-title" style="margin-bottom:4px;">Tags</p>' +
     tagsHtml +
@@ -1569,6 +1595,49 @@ async function openClienteModal(clienteId){
     closeClienteModal();
     renderClientesView();
     toast('Cliente excluído.', 'sucesso');
+  });
+
+  document.getElementById('btn-editar-cliente').addEventListener('click', function(){
+    var form = document.getElementById('form-editar-cliente');
+    if(form.style.display !== 'none'){
+      form.style.display = 'none';
+      this.textContent = '✏️ Editar dados';
+      return;
+    }
+    this.textContent = '✕ Cancelar edição';
+    form.style.display = 'block';
+    form.innerHTML =
+      field('Nome / empresa', '<input id="edit-nome" type="text" value="' + escapeHtml(cliente.nome) + '">') +
+      field('Tipo de cliente', '<select id="edit-tipo"><option value="juridica"' + (cliente.tipo==='juridica'?' selected':'') + '>Pessoa Jurídica</option><option value="fisica"' + (cliente.tipo==='fisica'?' selected':'') + '>Pessoa Física</option></select>') +
+      field('Telefone / contato', '<input id="edit-contato" type="text" inputmode="numeric" value="' + maskTelefone(cliente.contato || '') + '" placeholder="(32) 99999-9999">') +
+      field('Canal', '<select id="edit-canal"><option value="presencial"' + (cliente.canal==='presencial'?' selected':'') + '>Presencial</option><option value="telefone"' + (cliente.canal==='telefone'?' selected':'') + '>Telefone</option><option value="whatsapp"' + (cliente.canal==='whatsapp'?' selected':'') + '>WhatsApp</option><option value="indicacao"' + (cliente.canal==='indicacao'?' selected':'') + '>Indicação</option></select>') +
+      field('Responsável', '<input id="edit-responsavel" type="text" value="' + escapeHtml(cliente.responsavel || '') + '" placeholder="Nome do contato na empresa">') +
+      field('Notas', '<textarea id="edit-notas-cliente">' + escapeHtml(cliente.notas || '') + '</textarea>') +
+      '<button class="btn-primary" id="btn-salvar-edicao-cliente">Salvar alterações</button>';
+
+    var editContato = document.getElementById('edit-contato');
+    if(editContato){
+      editContato.addEventListener('input', function(){
+        this.value = maskTelefone(this.value);
+      });
+    }
+
+    document.getElementById('btn-salvar-edicao-cliente').addEventListener('click', async function(){
+      this.disabled = true;
+      this.textContent = 'Salvando...';
+      cliente.nome = document.getElementById('edit-nome').value.trim() || cliente.nome;
+      cliente.tipo = document.getElementById('edit-tipo').value;
+      cliente.contato = document.getElementById('edit-contato').value.trim();
+      cliente.canal = document.getElementById('edit-canal').value;
+      cliente.responsavel = document.getElementById('edit-responsavel').value.trim();
+      cliente.notes = document.getElementById('edit-notas-cliente').value.trim();
+      cliente.notas = cliente.notes;
+      await atualizarClienteNoDb(cliente);
+      var idx = clientes.findIndex(function(c){ return c.id === cliente.id; });
+      if(idx !== -1) clientes[idx] = cliente;
+      toast('Dados do cliente atualizados.', 'sucesso');
+      openClienteModal(cliente.id);
+    });
   });
 
   setupModalClientTagsEvents(cliente);
