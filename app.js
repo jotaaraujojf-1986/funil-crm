@@ -1958,6 +1958,8 @@ async function renderMetasView(){
   html += '<div class="kpi"><div class="num">' + fmtMoney(metaDia) + '</div><div class="lbl">Meta por dia útil</div></div>';
   html += '<div class="kpi"><div class="num">' + totalDiasUteis + '</div><div class="lbl">Dias úteis no mês</div></div>';
   html += '<div class="kpi"><div class="num">' + fmtMoney(totalLancado) + '</div><div class="lbl">Total lançado</div></div>';
+  html += '<div class="kpi"><div class="num">' + diasUteisAteHoje + '</div><div class="lbl">Dias trabalhados</div></div>';
+  html += '<div class="kpi"><div class="num" style="color:' + (diasRestantes <= 3 ? 'var(--red)' : diasRestantes <= 7 ? 'var(--amber-dark)' : 'var(--ink)') + ';">' + diasRestantes + '</div><div class="lbl">Dias úteis restantes</div></div>';
   html += '</div>';
   html += '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pctMes + '%;"></div></div>';
   html += '<p class="meta-box-sub">' + pctMes + '% da meta mensal · ' + (faltaMes > 0 ? 'faltam ' + fmtMoney(faltaMes) : 'meta mensal atingida! 🎉') + '</p>';
