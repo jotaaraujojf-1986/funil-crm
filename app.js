@@ -2264,11 +2264,17 @@ async function renderMetasView(){
     for(var i = 0; i < inputs.length; i++){
       var inp = inputs[i];
       var m = Number(inp.getAttribute('data-mes'));
-      var valorDigitado = inp.value.trim();
-      var v = valorDigitado ? parseValorMascarado(valorDigitado) : 0;
+      var valorDigitado = inp.value.replace(/\D/g, '');
+      var v = valorDigitado ? parseValorMascarado(inp.value) : 0;
       if(v > 0){
         var ok = await salvarMetaMensal(anoAtual, m, v);
         if(!ok) erros++;
+      } else {
+        // campo vazio ou zero: apaga do banco pra não ficar lixo
+        await sb.from('metas_mensais').delete()
+          .eq('user_id', currentUserId)
+          .eq('ano', Number(anoAtual))
+          .eq('mes', Number(m));
       }
     }
 
