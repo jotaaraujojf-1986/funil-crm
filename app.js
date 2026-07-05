@@ -33,6 +33,7 @@ var limitesEtapa = {
   negociacao: {alerta:7, critico:14}
 };
 var metaMensal = 0;
+var sabadosUteis = [];
 
 function toast(mensagem, tipo){
   tipo = tipo || 'info';
@@ -312,6 +313,41 @@ async function excluirInteracaoNoDb(id){
   if(res.error){ console.error('Erro ao excluir interação', res.error); showSyncError(); }
 }
 
+async function loadLancamentosDoMes(ano, mes){
+  var inicio = ano + '-' + String(mes+1).padStart(2,'0') + '-01';
+  var fim = new Date(ano, mes+1, 0).toISOString().slice(0,10);
+  var res = await sb.from('lancamentos_diarios').select('*')
+    .eq('user_id', currentUserId)
+    .gte('data', inicio)
+    .lte('data', fim)
+    .order('data', {ascending:false});
+  if(res.error){ console.error('Erro ao carregar lançamentos', res.error); return []; }
+  return res.data.map(function(r){
+    return { id:r.id, data:r.data, valor:Number(r.valor)||0, descricao:r.descricao||'' };
+  });
+}
+
+async function criarLancamento(data, valor, descricao){
+  var res = await sb.from('lancamentos_diarios').insert({
+    user_id: currentUserId,
+    data: data,
+    valor: valor,
+    descricao: descricao || null
+  }).select().single();
+  if(res.error){ console.error('Erro ao criar lançamento', res.error); showSyncError(); return null; }
+  return { id:res.data.id, data:res.data.data, valor:Number(res.data.valor)||0, descricao:res.data.descricao||'' };
+}
+
+async function excluirLancamento(id){
+  var res = await sb.from('lancamentos_diarios').delete().eq('id', id);
+  if(res.error){ console.error('Erro ao excluir lançamento', res.error); showSyncError(); }
+}
+
+async function salvarSabadosUteis(sabados){
+  var res = await sb.from('configuracoes').upsert({ user_id: currentUserId, limites_etapa: limitesEtapa, meta_mensal: metaMensal, sabados_uteis: sabados });
+  if(res.error){ console.error('Erro ao salvar sábados', res.error); showSyncError(); }
+}
+
 // ---------- Configurações (limites de tempo por etapa) ----------
 
 async function loadConfiguracoes(){
@@ -320,6 +356,7 @@ async function loadConfiguracoes(){
   if(res.data && res.data.limites_etapa){
     limitesEtapa = res.data.limites_etapa;
     metaMensal = Number(res.data.meta_mensal) || 0;
+    sabadosUteis = Array.isArray(res.data.sabados_uteis) ? res.data.sabados_uteis : [];
   } else {
     // primeiro acesso: cria a linha de configuração com os valores padrão
     await sb.from('configuracoes').insert({ user_id: currentUserId, limites_etapa: limitesEtapa, meta_mensal: metaMensal });
@@ -329,7 +366,7 @@ async function loadConfiguracoes(){
 async function salvarConfiguracoes(novosLimites, novaMeta){
   limitesEtapa = novosLimites;
   metaMensal = novaMeta;
-  var res = await sb.from('configuracoes').upsert({ user_id: currentUserId, limites_etapa: novosLimites, meta_mensal: novaMeta });
+  var res = await sb.from('configuracoes').upsert({ user_id: currentUserId, limites_etapa: novosLimites, meta_mensal: novaMeta, sabados_uteis: sabadosUteis });
   if(res.error){ console.error('Erro ao salvar configurações', res.error); showSyncError(); }
 }
 
@@ -1796,6 +1833,195 @@ function renderCalendario(){
   }
 }
 
+async function renderMetasView(){
+  var container = document.getElementById('metas-container');
+  container.innerHTML = '<p class="anexo-vazio">Carregando...</p>';
+
+  var hoje = new Date();
+  var ano = hoje.getFullYear();
+  var mes = hoje.getMonth();
+  var lancamentos = await loadLancamentosDoMes(ano, mes);
+
+  // Calcular dias úteis do mês (seg-sex + sábados marcados pelo usuário)
+  function getSabadosDoMes(ano, mes){
+    var sabados = [];
+    var d = new Date(ano, mes, 1);
+    while(d.getMonth() === mes){
+      if(d.getDay() === 6){
+        sabados.push(d.toISOString().slice(0,10));
+      }
+      d.setDate(d.getDate()+1);
+    }
+    return sabados;
+  }
+
+  function getDiasUteisDoMes(ano, mes, sabadosExtras){
+    var count = 0;
+    var d = new Date(ano, mes, 1);
+    while(d.getMonth() === mes){
+      var dow = d.getDay();
+      var dataStr = d.toISOString().slice(0,10);
+      if(dow >= 1 && dow <= 5) count++;
+      else if(dow === 6 && sabadosExtras.indexOf(dataStr) !== -1) count++;
+      d.setDate(d.getDate()+1);
+    }
+    return count;
+  }
+
+  function getDiasUteisAteHoje(ano, mes, sabadosExtras){
+    var count = 0;
+    var hoje = new Date();
+    var d = new Date(ano, mes, 1);
+    while(d.getMonth() === mes && d <= hoje){
+      var dow = d.getDay();
+      var dataStr = d.toISOString().slice(0,10);
+      if(dow >= 1 && dow <= 5) count++;
+      else if(dow === 6 && sabadosExtras.indexOf(dataStr) !== -1) count++;
+      d.setDate(d.getDate()+1);
+    }
+    return count;
+  }
+
+  var totalDiasUteis = getDiasUteisDoMes(ano, mes, sabadosUteis);
+  var diasUteisAteHoje = getDiasUteisAteHoje(ano, mes, sabadosUteis);
+  var metaDia = totalDiasUteis > 0 ? metaMensal / totalDiasUteis : 0;
+  var metaAcumuladaAteHoje = metaDia * diasUteisAteHoje;
+  var totalLancado = lancamentos.reduce(function(s,l){ return s + l.valor; }, 0);
+  var diferenca = totalLancado - metaAcumuladaAteHoje;
+  var sabadosDoMes = getSabadosDoMes(ano, mes);
+  var pctMes = metaMensal > 0 ? Math.min(100, Math.round((totalLancado / metaMensal) * 100)) : 0;
+  var faltaMes = Math.max(0, metaMensal - totalLancado);
+  var hojeStr = todayStr();
+
+  // Montar tela
+  var html = '';
+
+  // Card: Resumo do mês
+  html += '<div class="metas-section">';
+  html += '<h3>Meta de ' + MESES_PT[mes] + ' de ' + ano + '</h3>';
+  html += '<div class="dash-kpis" style="margin-bottom:14px;">';
+  html += '<div class="kpi"><div class="num">' + fmtMoney(metaMensal) + '</div><div class="lbl">Meta do mês</div></div>';
+  html += '<div class="kpi"><div class="num">' + fmtMoney(metaDia) + '</div><div class="lbl">Meta por dia útil</div></div>';
+  html += '<div class="kpi"><div class="num">' + totalDiasUteis + '</div><div class="lbl">Dias úteis no mês</div></div>';
+  html += '<div class="kpi"><div class="num">' + fmtMoney(totalLancado) + '</div><div class="lbl">Total lançado</div></div>';
+  html += '</div>';
+  html += '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pctMes + '%;"></div></div>';
+  html += '<p class="meta-box-sub">' + pctMes + '% da meta mensal · ' + (faltaMes > 0 ? 'faltam ' + fmtMoney(faltaMes) : 'meta mensal atingida! 🎉') + '</p>';
+
+  // Status vs meta acumulada
+  if(diasUteisAteHoje > 0){
+    if(diferenca >= 0){
+      html += '<p class="meta-status-ahead">▲ Você está R$ ' + Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' à frente da meta acumulada até hoje</p>';
+    } else {
+      html += '<p class="meta-status-behind">▼ Você está R$ ' + Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' abaixo da meta acumulada até hoje</p>';
+    }
+  }
+  html += '</div>';
+
+  // Card: Sábados úteis
+  if(sabadosDoMes.length > 0){
+    html += '<div class="metas-section">';
+    html += '<h3>Sábados que vou trabalhar</h3>';
+    html += '<div class="sabados-grid">';
+    sabadosDoMes.forEach(function(dataStr){
+      var d = new Date(dataStr + 'T00:00:00');
+      var label = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0');
+      var ativo = sabadosUteis.indexOf(dataStr) !== -1;
+      html += '<div class="sabado-chip' + (ativo?' ativo':'') + '" data-sabado="' + dataStr + '">' + label + '</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+  }
+
+  // Card: Lançar vendas do dia
+  html += '<div class="metas-section">';
+  html += '<h3>Lançar vendas do dia</h3>';
+  html += '<div class="row2">';
+  html += '<div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + hojeStr + '"></div>';
+  html += '<div class="field"><label>Valor vendido (R$)</label><input type="text" id="lanc-valor" inputmode="numeric" placeholder="0,00"></div>';
+  html += '</div>';
+  html += '<div class="field"><label>Descrição (opcional)</label><input type="text" id="lanc-desc" placeholder="Ex: Venda balcão, pedido recorrente..."></div>';
+  html += '<button class="btn-primary" id="btn-lancar-venda">Registrar lançamento</button>';
+  html += '</div>';
+
+  // Card: Histórico de lançamentos
+  html += '<div class="metas-section">';
+  html += '<h3>Lançamentos do mês</h3>';
+  if(lancamentos.length === 0){
+    html += '<p class="anexo-vazio">Nenhum lançamento registrado ainda este mês.</p>';
+  } else {
+    html += lancamentos.map(function(l){
+      var d = new Date(l.data + 'T00:00:00');
+      var dataFmt = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+      return '<div class="lancamento-row">' +
+        '<div><span class="ldata">' + dataFmt + '</span>' + (l.descricao ? ' — <span class="ldesc">' + escapeHtml(l.descricao) + '</span>' : '') + '</div>' +
+        '<div style="display:flex; align-items:center; gap:10px;">' +
+          '<span class="lvalor">' + fmtMoney(l.valor) + '</span>' +
+          '<button class="lancamento-del" data-lanc-id="' + l.id + '" title="Excluir">✕</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+  html += '</div>';
+
+  container.innerHTML = html;
+
+  // Listeners sábados
+  container.querySelectorAll('.sabado-chip').forEach(function(chip){
+    chip.addEventListener('click', async function(){
+      var dataStr = chip.getAttribute('data-sabado');
+      var idx = sabadosUteis.indexOf(dataStr);
+      if(idx !== -1){
+        sabadosUteis.splice(idx, 1);
+      } else {
+        sabadosUteis.push(dataStr);
+      }
+      await salvarSabadosUteis(sabadosUteis);
+      renderMetasView();
+    });
+  });
+
+  // Máscara no valor
+  var inputValor = document.getElementById('lanc-valor');
+  if(inputValor){
+    inputValor.addEventListener('input', function(){
+      this.value = maskValor(this.value);
+    });
+  }
+
+  // Registrar lançamento
+  document.getElementById('btn-lancar-venda').addEventListener('click', async function(){
+    var data = document.getElementById('lanc-data').value || hojeStr;
+    var valor = parseValorMascarado(document.getElementById('lanc-valor').value);
+    var descricao = document.getElementById('lanc-desc').value.trim();
+    if(!valor || valor <= 0){
+      toast('Informe um valor maior que zero.', 'erro');
+      return;
+    }
+    this.disabled = true;
+    this.textContent = 'Registrando...';
+    var novo = await criarLancamento(data, valor, descricao);
+    if(novo){
+      toast('Lançamento registrado!', 'sucesso');
+      renderMetasView();
+    } else {
+      this.disabled = false;
+      this.textContent = 'Registrar lançamento';
+    }
+  });
+
+  // Excluir lançamento
+  container.querySelectorAll('.lancamento-del').forEach(function(btn){
+    btn.addEventListener('click', async function(){
+      var ok = await customConfirm('Esse lançamento será excluído permanentemente.', 'Excluir lançamento?');
+      if(!ok) return;
+      await excluirLancamento(btn.getAttribute('data-lanc-id'));
+      toast('Lançamento excluído.', 'sucesso');
+      renderMetasView();
+    });
+  });
+}
+
 function renderDetalheDoDia(dataStr){
   var itens = leadsNoDia(dataStr);
   var d = new Date(dataStr + 'T00:00:00');
@@ -1873,6 +2099,7 @@ document.getElementById('tab-funil').addEventListener('click', function(){ switc
 document.getElementById('tab-dash').addEventListener('click', function(){ switchTab('dash'); });
 document.getElementById('tab-clientes').addEventListener('click', function(){ switchTab('clientes'); });
 document.getElementById('tab-calendario').addEventListener('click', function(){ switchTab('calendario'); });
+document.getElementById('tab-metas').addEventListener('click', function(){ switchTab('metas'); });
 
 document.getElementById('busca-cliente').addEventListener('input', function(){
   buscaClienteTexto = this.value;
@@ -1889,16 +2116,19 @@ function switchTab(tab){
   document.getElementById('tab-dash').classList.toggle('active', tab === 'dash');
   document.getElementById('tab-clientes').classList.toggle('active', tab === 'clientes');
   document.getElementById('tab-calendario').classList.toggle('active', tab === 'calendario');
+  document.getElementById('tab-metas').classList.toggle('active', tab === 'metas');
   document.getElementById('board').style.display = tab === 'funil' ? 'grid' : 'none';
   var headersRow = document.getElementById('board-headers');
   if (headersRow) headersRow.style.display = tab === 'funil' ? 'grid' : 'none';
   document.getElementById('dash').classList.toggle('open', tab === 'dash');
   document.getElementById('clientes-view').classList.toggle('open', tab === 'clientes');
   document.getElementById('calendario-view').classList.toggle('open', tab === 'calendario');
+  document.getElementById('metas-view').classList.toggle('open', tab === 'metas');
   document.querySelector('.filters').style.display = tab === 'funil' ? 'flex' : 'none';
   if(tab === 'dash') renderDashboard();
   if(tab === 'clientes') renderClientesView();
   if(tab === 'calendario') renderCalendario();
+  if(tab === 'metas') renderMetasView();
 }
 
 function showLogin(){
