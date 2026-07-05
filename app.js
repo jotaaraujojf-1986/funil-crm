@@ -1909,7 +1909,6 @@ async function renderMetasView(){
 
   var diasRestantes = getDiasUteisRestantes(ano, mes, sabadosUteis);
   var faltaParaMeta = Math.max(0, metaMensal - totalLancado);
-  var metaDiaRecalculada = diasRestantes > 0 ? faltaParaMeta / diasRestantes : 0;
   var metaAcumuladaAteHoje = metaDia * diasUteisAteHoje;
   var diferenca = totalLancado - metaAcumuladaAteHoje;
   var hojeStr = todayStr();
@@ -1924,7 +1923,7 @@ async function renderMetasView(){
   html += '<div class="metas-section" style="border-left:4px solid var(--amber);">';
   html += '<h3>Meta de hoje — ' + (function(){ var d = new Date(); return d.getDate() + ' de ' + MESES_PT[d.getMonth()]; })() + '</h3>';
 
-  var metaHojeRecalc = diasRestantes > 0 ? metaDiaRecalculada : metaDia;
+  var metaHojeRecalc = (diasRestantes + 1) > 0 ? faltaParaMeta / (diasRestantes + 1) : metaDia;
   var diferencaHojeRecalc = vendidoHoje - metaHojeRecalc;
   var pctHojeRecalc = metaHojeRecalc > 0 ? Math.min(100, Math.round((vendidoHoje / metaHojeRecalc) * 100)) : 0;
   var faltaHojeRecalc = Math.max(0, metaHojeRecalc - vendidoHoje);
@@ -1934,8 +1933,7 @@ async function renderMetasView(){
   html += '<div><div class="meta-dia-num">' + fmtMoney(vendidoHoje) + '</div><div class="meta-dia-label">Vendido hoje</div></div>';
   html += '<div><div class="meta-dia-num" style="color:' + (diferencaHojeRecalc >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (diferencaHojeRecalc >= 0 ? '+' : '') + fmtMoney(diferencaHojeRecalc) + '</div><div class="meta-dia-label">Diferença</div></div>';
   if(diasRestantes > 0){
-    var metaProxDias = (faltaParaMeta - Math.max(0, metaHojeRecalc - vendidoHoje)) / diasRestantes;
-    metaProxDias = Math.max(0, metaProxDias);
+    var metaProxDias = diasRestantes > 0 ? Math.max(0, faltaParaMeta - vendidoHoje) / diasRestantes : 0;
     html += '<div><div class="meta-dia-num" style="color:var(--blue);">' + fmtMoney(metaProxDias) + '</div><div class="meta-dia-label">Meta recalculada próx. dias</div></div>';
   }
   html += '</div>';
