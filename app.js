@@ -1923,18 +1923,21 @@ async function renderMetasView(){
   var html = '';
   html += '<div class="metas-section" style="border-left:4px solid var(--amber);">';
   html += '<h3>Meta de hoje — ' + (function(){ var d = new Date(); return d.getDate() + ' de ' + MESES_PT[d.getMonth()]; })() + '</h3>';
+
+  var metaHojeRecalc = diasRestantes > 0 ? metaDiaRecalculada : metaDia;
+  var diferencaHojeRecalc = vendidoHoje - metaHojeRecalc;
+  var pctHojeRecalc = metaHojeRecalc > 0 ? Math.min(100, Math.round((vendidoHoje / metaHojeRecalc) * 100)) : 0;
+  var faltaHojeRecalc = Math.max(0, metaHojeRecalc - vendidoHoje);
+
   html += '<div style="display:flex; align-items:baseline; gap:24px; flex-wrap:wrap; margin-bottom:14px;">';
-  html += '<div><div class="meta-dia-num">' + fmtMoney(metaDia) + '</div><div class="meta-dia-label">Meta do dia</div></div>';
+  html += '<div><div class="meta-dia-num">' + fmtMoney(metaHojeRecalc) + '</div><div class="meta-dia-label">Meta de hoje (recalculada)</div></div>';
   html += '<div><div class="meta-dia-num">' + fmtMoney(vendidoHoje) + '</div><div class="meta-dia-label">Vendido hoje</div></div>';
-  html += '<div><div class="meta-dia-num" style="color:' + (diferencaHoje >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (diferencaHoje >= 0 ? '+' : '') + fmtMoney(diferencaHoje) + '</div><div class="meta-dia-label">Diferença de hoje</div></div>';
-  if(diasRestantes > 0){
-    html += '<div><div class="meta-dia-num" style="color:var(--blue);">' + fmtMoney(metaDiaRecalculada) + '</div><div class="meta-dia-label">Meta recalculada próx. dias</div></div>';
-  }
+  html += '<div><div class="meta-dia-num" style="color:' + (diferencaHojeRecalc >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (diferencaHojeRecalc >= 0 ? '+' : '') + fmtMoney(diferencaHojeRecalc) + '</div><div class="meta-dia-label">Diferença</div></div>';
   html += '</div>';
-  html += '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pctHoje + '%;"></div></div>';
-  html += '<p class="meta-box-sub">' + pctHoje + '% da meta do dia · ';
-  if(faltaHoje > 0){
-    html += 'faltam ' + fmtMoney(faltaHoje) + ' para fechar o dia';
+  html += '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pctHojeRecalc + '%;"></div></div>';
+  html += '<p class="meta-box-sub">' + pctHojeRecalc + '% da meta de hoje · ';
+  if(faltaHojeRecalc > 0){
+    html += 'faltam ' + fmtMoney(faltaHojeRecalc) + ' para fechar o dia';
   } else {
     html += 'meta do dia atingida! 🎉';
   }
