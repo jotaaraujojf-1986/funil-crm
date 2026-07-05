@@ -1931,7 +1931,7 @@ async function renderMetasView(){
 
   function getMetaMes(m){
     var found = metasMensaisAno.find(function(x){ return x.mes === m; });
-    return found ? found.valor : metaMensal;
+    return found ? found.valor : 0;
   }
   metaMensal = getMetaMes(mes);
   var metaDia = totalDiasUteis > 0 ? metaMensal / totalDiasUteis : 0;
