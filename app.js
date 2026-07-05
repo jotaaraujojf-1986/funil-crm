@@ -2079,10 +2079,11 @@ async function renderMetasView(){
   html += '<p class="meta-dia-label" style="margin-bottom:12px;">Defina uma meta diferente para cada mês. Deixe em branco para usar a meta padrão (R$ ' + fmtMoney(metaMensal) + ').</p>';
   html += '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;" id="planejador-metas-grid">';
   for(var pm = 0; pm < 12; pm++){
-    var metaPm = getMetaMes(pm);
+    var metaPmFound = metasMensaisAno.find(function(x){ return x.mes === pm; });
+    var metaPmVal = metaPmFound ? metaPmFound.valor : 0;
     html += '<div class="field" style="margin:0;">';
     html += '<label>' + MESES_PT[pm].charAt(0).toUpperCase() + MESES_PT[pm].slice(1) + '</label>';
-    html += '<input type="text" inputmode="numeric" class="meta-mes-input" data-mes="' + pm + '" value="' + (metaPm && metaPm !== metaMensal ? formatValorParaInput(metaPm) : '') + '" placeholder="' + formatValorParaInput(metaMensal) + '">';
+    html += '<input type="text" inputmode="numeric" class="meta-mes-input" data-mes="' + pm + '" value="' + (metaPmVal > 0 ? formatValorParaInput(metaPmVal) : '') + '" placeholder="Sem meta">';
     html += '</div>';
   }
   html += '</div>';
