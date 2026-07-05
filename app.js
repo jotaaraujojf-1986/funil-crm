@@ -348,6 +348,39 @@ async function salvarSabadosUteis(sabados){
   if(res.error){ console.error('Erro ao salvar sábados', res.error); showSyncError(); }
 }
 
+async function loadMetasMensais(ano){
+  var res = await sb.from('metas_mensais').select('*')
+    .eq('user_id', currentUserId)
+    .eq('ano', ano)
+    .order('mes', {ascending:true});
+  if(res.error){ console.error('Erro ao carregar metas mensais', res.error); return []; }
+  return res.data.map(function(r){ return {mes: r.mes, valor: Number(r.valor)||0}; });
+}
+
+async function salvarMetaMensal(ano, mes, valor){
+  var res = await sb.from('metas_mensais').upsert({
+    user_id: currentUserId,
+    ano: ano,
+    mes: mes,
+    valor: valor
+  }, {onConflict: 'user_id,ano,mes'});
+  if(res.error){ console.error('Erro ao salvar meta mensal', res.error); showSyncError(); }
+}
+
+async function loadLancamentosDoAno(ano){
+  var inicio = ano + '-01-01';
+  var fim = ano + '-12-31';
+  var res = await sb.from('lancamentos_diarios').select('*')
+    .eq('user_id', currentUserId)
+    .gte('data', inicio)
+    .lte('data', fim)
+    .order('data', {ascending:true});
+  if(res.error){ console.error('Erro ao carregar lançamentos do ano', res.error); return []; }
+  return res.data.map(function(r){
+    return { id:r.id, data:String(r.data).slice(0,10), valor:Number(r.valor)||0, descricao:r.descricao||'' };
+  });
+}
+
 // ---------- Configurações (limites de tempo por etapa) ----------
 
 async function loadConfiguracoes(){
@@ -1888,6 +1921,14 @@ async function renderMetasView(){
   var diasUteisAteHoje = getDiasUteisAteHoje(ano, mes, sabadosUteis);
   var metaDia = totalDiasUteis > 0 ? metaMensal / totalDiasUteis : 0;
   var hojeStr = todayStr();
+  var anoAtual = ano;
+  var lancamentosAno = await loadLancamentosDoAno(anoAtual);
+  var metasMensaisAno = await loadMetasMensais(anoAtual);
+
+  function getMetaMes(m){
+    var found = metasMensaisAno.find(function(x){ return x.mes === m; });
+    return found ? found.valor : metaMensal;
+  }
   var totalLancado = lancamentos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
   var totalLancadoAntesDehoje = lancamentos.filter(function(l){ return String(l.data).slice(0,10) < hojeStr; }).reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
   var sabadosDoMes = getSabadosDoMes(ano, mes);
@@ -2026,6 +2067,39 @@ async function renderMetasView(){
   }
   html += '</div>';
 
+  // Card: Planejador de metas mensais escaláveis
+  html += '<div class="metas-section">';
+  html += '<h3>Planejamento de metas por mês — ' + anoAtual + '</h3>';
+  html += '<p class="meta-dia-label" style="margin-bottom:12px;">Defina uma meta diferente para cada mês. Deixe em branco para usar a meta padrão (R$ ' + fmtMoney(metaMensal) + ').</p>';
+  html += '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;" id="planejador-metas-grid">';
+  for(var pm = 0; pm < 12; pm++){
+    var metaPm = getMetaMes(pm);
+    html += '<div class="field" style="margin:0;">';
+    html += '<label>' + MESES_PT[pm].charAt(0).toUpperCase() + MESES_PT[pm].slice(1) + '</label>';
+    html += '<input type="text" inputmode="numeric" class="meta-mes-input" data-mes="' + pm + '" value="' + (metaPm && metaPm !== metaMensal ? formatValorParaInput(metaPm) : '') + '" placeholder="' + formatValorParaInput(metaMensal) + '">';
+    html += '</div>';
+  }
+  html += '</div>';
+  html += '<button class="btn-primary" style="margin-top:14px;" id="btn-salvar-metas-mensais">Salvar planejamento</button>';
+  html += '</div>';
+
+  // Card: Dashboard de evolução — gráficos
+  html += '<div class="metas-section">';
+  html += '<h3>Evolução de vendas — ' + anoAtual + '</h3>';
+  html += '<div class="dash-grid" style="margin-bottom:16px;">';
+
+  // Gráfico 1: diário (mês atual)
+  html += '<div class="dash-card"><h3>Vendas dia a dia — ' + MESES_PT[mes] + '</h3><p class="sub">Vendido vs. meta diária</p><div class="chart-wrap"><canvas id="chart-evo-diario"></canvas></div></div>';
+
+  // Gráfico 2: mensal (ano atual)
+  html += '<div class="dash-card"><h3>Vendas mensais — ' + anoAtual + '</h3><p class="sub">Total vendido por mês vs. meta</p><div class="chart-wrap"><canvas id="chart-evo-mensal"></canvas></div></div>';
+
+  // Gráfico 3: anual — acumulado + projeção
+  html += '<div class="dash-card" style="grid-column:1/-1;"><h3>Acumulado anual e projeção</h3><p class="sub">Linha real + projeção de fechamento do ano no ritmo atual</p><div class="chart-wrap"><canvas id="chart-evo-anual"></canvas></div></div>';
+
+  html += '</div>';
+  html += '</div>';
+
   container.innerHTML = html;
 
   // Listeners sábados
@@ -2156,6 +2230,135 @@ async function renderMetasView(){
       });
     });
   });
+
+  // Listeners do planejador
+  document.querySelectorAll('.meta-mes-input').forEach(function(input){
+    input.addEventListener('input', function(){
+      this.value = maskValor(this.value);
+    });
+  });
+
+  document.getElementById('btn-salvar-metas-mensais').addEventListener('click', async function(){
+    this.disabled = true;
+    this.textContent = 'Salvando...';
+    var inputs = document.querySelectorAll('.meta-mes-input');
+    for(var i = 0; i < inputs.length; i++){
+      var inp = inputs[i];
+      var m = Number(inp.getAttribute('data-mes'));
+      var v = parseValorMascarado(inp.value) || metaMensal;
+      await salvarMetaMensal(anoAtual, m, v);
+    }
+    toast('Planejamento de metas salvo!', 'sucesso');
+    this.disabled = false;
+    this.textContent = 'Salvar planejamento';
+    metasMensaisAno = await loadMetasMensais(anoAtual);
+    renderGraficosEvolucao();
+  });
+
+  renderGraficosEvolucao();
+
+  function renderGraficosEvolucao(){
+    // Destruir gráficos existentes
+    ['chart-evo-diario','chart-evo-mensal','chart-evo-anual'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el) return;
+      var existing = Chart.getChart(el);
+      if(existing) existing.destroy();
+    });
+
+    // GRÁFICO 1: Vendas dia a dia no mês atual
+    var diasDoMes = new Date(ano, mes+1, 0).getDate();
+    var labelsDiario = [];
+    var vendidoDiario = [];
+    var metaDiaria = [];
+    for(var d = 1; d <= diasDoMes; d++){
+      var dStr = ano + '-' + String(mes+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+      labelsDiario.push(String(d));
+      var v = lancamentos.filter(function(l){ return String(l.data).slice(0,10) === dStr; }).reduce(function(s,l){ return s + l.valor; }, 0);
+      vendidoDiario.push(v);
+      metaDiaria.push(Math.round(metaHojeRecalc * 100) / 100);
+    }
+    try{
+      new Chart(document.getElementById('chart-evo-diario'), {
+        type: 'bar',
+        data: {
+          labels: labelsDiario,
+          datasets: [
+            { label:'Vendido', data: vendidoDiario, backgroundColor:'rgba(232,163,23,0.8)', borderRadius:4 },
+            { label:'Meta do dia', data: metaDiaria, type:'line', borderColor:'#C0392B', borderWidth:2, pointRadius:0, fill:false }
+          ]
+        },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$' + v.toLocaleString('pt-BR'); } } } } }
+      });
+    }catch(e){ console.error('Erro gráfico diário', e); }
+
+    // GRÁFICO 2: Total vendido por mês vs. meta
+    var labelsMensal = MESES_PT.map(function(m){ return m.slice(0,3).charAt(0).toUpperCase() + m.slice(1,3); });
+    var vendidoMensal = [];
+    var metaMensal12 = [];
+    for(var m2 = 0; m2 < 12; m2++){
+      var prefixo = anoAtual + '-' + String(m2+1).padStart(2,'0');
+      var total = lancamentosAno.filter(function(l){ return l.data.startsWith(prefixo); }).reduce(function(s,l){ return s + l.valor; }, 0);
+      vendidoMensal.push(total);
+      metaMensal12.push(getMetaMes(m2));
+    }
+    try{
+      new Chart(document.getElementById('chart-evo-mensal'), {
+        type: 'bar',
+        data: {
+          labels: labelsMensal,
+          datasets: [
+            { label:'Vendido', data: vendidoMensal, backgroundColor:'rgba(46,125,79,0.8)', borderRadius:4 },
+            { label:'Meta', data: metaMensal12, type:'line', borderColor:'#E8A317', borderWidth:2, pointRadius:3, fill:false }
+          ]
+        },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$' + v.toLocaleString('pt-BR'); } } } } }
+      });
+    }catch(e){ console.error('Erro gráfico mensal', e); }
+
+    // GRÁFICO 3: Acumulado anual + projeção
+    var labelsAnual = MESES_PT.map(function(m){ return m.slice(0,3).charAt(0).toUpperCase() + m.slice(1,3); });
+    var acumuladoReal = [];
+    var acumuladoMeta = [];
+    var acumuladoProjecao = [];
+    var somaReal = 0;
+    var somaMeta = 0;
+    var mesAtualIdx = new Date().getMonth();
+    var totalVendidoAte = 0;
+    var mesesComDados = 0;
+    for(var m3 = 0; m3 < 12; m3++){
+      var pref = anoAtual + '-' + String(m3+1).padStart(2,'0');
+      var tv = lancamentosAno.filter(function(l){ return l.data.startsWith(pref); }).reduce(function(s,l){ return s + l.valor; }, 0);
+      somaReal += tv;
+      somaMeta += getMetaMes(m3);
+      acumuladoMeta.push(somaMeta);
+      if(m3 <= mesAtualIdx){
+        acumuladoReal.push(somaReal);
+        if(tv > 0) mesesComDados++;
+        totalVendidoAte = somaReal;
+        acumuladoProjecao.push(null);
+      } else {
+        acumuladoReal.push(null);
+        var mediasMeses = mesAtualIdx + 1;
+        var mediaMensalVal = mediasMeses > 0 ? totalVendidoAte / mediasMeses : 0;
+        acumuladoProjecao.push(totalVendidoAte + mediaMensalVal * (m3 - mesAtualIdx));
+      }
+    }
+    try{
+      new Chart(document.getElementById('chart-evo-anual'), {
+        type: 'line',
+        data: {
+          labels: labelsAnual,
+          datasets: [
+            { label:'Acumulado real', data: acumuladoReal, borderColor:'#2E7D4F', backgroundColor:'rgba(46,125,79,0.1)', fill:true, tension:0.3, pointBackgroundColor:'#2E7D4F' },
+            { label:'Meta acumulada', data: acumuladoMeta, borderColor:'#E8A317', borderDash:[6,3], borderWidth:2, pointRadius:0, fill:false },
+            { label:'Projeção', data: acumuladoProjecao, borderColor:'#2B6CA3', borderDash:[4,4], borderWidth:2, pointRadius:3, fill:false }
+          ]
+        },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$' + v.toLocaleString('pt-BR'); } } } } }
+      });
+    }catch(e){ console.error('Erro gráfico anual', e); }
+  }
 }
 
 function renderDetalheDoDia(dataStr){
