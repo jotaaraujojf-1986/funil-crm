@@ -358,12 +358,20 @@ async function loadMetasMensais(ano){
 }
 
 async function salvarMetaMensal(ano, mes, valor){
-  var res = await sb.from('metas_mensais').upsert({
+  await sb.from('metas_mensais').delete()
+    .eq('user_id', currentUserId)
+    .eq('ano', Number(ano))
+    .eq('mes', Number(mes));
+
+  if(!valor || valor <= 0) return true;
+
+  var res = await sb.from('metas_mensais').insert({
     user_id: currentUserId,
     ano: Number(ano),
     mes: Number(mes),
     valor: Number(valor)
-  }, {onConflict: 'user_id,ano,mes'});
+  });
+
   if(res.error){
     console.error('Erro ao salvar meta mensal', res.error);
     showSyncError();
