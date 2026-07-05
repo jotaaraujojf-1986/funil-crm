@@ -1919,7 +1919,6 @@ async function renderMetasView(){
 
   var totalDiasUteis = getDiasUteisDoMes(ano, mes, sabadosUteis);
   var diasUteisAteHoje = getDiasUteisAteHoje(ano, mes, sabadosUteis);
-  var metaDia = totalDiasUteis > 0 ? metaMensal / totalDiasUteis : 0;
   var hojeStr = todayStr();
   var anoAtual = ano;
   var lancamentosAno = await loadLancamentosDoAno(anoAtual);
@@ -1929,6 +1928,8 @@ async function renderMetasView(){
     var found = metasMensaisAno.find(function(x){ return x.mes === m; });
     return found ? found.valor : metaMensal;
   }
+  metaMensal = getMetaMes(mes);
+  var metaDia = totalDiasUteis > 0 ? metaMensal / totalDiasUteis : 0;
   var totalLancado = lancamentos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
   var totalLancadoAntesDehoje = lancamentos.filter(function(l){ return String(l.data).slice(0,10) < hojeStr; }).reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
   var sabadosDoMes = getSabadosDoMes(ano, mes);
@@ -2558,9 +2559,7 @@ function abrirModalConfig(){
   var modal = document.getElementById('modal-config');
 
   modal.innerHTML = '<h2>Configurações</h2>' +
-    '<p class="cliente-section-title" style="margin-top:0;">Meta de vendas</p>' +
-    field('Meta mensal (R$)', '<input type="number" min="0" step="100" id="cfg-meta-mensal" value="' + metaMensal + '" placeholder="Ex: 30000">') +
-    '<p class="cliente-section-title">Limites de tempo por etapa</p>' +
+    '<p class="cliente-section-title" style="margin-top:0;">Limites de tempo por etapa</p>' +
     '<p class="anexo-vazio">Defina, em dias, quando um negócio parado nessa etapa deve virar alerta (amarelo) ou crítico (vermelho).</p>' +
     etapasConfiguraveis.map(function(stageId){
       var st = STAGES.find(function(s){ return s.id === stageId; });
@@ -2590,8 +2589,7 @@ function abrirModalConfig(){
         critico: Number(document.getElementById('cfg-' + stageId + '-critico').value) || 14
       };
     });
-    var novaMeta = Number(document.getElementById('cfg-meta-mensal').value) || 0;
-    await salvarConfiguracoes(novosLimites, novaMeta);
+    await salvarConfiguracoes(novosLimites, metaMensal);
     document.getElementById('overlay-config').classList.remove('open');
     render();
     if(document.getElementById('tab-dash').classList.contains('active')) renderDashboard();
