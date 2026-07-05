@@ -412,7 +412,7 @@ async function loadConfiguracoes(){
 async function salvarConfiguracoes(novosLimites, novaMeta){
   limitesEtapa = novosLimites;
   metaMensal = novaMeta;
-  var res = await sb.from('configuracoes').upsert({ user_id: currentUserId, limites_etapa: novosLimites, meta_mensal: novaMeta, sabados_uteis: sabadosUteis });
+  var res = await sb.from('configuracoes').upsert({ user_id: currentUserId, limites_etapa: novosLimites, meta_mensal: 0, sabados_uteis: sabadosUteis });
   if(res.error){ console.error('Erro ao salvar configurações', res.error); showSyncError(); }
 }
 
