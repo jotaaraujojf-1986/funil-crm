@@ -1835,7 +1835,9 @@ function renderCalendario(){
 
 async function renderMetasView(){
   var container = document.getElementById('metas-container');
-  container.innerHTML = '<p class="anexo-vazio">Carregando...</p>';
+  if(!container.hasChildNodes()){
+    container.innerHTML = '<p class="anexo-vazio">Carregando...</p>';
+  }
 
   var hoje = new Date();
   var ano = hoje.getFullYear();
