@@ -360,11 +360,16 @@ async function loadMetasMensais(ano){
 async function salvarMetaMensal(ano, mes, valor){
   var res = await sb.from('metas_mensais').upsert({
     user_id: currentUserId,
-    ano: ano,
-    mes: mes,
-    valor: valor
+    ano: Number(ano),
+    mes: Number(mes),
+    valor: Number(valor)
   }, {onConflict: 'user_id,ano,mes'});
-  if(res.error){ console.error('Erro ao salvar meta mensal', res.error); showSyncError(); }
+  if(res.error){
+    console.error('Erro ao salvar meta mensal', res.error);
+    showSyncError();
+    return false;
+  }
+  return true;
 }
 
 async function loadLancamentosDoAno(ano){
@@ -2240,19 +2245,34 @@ async function renderMetasView(){
   });
 
   document.getElementById('btn-salvar-metas-mensais').addEventListener('click', async function(){
-    this.disabled = true;
-    this.textContent = 'Salvando...';
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
     var inputs = document.querySelectorAll('.meta-mes-input');
+    var erros = 0;
+
     for(var i = 0; i < inputs.length; i++){
       var inp = inputs[i];
       var m = Number(inp.getAttribute('data-mes'));
-      var v = parseValorMascarado(inp.value) || metaMensal;
-      await salvarMetaMensal(anoAtual, m, v);
+      var valorDigitado = inp.value.trim();
+      var v = valorDigitado ? parseValorMascarado(valorDigitado) : 0;
+      if(v > 0){
+        var ok = await salvarMetaMensal(anoAtual, m, v);
+        if(!ok) erros++;
+      }
     }
-    toast('Planejamento de metas salvo!', 'sucesso');
-    this.disabled = false;
-    this.textContent = 'Salvar planejamento';
+
+    if(erros === 0){
+      toast('Planejamento de metas salvo!', 'sucesso');
+    } else {
+      toast('Algumas metas não foram salvas. Verifique sua conexão.', 'erro');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Salvar planejamento';
     metasMensaisAno = await loadMetasMensais(anoAtual);
+    metaMensal = getMetaMes(mes);
     renderGraficosEvolucao();
   });
 
