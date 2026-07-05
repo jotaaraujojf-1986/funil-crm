@@ -1887,7 +1887,9 @@ async function renderMetasView(){
   var totalDiasUteis = getDiasUteisDoMes(ano, mes, sabadosUteis);
   var diasUteisAteHoje = getDiasUteisAteHoje(ano, mes, sabadosUteis);
   var metaDia = totalDiasUteis > 0 ? metaMensal / totalDiasUteis : 0;
+  var hojeStr = todayStr();
   var totalLancado = lancamentos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+  var totalLancadoAntesDehoje = lancamentos.filter(function(l){ return String(l.data).slice(0,10) < hojeStr; }).reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
   var sabadosDoMes = getSabadosDoMes(ano, mes);
   var pctMes = metaMensal > 0 ? Math.min(100, Math.round((totalLancado / metaMensal) * 100)) : 0;
   var faltaMes = Math.max(0, metaMensal - totalLancado);
@@ -1911,9 +1913,9 @@ async function renderMetasView(){
 
   var diasRestantes = getDiasUteisRestantes(ano, mes, sabadosUteis);
   var faltaParaMeta = Math.max(0, metaMensal - totalLancado);
+  var faltaParaMetaNoInicioDoDia = Math.max(0, metaMensal - totalLancadoAntesDehoje);
   var metaAcumuladaAteHoje = metaDia * diasUteisAteHoje;
   var diferenca = totalLancado - metaAcumuladaAteHoje;
-  var hojeStr = todayStr();
 
   // Calcular o que foi vendido especificamente hoje
   var vendidoHoje = lancamentos.filter(function(l){ return l.data === hojeStr; }).reduce(function(s,l){ return s + l.valor; }, 0);
@@ -1928,11 +1930,11 @@ async function renderMetasView(){
   html += '<div class="metas-section" style="border-left:4px solid var(--amber);">';
   html += '<h3>Meta de hoje — ' + (function(){ var d = new Date(); return d.getDate() + ' de ' + MESES_PT[d.getMonth()]; })() + '</h3>';
 
-  var metaHojeRecalc = (diasRestantes + 1) > 0 ? faltaParaMeta / (diasRestantes + 1) : metaDia;
+  var metaHojeRecalc = (diasRestantes + 1) > 0 ? faltaParaMetaNoInicioDoDia / (diasRestantes + 1) : metaDia;
   var diferencaHojeRecalc = vendidoHoje - metaHojeRecalc;
   var pctHojeRecalc = metaHojeRecalc > 0 ? Math.min(100, Math.round((vendidoHoje / metaHojeRecalc) * 100)) : 0;
   var faltaHojeRecalc = Math.max(0, metaHojeRecalc - vendidoHoje);
-  var metaProxDias = diasRestantes > 0 ? Math.max(0, faltaParaMeta - vendidoHoje) / diasRestantes : 0;
+  var metaProxDias = diasRestantes > 0 ? Math.max(0, faltaParaMeta) / diasRestantes : 0;
 
   html += '<div style="display:flex; align-items:baseline; gap:32px; flex-wrap:wrap; margin-bottom:14px;">';
   html += '<div><div class="meta-dia-num">' + fmtMoney(metaHojeRecalc) + '</div><div class="meta-dia-label">Meta de hoje (recalculada)</div></div>';
