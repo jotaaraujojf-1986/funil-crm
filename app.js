@@ -401,7 +401,7 @@ async function loadConfiguracoes(){
   if(res.error){ console.error('Erro ao carregar configurações', res.error); return; }
   if(res.data && res.data.limites_etapa){
     limitesEtapa = res.data.limites_etapa;
-    metaMensal = Number(res.data.meta_mensal) || 0;
+    metaMensal = 0;
     sabadosUteis = Array.isArray(res.data.sabados_uteis) ? res.data.sabados_uteis : [];
   } else {
     // primeiro acesso: cria a linha de configuração com os valores padrão
@@ -2280,9 +2280,7 @@ async function renderMetasView(){
 
     btn.disabled = false;
     btn.textContent = 'Salvar planejamento';
-    metasMensaisAno = await loadMetasMensais(anoAtual);
-    metaMensal = getMetaMes(mes);
-    renderGraficosEvolucao();
+    renderMetasView();
   });
 
   renderGraficosEvolucao();
