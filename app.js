@@ -2016,6 +2016,7 @@ async function renderMetasView(){
         '<div><span class="ldata">' + dataFmt + '</span>' + (l.descricao ? ' — <span class="ldesc">' + escapeHtml(l.descricao) + '</span>' : '') + '</div>' +
         '<div style="display:flex; align-items:center; gap:10px;">' +
           '<span class="lvalor">' + fmtMoney(l.valor) + '</span>' +
+          '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-lanc-edit-id="' + l.id + '" data-lanc-data="' + l.data + '" data-lanc-valor="' + l.valor + '" data-lanc-desc="' + escapeHtml(l.descricao) + '" title="Editar">✏️</button>' +
           '<button class="lancamento-del" data-lanc-id="' + l.id + '" title="Excluir">✕</button>' +
         '</div>' +
       '</div>';
@@ -2077,6 +2078,80 @@ async function renderMetasView(){
       await excluirLancamento(btn.getAttribute('data-lanc-id'));
       toast('Lançamento excluído.', 'sucesso');
       renderMetasView();
+    });
+  });
+
+  container.querySelectorAll('[data-lanc-edit-id]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var lancId = btn.getAttribute('data-lanc-edit-id');
+      var lancData = btn.getAttribute('data-lanc-data');
+      var lancValor = Number(btn.getAttribute('data-lanc-valor')) || 0;
+      var lancDesc = btn.getAttribute('data-lanc-desc') || '';
+
+      var editArea = document.getElementById('edit-lanc-' + lancId);
+      if(editArea){
+        editArea.remove();
+        return;
+      }
+
+      var row = btn.closest('.lancamento-row');
+      var formDiv = document.createElement('div');
+      formDiv.id = 'edit-lanc-' + lancId;
+      formDiv.style = 'background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-top:6px;';
+      formDiv.innerHTML =
+        '<div class="row2" style="margin-bottom:8px;">' +
+          '<div class="field" style="margin:0;"><label>Data</label><input type="date" id="edit-lanc-data-' + lancId + '" value="' + lancData + '"></div>' +
+          '<div class="field" style="margin:0;"><label>Valor (R$)</label><input type="text" id="edit-lanc-valor-' + lancId + '" inputmode="numeric" value="' + formatValorParaInput(lancValor) + '"></div>' +
+        '</div>' +
+        '<div class="field" style="margin-bottom:8px;"><label>Descrição</label><input type="text" id="edit-lanc-desc-' + lancId + '" value="' + lancDesc + '" placeholder="Descrição (opcional)"></div>' +
+        '<div style="display:flex; gap:8px;">' +
+          '<button class="btn-primary" style="font-size:13px; padding:8px 14px;" id="btn-salvar-lanc-' + lancId + '">Salvar</button>' +
+          '<button class="btn-ghost" style="font-size:13px; padding:8px 14px;" id="btn-cancelar-lanc-' + lancId + '">Cancelar</button>' +
+        '</div>';
+
+      row.insertAdjacentElement('afterend', formDiv);
+
+      var inputValorEdit = document.getElementById('edit-lanc-valor-' + lancId);
+      if(inputValorEdit){
+        inputValorEdit.addEventListener('input', function(){
+          this.value = maskValor(this.value);
+        });
+      }
+
+      document.getElementById('btn-cancelar-lanc-' + lancId).addEventListener('click', function(){
+        formDiv.remove();
+      });
+
+      document.getElementById('btn-salvar-lanc-' + lancId).addEventListener('click', async function(){
+        var novaData = document.getElementById('edit-lanc-data-' + lancId).value;
+        var novoValor = parseValorMascarado(document.getElementById('edit-lanc-valor-' + lancId).value);
+        var novaDesc = document.getElementById('edit-lanc-desc-' + lancId).value.trim();
+
+        if(!novoValor || novoValor <= 0){
+          toast('Informe um valor maior que zero.', 'erro');
+          return;
+        }
+
+        this.disabled = true;
+        this.textContent = 'Salvando...';
+
+        var res = await sb.from('lancamentos_diarios').update({
+          data: novaData,
+          valor: novoValor,
+          descricao: novaDesc || null
+        }).eq('id', lancId).eq('user_id', currentUserId);
+
+        if(res.error){
+          toast('Não foi possível salvar a alteração.', 'erro');
+          this.disabled = false;
+          this.textContent = 'Salvar';
+          return;
+        }
+
+        toast('Lançamento atualizado!', 'sucesso');
+        formDiv.remove();
+        renderMetasView();
+      });
     });
   });
 }
