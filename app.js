@@ -1920,6 +1920,9 @@ async function renderMetasView(){
   var faltaHoje = Math.max(0, metaDia - vendidoHoje);
 
   var html = '';
+
+  // Linha 1: card de hoje (largura total)
+  html += '<div class="metas-grid metas-grid-full" style="display:block;">';
   html += '<div class="metas-section" style="border-left:4px solid var(--amber);">';
   html += '<h3>Meta de hoje — ' + (function(){ var d = new Date(); return d.getDate() + ' de ' + MESES_PT[d.getMonth()]; })() + '</h3>';
 
@@ -1927,54 +1930,50 @@ async function renderMetasView(){
   var diferencaHojeRecalc = vendidoHoje - metaHojeRecalc;
   var pctHojeRecalc = metaHojeRecalc > 0 ? Math.min(100, Math.round((vendidoHoje / metaHojeRecalc) * 100)) : 0;
   var faltaHojeRecalc = Math.max(0, metaHojeRecalc - vendidoHoje);
+  var metaProxDias = diasRestantes > 0 ? Math.max(0, faltaParaMeta - vendidoHoje) / diasRestantes : 0;
 
-  html += '<div style="display:flex; align-items:baseline; gap:24px; flex-wrap:wrap; margin-bottom:14px;">';
+  html += '<div style="display:flex; align-items:baseline; gap:32px; flex-wrap:wrap; margin-bottom:14px;">';
   html += '<div><div class="meta-dia-num">' + fmtMoney(metaHojeRecalc) + '</div><div class="meta-dia-label">Meta de hoje (recalculada)</div></div>';
   html += '<div><div class="meta-dia-num">' + fmtMoney(vendidoHoje) + '</div><div class="meta-dia-label">Vendido hoje</div></div>';
   html += '<div><div class="meta-dia-num" style="color:' + (diferencaHojeRecalc >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (diferencaHojeRecalc >= 0 ? '+' : '') + fmtMoney(diferencaHojeRecalc) + '</div><div class="meta-dia-label">Diferença</div></div>';
   if(diasRestantes > 0){
-    var metaProxDias = diasRestantes > 0 ? Math.max(0, faltaParaMeta - vendidoHoje) / diasRestantes : 0;
     html += '<div><div class="meta-dia-num" style="color:var(--blue);">' + fmtMoney(metaProxDias) + '</div><div class="meta-dia-label">Meta recalculada próx. dias</div></div>';
   }
   html += '</div>';
   html += '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pctHojeRecalc + '%;"></div></div>';
   html += '<p class="meta-box-sub">' + pctHojeRecalc + '% da meta de hoje · ';
-  if(faltaHojeRecalc > 0){
-    html += 'faltam ' + fmtMoney(faltaHojeRecalc) + ' para fechar o dia';
-  } else {
-    html += 'meta do dia atingida! 🎉';
-  }
-  if(diasRestantes > 0){
-    html += ' · ' + diasRestantes + ' dia(s) útil(eis) restantes no mês';
-  }
+  html += faltaHojeRecalc > 0 ? 'faltam ' + fmtMoney(faltaHojeRecalc) + ' para fechar o dia' : 'meta do dia atingida! 🎉';
+  if(diasRestantes > 0) html += ' · ' + diasRestantes + ' dia(s) útil(eis) restantes no mês';
   html += '</p>';
   html += '</div>';
+  html += '</div>';
 
-  // Card: Resumo do mês
+  // Linha 2: dois cards lado a lado (resumo do mês + sábados/lançamento)
+  html += '<div class="metas-grid">';
+
+  // Card esquerdo: resumo do mês
   html += '<div class="metas-section">';
   html += '<h3>Meta de ' + MESES_PT[mes] + ' de ' + ano + '</h3>';
-  html += '<div class="dash-kpis" style="margin-bottom:14px;">';
+  html += '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;">';
   html += '<div class="kpi"><div class="num">' + fmtMoney(metaMensal) + '</div><div class="lbl">Meta do mês</div></div>';
   html += '<div class="kpi"><div class="num">' + fmtMoney(metaDia) + '</div><div class="lbl">Meta por dia útil</div></div>';
-  html += '<div class="kpi"><div class="num">' + totalDiasUteis + '</div><div class="lbl">Dias úteis no mês</div></div>';
   html += '<div class="kpi"><div class="num">' + fmtMoney(totalLancado) + '</div><div class="lbl">Total lançado</div></div>';
+  html += '<div class="kpi"><div class="num">' + totalDiasUteis + '</div><div class="lbl">Dias úteis no mês</div></div>';
   html += '<div class="kpi"><div class="num">' + diasUteisAteHoje + '</div><div class="lbl">Dias trabalhados</div></div>';
   html += '<div class="kpi"><div class="num" style="color:' + (diasRestantes <= 3 ? 'var(--red)' : diasRestantes <= 7 ? 'var(--amber-dark)' : 'var(--ink)') + ';">' + diasRestantes + '</div><div class="lbl">Dias úteis restantes</div></div>';
   html += '</div>';
   html += '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pctMes + '%;"></div></div>';
   html += '<p class="meta-box-sub">' + pctMes + '% da meta mensal · ' + (faltaMes > 0 ? 'faltam ' + fmtMoney(faltaMes) : 'meta mensal atingida! 🎉') + '</p>';
-
-  // Status vs meta acumulada
   if(diasUteisAteHoje > 0){
-    if(diferenca >= 0){
-      html += '<p class="meta-status-ahead">▲ Você está R$ ' + Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' à frente da meta acumulada até hoje</p>';
-    } else {
-      html += '<p class="meta-status-behind">▼ Você está R$ ' + Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' abaixo da meta acumulada até hoje</p>';
-    }
+    html += diferenca >= 0
+      ? '<p class="meta-status-ahead">▲ Você está ' + fmtMoney(Math.abs(diferenca)) + ' à frente da meta acumulada até hoje</p>'
+      : '<p class="meta-status-behind">▼ Você está ' + fmtMoney(Math.abs(diferenca)) + ' abaixo da meta acumulada até hoje</p>';
   }
   html += '</div>';
 
-  // Card: Sábados úteis
+  // Card direito: sábados + lançamento
+  html += '<div>';
+
   if(sabadosDoMes.length > 0){
     html += '<div class="metas-section">';
     html += '<h3>Sábados que vou trabalhar</h3>';
@@ -1989,7 +1988,6 @@ async function renderMetasView(){
     html += '</div>';
   }
 
-  // Card: Lançar vendas do dia
   html += '<div class="metas-section">';
   html += '<h3>Lançar vendas do dia</h3>';
   html += '<div class="row2">';
@@ -2000,7 +1998,10 @@ async function renderMetasView(){
   html += '<button class="btn-primary" id="btn-lancar-venda">Registrar lançamento</button>';
   html += '</div>';
 
-  // Card: Histórico de lançamentos
+  html += '</div>';
+  html += '</div>';
+
+  // Linha 3: histórico (largura total)
   html += '<div class="metas-section">';
   html += '<h3>Lançamentos do mês</h3>';
   if(lancamentos.length === 0){

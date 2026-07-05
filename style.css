@@ -956,8 +956,11 @@ html[data-theme="dark"] .modal-trello-col-atividade{ background: rgba(255,255,25
   display:flex; gap:10px; margin-bottom: 18px;
 }
 
-.metas-view{ max-width:900px; margin:0 auto; padding:18px 28px 60px; display:none; }
+.metas-view{ max-width:1320px; margin:0 auto; padding:18px 28px 60px; display:none; }
 .metas-view.open{ display:block; }
+.metas-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.metas-grid-full{ grid-column: 1 / -1; }
+@media (max-width: 880px){ .metas-grid{ grid-template-columns:1fr; } }
 .metas-section{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; margin-bottom:16px; box-shadow:var(--shadow); }
 .metas-section h3{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:16px; text-transform:uppercase; letter-spacing:0.3px; margin:0 0 14px; }
 .meta-dia-num{ font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:28px; color:var(--ink); }
