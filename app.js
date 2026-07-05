@@ -1933,6 +1933,11 @@ async function renderMetasView(){
   html += '<div><div class="meta-dia-num">' + fmtMoney(metaHojeRecalc) + '</div><div class="meta-dia-label">Meta de hoje (recalculada)</div></div>';
   html += '<div><div class="meta-dia-num">' + fmtMoney(vendidoHoje) + '</div><div class="meta-dia-label">Vendido hoje</div></div>';
   html += '<div><div class="meta-dia-num" style="color:' + (diferencaHojeRecalc >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (diferencaHojeRecalc >= 0 ? '+' : '') + fmtMoney(diferencaHojeRecalc) + '</div><div class="meta-dia-label">Diferença</div></div>';
+  if(diasRestantes > 0){
+    var metaProxDias = (faltaParaMeta - Math.max(0, metaHojeRecalc - vendidoHoje)) / diasRestantes;
+    metaProxDias = Math.max(0, metaProxDias);
+    html += '<div><div class="meta-dia-num" style="color:var(--blue);">' + fmtMoney(metaProxDias) + '</div><div class="meta-dia-label">Meta recalculada próx. dias</div></div>';
+  }
   html += '</div>';
   html += '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pctHojeRecalc + '%;"></div></div>';
   html += '<p class="meta-box-sub">' + pctHojeRecalc + '% da meta de hoje · ';
