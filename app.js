@@ -662,7 +662,9 @@ function dentroDoPeriodo(lead){
   if(periodoTipo === 'todos') return true;
   var range = getPeriodoRange();
   if(!range) return true;
-  var data = lead.criado;
+  // Usa a data de follow-up se existir (o negócio aparece no mês do follow-up),
+  // caso contrário usa a data de criação
+  var data = lead.nextFollowUp || lead.criado;
   if(!data) return false;
   return data >= range.inicio && data <= range.fim;
 }
@@ -2514,6 +2516,8 @@ function switchTab(tab){
   document.getElementById('calendario-view').classList.toggle('open', tab === 'calendario');
   document.getElementById('metas-view').classList.toggle('open', tab === 'metas');
   document.querySelector('.filters').style.display = tab === 'funil' ? 'flex' : 'none';
+  var periodoFiltroEl = document.querySelector('.periodo-filtro');
+  if(periodoFiltroEl) periodoFiltroEl.style.display = tab === 'funil' || tab === 'dash' ? 'flex' : 'none';
   if(tab === 'dash') renderDashboard();
   if(tab === 'clientes') renderClientesView();
   if(tab === 'calendario') renderCalendario();
