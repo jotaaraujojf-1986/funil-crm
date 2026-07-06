@@ -977,3 +977,36 @@ html[data-theme="dark"] .modal-trello-col-atividade{ background: rgba(255,255,25
 .lancamento-row .ldesc{ font-size:12px; color:var(--ink-faint); }
 .lancamento-del{ background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:13px; padding:2px 6px; }
 .lancamento-del:hover{ color:var(--red); }
+
+.cal-pill.tarefa-normal{ background:var(--blue-bg); color:var(--blue); }
+.cal-pill.tarefa-alta{ background:#FFF3CD; color:#856404; }
+.cal-pill.tarefa-urgente{ background:var(--red-bg); color:var(--red); }
+html[data-theme="dark"] .cal-pill.tarefa-alta{ background:#3A2E00; color:#FFC107; }
+
+.tarefa-item{
+  display:flex; align-items:flex-start; gap:10px;
+  padding:10px 12px; border-radius:8px;
+  border:1px solid var(--line); margin-bottom:8px;
+  background:var(--panel);
+}
+.tarefa-item.concluida{ opacity:0.5; }
+.tarefa-item.concluida .tarefa-titulo{ text-decoration:line-through; }
+.tarefa-check{
+  width:20px; height:20px; border-radius:5px; border:2px solid var(--line);
+  background:transparent; cursor:pointer; flex:0 0 20px; margin-top:2px;
+  display:flex; align-items:center; justify-content:center; font-size:12px;
+}
+.tarefa-check.marcada{ background:var(--green); border-color:var(--green); color:#fff; }
+.tarefa-corpo{ flex:1; min-width:0; }
+.tarefa-titulo{ font-weight:600; font-size:13px; margin:0 0 2px; }
+.tarefa-meta{ font-size:11px; color:var(--ink-faint); display:flex; gap:8px; }
+.tarefa-prioridade-urgente{ color:var(--red); font-weight:700; }
+.tarefa-prioridade-alta{ color:#856404; font-weight:700; }
+.tarefa-del{ background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:13px; padding:2px 4px; }
+.tarefa-del:hover{ color:var(--red); }
+
+.form-nova-tarefa{
+  background:var(--bg); border:1px solid var(--line); border-radius:8px;
+  padding:14px; margin-top:10px;
+}
+.form-nova-tarefa h4{ font-size:13px; font-weight:700; margin:0 0 10px; }

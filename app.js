@@ -313,6 +313,70 @@ async function excluirInteracaoNoDb(id){
   if(res.error){ console.error('Erro ao excluir interação', res.error); showSyncError(); }
 }
 
+function tarefaFromDb(row){
+  return {
+    id: row.id,
+    titulo: row.titulo,
+    descricao: row.descricao || '',
+    data: String(row.data).slice(0,10),
+    prioridade: row.prioridade || 'normal',
+    categoria: row.categoria || 'administrativo',
+    concluida: row.concluida || false
+  };
+}
+
+async function loadTarefasDoDia(dataStr){
+  var res = await sb.from('tarefas').select('*')
+    .eq('user_id', currentUserId)
+    .eq('data', dataStr)
+    .order('created_at', {ascending:true});
+  if(res.error){ console.error('Erro ao carregar tarefas', res.error); return []; }
+  return res.data.map(tarefaFromDb);
+}
+
+async function loadTarefasDoMes(ano, mes){
+  var inicio = ano + '-' + String(mes+1).padStart(2,'0') + '-01';
+  var fim = new Date(ano, mes+1, 0).toISOString().slice(0,10);
+  var res = await sb.from('tarefas').select('*')
+    .eq('user_id', currentUserId)
+    .gte('data', inicio)
+    .lte('data', fim)
+    .order('data', {ascending:true});
+  if(res.error){ console.error('Erro ao carregar tarefas do mês', res.error); return []; }
+  return res.data.map(tarefaFromDb);
+}
+
+async function criarTarefa(tarefa){
+  var res = await sb.from('tarefas').insert({
+    user_id: currentUserId,
+    titulo: tarefa.titulo,
+    descricao: tarefa.descricao || null,
+    data: tarefa.data,
+    prioridade: tarefa.prioridade || 'normal',
+    categoria: tarefa.categoria || 'administrativo',
+    concluida: false
+  }).select().single();
+  if(res.error){ console.error('Erro ao criar tarefa', res.error); showSyncError(); return null; }
+  return tarefaFromDb(res.data);
+}
+
+async function atualizarTarefa(tarefa){
+  var res = await sb.from('tarefas').update({
+    titulo: tarefa.titulo,
+    descricao: tarefa.descricao || null,
+    data: tarefa.data,
+    prioridade: tarefa.prioridade,
+    categoria: tarefa.categoria,
+    concluida: tarefa.concluida
+  }).eq('id', tarefa.id).eq('user_id', currentUserId);
+  if(res.error){ console.error('Erro ao atualizar tarefa', res.error); showSyncError(); }
+}
+
+async function excluirTarefa(id){
+  var res = await sb.from('tarefas').delete().eq('id', id).eq('user_id', currentUserId);
+  if(res.error){ console.error('Erro ao excluir tarefa', res.error); showSyncError(); }
+}
+
 async function loadLancamentosDoMes(ano, mes){
   var inicio = ano + '-' + String(mes+1).padStart(2,'0') + '-01';
   var fim = new Date(ano, mes+1, 0).toISOString().slice(0,10);
@@ -1809,7 +1873,7 @@ function leadsNoDia(dataStr){
   return leads.filter(function(l){ return l.nextFollowUp === dataStr && l.stage !== 'fechado' && l.stage !== 'perdido'; });
 }
 
-function renderCalendario(){
+async function renderCalendario(){
   var ano = calendarioRef.getFullYear();
   var mes = calendarioRef.getMonth();
 
@@ -1821,6 +1885,7 @@ function renderCalendario(){
   var totalDiasMes = ultimoDia.getDate();
 
   var hojeStr = todayStr();
+  var tarefasDoMes = await loadTarefasDoMes(ano, mes);
 
   var celulas = [];
 
@@ -1850,13 +1915,27 @@ function renderCalendario(){
     if(dataStr === hojeStr) classes += ' hoje';
     if(dataStr === diaSelecionado) classes += ' selecionado';
 
-    var itensHtml = itens.slice(0, 3).map(function(l){
+    var tarefasDoDia = tarefasDoMes.filter(function(t){ return t.data === dataStr; });
+    var totalItens = itens.length + tarefasDoDia.length;
+    var mostrados = 0;
+    var itensHtml = '';
+
+    itens.slice(0, 3).forEach(function(l){
+      if(mostrados >= 3) return;
       var atrasado = dataStr < hojeStr;
       var texto = (l.atividadeTipo ? l.atividadeTipo + ': ' : '') + l.nome;
-      return '<span class="cal-pill' + (atrasado ? ' atrasado' : '') + '">' + escapeHtml(texto) + '</span>';
-    }).join('');
-    if(itens.length > 3){
-      itensHtml += '<span class="cal-pill mais">+' + (itens.length - 3) + '</span>';
+      itensHtml += '<span class="cal-pill' + (atrasado ? ' atrasado' : '') + '">' + escapeHtml(texto) + '</span>';
+      mostrados++;
+    });
+
+    tarefasDoDia.slice(0, Math.max(0, 3 - mostrados)).forEach(function(t){
+      var cls = t.concluida ? 'tarefa-normal' : 'tarefa-' + t.prioridade;
+      itensHtml += '<span class="cal-pill ' + cls + '">📋 ' + escapeHtml(t.titulo) + '</span>';
+      mostrados++;
+    });
+
+    if(totalItens > 3){
+      itensHtml += '<span class="cal-pill mais">+' + (totalItens - 3) + '</span>';
     }
 
     return '<div class="' + classes + '" data-data="' + dataStr + '">' +
@@ -1868,10 +1947,10 @@ function renderCalendario(){
   document.getElementById('cal-grid').innerHTML = html;
 
   document.querySelectorAll('.cal-day').forEach(function(el){
-    el.addEventListener('click', function(){
+    el.addEventListener('click', async function(){
       diaSelecionado = el.getAttribute('data-data');
       renderCalendario();
-      renderDetalheDoDia(diaSelecionado);
+      await renderDetalheDoDia(diaSelecionado);
     });
   });
 
@@ -2400,8 +2479,9 @@ async function renderMetasView(){
   }
 }
 
-function renderDetalheDoDia(dataStr){
+async function renderDetalheDoDia(dataStr){
   var itens = leadsNoDia(dataStr);
+  var tarefasDia = await loadTarefasDoDia(dataStr);
   var d = new Date(dataStr + 'T00:00:00');
   var titulo = d.getDate() + ' de ' + MESES_PT[d.getMonth()] + ' de ' + d.getFullYear();
 
@@ -2418,7 +2498,112 @@ function renderDetalheDoDia(dataStr){
     : '<p class="anexo-vazio">Nenhum follow-up ou atividade agendada para este dia.</p>';
 
   var box = document.getElementById('cal-dia-detalhe');
-  box.innerHTML = '<div class="cal-dia-detalhe-box"><h3>' + titulo + '</h3>' + corpo + '</div>';
+
+  var tarefasHtml = tarefasDia.length
+    ? tarefasDia.map(function(t){
+        var cls = 'tarefa-prioridade-' + t.prioridade;
+        return '<div class="tarefa-item' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '">' +
+          '<div class="tarefa-check' + (t.concluida ? ' marcada' : '') + '" data-check-id="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
+          '<div class="tarefa-corpo">' +
+            '<p class="tarefa-titulo">' + escapeHtml(t.titulo) + '</p>' +
+            '<div class="tarefa-meta">' +
+              '<span>' + t.categoria + '</span>' +
+              (t.prioridade !== 'normal' ? '<span class="' + cls + '">' + t.prioridade + '</span>' : '') +
+              (t.descricao ? '<span>' + escapeHtml(t.descricao) + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<button class="tarefa-del" data-del-id="' + t.id + '" title="Excluir">✕</button>' +
+        '</div>';
+      }).join('')
+    : '<p class="anexo-vazio">Nenhuma tarefa para este dia.</p>';
+
+  box.innerHTML =
+    '<div class="cal-dia-detalhe-box">' +
+      '<h3>' + titulo + '</h3>' +
+
+      (itens.length > 0
+        ? '<p class="cliente-section-title" style="margin-top:0;">Follow-ups</p>' + corpo
+        : '<p class="anexo-vazio">Nenhum follow-up para este dia.</p>'
+      ) +
+
+      '<p class="cliente-section-title">Tarefas</p>' +
+      '<div id="tarefas-lista-dia">' + tarefasHtml + '</div>' +
+
+      '<div id="form-nova-tarefa-container"></div>' +
+      '<button class="btn-ghost" id="btn-mostrar-form-tarefa" style="margin-top:8px; font-size:13px;">+ Nova tarefa</button>' +
+    '</div>';
+
+  // Listeners de check (concluir/reabrir tarefa)
+  box.querySelectorAll('[data-check-id]').forEach(function(btn){
+    btn.addEventListener('click', async function(){
+      var tid = btn.getAttribute('data-check-id');
+      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+      if(!tarefa) return;
+      tarefa.concluida = !tarefa.concluida;
+      await atualizarTarefa(tarefa);
+      renderDetalheDoDia(dataStr);
+      renderCalendario();
+    });
+  });
+
+  // Listeners de excluir tarefa
+  box.querySelectorAll('[data-del-id]').forEach(function(btn){
+    btn.addEventListener('click', async function(){
+      var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir esta tarefa?');
+      if(!ok) return;
+      await excluirTarefa(btn.getAttribute('data-del-id'));
+      renderDetalheDoDia(dataStr);
+      renderCalendario();
+    });
+  });
+
+  // Formulário de nova tarefa
+  document.getElementById('btn-mostrar-form-tarefa').addEventListener('click', function(){
+    var container = document.getElementById('form-nova-tarefa-container');
+    if(container.innerHTML !== ''){
+      container.innerHTML = '';
+      this.textContent = '+ Nova tarefa';
+      return;
+    }
+    this.textContent = '✕ Cancelar';
+    container.innerHTML =
+      '<div class="form-nova-tarefa">' +
+        '<h4>Nova tarefa — ' + titulo + '</h4>' +
+        '<div class="field"><label>Título *</label><input type="text" id="nova-tarefa-titulo" placeholder="Ex: Ligar para fornecedor, enviar NF..."></div>' +
+        '<div class="row2">' +
+          '<div class="field"><label>Categoria</label><select id="nova-tarefa-cat">' +
+            '<option value="administrativo">Administrativo</option>' +
+            '<option value="financeiro">Financeiro</option>' +
+            '<option value="visita">Visita</option>' +
+            '<option value="outro">Outro</option>' +
+          '</select></div>' +
+          '<div class="field"><label>Prioridade</label><select id="nova-tarefa-prior">' +
+            '<option value="normal">Normal</option>' +
+            '<option value="alta">Alta</option>' +
+            '<option value="urgente">Urgente</option>' +
+          '</select></div>' +
+        '</div>' +
+        '<div class="field"><label>Notas (opcional)</label><textarea id="nova-tarefa-desc" placeholder="Detalhes..."></textarea></div>' +
+        '<button class="btn-primary" id="btn-salvar-nova-tarefa">Salvar tarefa</button>' +
+      '</div>';
+
+    document.getElementById('btn-salvar-nova-tarefa').addEventListener('click', async function(){
+      var titulo = document.getElementById('nova-tarefa-titulo').value.trim();
+      if(!titulo){ toast('Informe um título para a tarefa.', 'erro'); return; }
+      this.disabled = true;
+      this.textContent = 'Salvando...';
+      await criarTarefa({
+        titulo: titulo,
+        descricao: document.getElementById('nova-tarefa-desc').value.trim(),
+        data: dataStr,
+        prioridade: document.getElementById('nova-tarefa-prior').value,
+        categoria: document.getElementById('nova-tarefa-cat').value
+      });
+      toast('Tarefa criada!', 'sucesso');
+      renderDetalheDoDia(dataStr);
+      renderCalendario();
+    });
+  });
 
   box.querySelectorAll('.negociacao-row').forEach(function(row){
     row.addEventListener('click', function(){
