@@ -1929,12 +1929,13 @@ async function renderCalendario(){
     });
 
     tarefasDoDia.slice(0, Math.max(0, 3 - mostrados)).forEach(function(t){
+      if(mostrados >= 3) return;
       var cls = t.concluida ? 'tarefa-normal' : 'tarefa-' + t.prioridade;
       itensHtml += '<span class="cal-pill ' + cls + '">📋 ' + escapeHtml(t.titulo) + '</span>';
       mostrados++;
     });
 
-    if(totalItens > 3){
+    if(totalItens > 3 && mostrados >= 3){
       itensHtml += '<span class="cal-pill mais">+' + (totalItens - 3) + '</span>';
     }
 
@@ -2509,11 +2510,16 @@ async function renderDetalheDoDia(dataStr){
             '<div class="tarefa-meta">' +
               '<span>' + t.categoria + '</span>' +
               (t.prioridade !== 'normal' ? '<span class="' + cls + '">' + t.prioridade + '</span>' : '') +
+              '<span>' + fmtDateBR(t.data) + '</span>' +
               (t.descricao ? '<span>' + escapeHtml(t.descricao) + '</span>' : '') +
             '</div>' +
           '</div>' +
-          '<button class="tarefa-del" data-del-id="' + t.id + '" title="Excluir">✕</button>' +
-        '</div>';
+          '<div style="display:flex; gap:4px;">' +
+            '<button class="btn-ghost" style="font-size:12px; padding:4px 8px;" data-edit-id="' + t.id + '" title="Editar">✏️</button>' +
+            '<button class="tarefa-del" data-del-id="' + t.id + '" title="Excluir">✕</button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="form-edit-tarefa-' + t.id + '" style="display:none; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:8px;"></div>';
       }).join('')
     : '<p class="anexo-vazio">Nenhuma tarefa para este dia.</p>';
 
@@ -2554,6 +2560,64 @@ async function renderDetalheDoDia(dataStr){
       await excluirTarefa(btn.getAttribute('data-del-id'));
       renderDetalheDoDia(dataStr);
       renderCalendario();
+    });
+  });
+
+  // Listeners de editar tarefa
+  box.querySelectorAll('[data-edit-id]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var tid = btn.getAttribute('data-edit-id');
+      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+      if(!tarefa) return;
+
+      var formDiv = document.getElementById('form-edit-tarefa-' + tid);
+      if(formDiv.style.display !== 'none'){
+        formDiv.style.display = 'none';
+        return;
+      }
+
+      formDiv.style.display = 'block';
+      formDiv.innerHTML =
+        '<div class="field"><label>Título *</label><input type="text" id="edit-tar-titulo-' + tid + '" value="' + escapeHtml(tarefa.titulo) + '"></div>' +
+        '<div class="row2">' +
+          '<div class="field"><label>Data</label><input type="date" id="edit-tar-data-' + tid + '" value="' + tarefa.data + '"></div>' +
+          '<div class="field"><label>Prioridade</label><select id="edit-tar-prior-' + tid + '">' +
+            '<option value="normal"' + (tarefa.prioridade==='normal'?' selected':'') + '>Normal</option>' +
+            '<option value="alta"' + (tarefa.prioridade==='alta'?' selected':'') + '>Alta</option>' +
+            '<option value="urgente"' + (tarefa.prioridade==='urgente'?' selected':'') + '>Urgente</option>' +
+          '</select></div>' +
+        '</div>' +
+        '<div class="field"><label>Categoria</label><select id="edit-tar-cat-' + tid + '">' +
+          '<option value="administrativo"' + (tarefa.categoria==='administrativo'?' selected':'') + '>Administrativo</option>' +
+          '<option value="financeiro"' + (tarefa.categoria==='financeiro'?' selected':'') + '>Financeiro</option>' +
+          '<option value="visita"' + (tarefa.categoria==='visita'?' selected':'') + '>Visita</option>' +
+          '<option value="outro"' + (tarefa.categoria==='outro'?' selected':'') + '>Outro</option>' +
+        '</select></div>' +
+        '<div class="field"><label>Notas</label><textarea id="edit-tar-desc-' + tid + '">' + escapeHtml(tarefa.descricao) + '</textarea></div>' +
+        '<div style="display:flex; gap:8px;">' +
+          '<button class="btn-primary" style="font-size:13px;" id="btn-salvar-edit-' + tid + '">Salvar</button>' +
+          '<button class="btn-ghost" style="font-size:13px;" id="btn-cancelar-edit-' + tid + '">Cancelar</button>' +
+        '</div>';
+
+      document.getElementById('btn-cancelar-edit-' + tid).addEventListener('click', function(){
+        formDiv.style.display = 'none';
+      });
+
+      document.getElementById('btn-salvar-edit-' + tid).addEventListener('click', async function(){
+        var novoTitulo = document.getElementById('edit-tar-titulo-' + tid).value.trim();
+        if(!novoTitulo){ toast('O título não pode ser vazio.', 'erro'); return; }
+        this.disabled = true;
+        this.textContent = 'Salvando...';
+        tarefa.titulo = novoTitulo;
+        tarefa.data = document.getElementById('edit-tar-data-' + tid).value || tarefa.data;
+        tarefa.prioridade = document.getElementById('edit-tar-prior-' + tid).value;
+        tarefa.categoria = document.getElementById('edit-tar-cat-' + tid).value;
+        tarefa.descricao = document.getElementById('edit-tar-desc-' + tid).value.trim();
+        await atualizarTarefa(tarefa);
+        toast('Tarefa atualizada!', 'sucesso');
+        renderDetalheDoDia(dataStr);
+        renderCalendario();
+      });
     });
   });
 
