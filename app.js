@@ -1797,6 +1797,7 @@ document.getElementById('overlay-cliente').addEventListener('click', function(e)
 // ---------- Calendário de atividades ----------
 
 var calendarioRef = new Date();
+var metasRef = new Date();
 var diaSelecionado = null;
 
 var MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -1886,8 +1887,10 @@ async function renderMetasView(){
   }
 
   var hoje = new Date();
-  var ano = hoje.getFullYear();
-  var mes = hoje.getMonth();
+  var ano = metasRef.getFullYear();
+  var mes = metasRef.getMonth();
+
+  document.getElementById('metas-titulo').textContent = MESES_PT[mes].charAt(0).toUpperCase() + MESES_PT[mes].slice(1) + ' de ' + ano;
   var lancamentos = await loadLancamentosDoMes(ano, mes);
 
   // Calcular dias úteis do mês (seg-sex + sábados marcados pelo usuário)
@@ -2446,6 +2449,19 @@ document.getElementById('cal-hoje').addEventListener('click', function(){
   calendarioRef = new Date();
   diaSelecionado = todayStr();
   renderCalendario();
+});
+
+document.getElementById('metas-prev').addEventListener('click', function(){
+  metasRef.setMonth(metasRef.getMonth() - 1);
+  renderMetasView();
+});
+document.getElementById('metas-next').addEventListener('click', function(){
+  metasRef.setMonth(metasRef.getMonth() + 1);
+  renderMetasView();
+});
+document.getElementById('metas-hoje').addEventListener('click', function(){
+  metasRef = new Date();
+  renderMetasView();
 });
 
 document.getElementById('periodo-select').addEventListener('change', function(){
