@@ -321,7 +321,9 @@ function tarefaFromDb(row){
     data: String(row.data).slice(0,10),
     prioridade: row.prioridade || 'normal',
     categoria: row.categoria || 'administrativo',
-    concluida: row.concluida || false
+    concluida: row.concluida || false,
+    checklist: Array.isArray(row.checklist) ? row.checklist : [],
+    anexos: Array.isArray(row.anexos) ? row.anexos : []
   };
 }
 
@@ -367,7 +369,9 @@ async function atualizarTarefa(tarefa){
     data: tarefa.data,
     prioridade: tarefa.prioridade,
     categoria: tarefa.categoria,
-    concluida: tarefa.concluida
+    concluida: tarefa.concluida,
+    checklist: tarefa.checklist || [],
+    anexos: tarefa.anexos || []
   }).eq('id', tarefa.id).eq('user_id', currentUserId);
   if(res.error){ console.error('Erro ao atualizar tarefa', res.error); showSyncError(); }
 }
@@ -1955,9 +1959,7 @@ async function renderCalendario(){
     });
   });
 
-  if(diaSelecionado){
-    renderDetalheDoDia(diaSelecionado);
-  } else {
+  if(!diaSelecionado){
     document.getElementById('cal-dia-detalhe').innerHTML = '';
   }
 }
@@ -2618,7 +2620,7 @@ async function renderDetalheDoDia(dataStr){
       tarefa.checklist.push({ id: Date.now().toString(), texto: val, concluido: false });
       await atualizarTarefa(tarefa);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
@@ -2633,7 +2635,7 @@ async function renderDetalheDoDia(dataStr){
       tarefa.checklist[idx].concluido = !tarefa.checklist[idx].concluido;
       await atualizarTarefa(tarefa);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
@@ -2648,7 +2650,7 @@ async function renderDetalheDoDia(dataStr){
       tarefa.checklist.splice(idx, 1);
       await atualizarTarefa(tarefa);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
@@ -2676,7 +2678,7 @@ async function renderDetalheDoDia(dataStr){
       if(!ok) return;
       await excluirAnexoTarefa(tarefa, tarefa.anexos[idx]);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
@@ -2691,7 +2693,7 @@ async function renderDetalheDoDia(dataStr){
       if(label) label.textContent = 'Enviando...';
       await uploadAnexoTarefa(tarefa, input.files[0]);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
