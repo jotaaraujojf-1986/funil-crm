@@ -57,6 +57,7 @@
     <button class="tab" id="tab-clientes" data-tab="clientes">Clientes</button>
     <button class="tab" id="tab-calendario" data-tab="calendario">Calendário</button>
     <button class="tab" id="tab-metas" data-tab="metas">Metas</button>
+    <button class="tab" id="tab-tarefas" data-tab="tarefas">Tarefas</button>
   </div>
   <div class="periodo-filtro">
     <select id="periodo-select">
@@ -141,6 +142,37 @@
     <button class="btn-ghost" id="metas-next">Próximo ›</button>
   </div>
   <div class="metas-container" id="metas-container"></div>
+</div>
+
+<div class="tarefas-view" id="tarefas-view">
+  <div class="tarefas-toolbar">
+    <input type="text" id="busca-tarefa" class="busca-cliente-input" placeholder="Buscar por título...">
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <select id="filtro-tarefa-status" style="font-family:'Inter',sans-serif; font-size:13px; padding:8px 12px; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink);">
+        <option value="pendentes">Pendentes</option>
+        <option value="todas">Todas</option>
+        <option value="concluidas">Concluídas</option>
+        <option value="atrasadas">Atrasadas</option>
+        <option value="hoje">Hoje</option>
+        <option value="proximos7">Próximos 7 dias</option>
+      </select>
+      <select id="filtro-tarefa-categoria" style="font-family:'Inter',sans-serif; font-size:13px; padding:8px 12px; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink);">
+        <option value="">Todas as categorias</option>
+        <option value="administrativo">Administrativo</option>
+        <option value="financeiro">Financeiro</option>
+        <option value="visita">Visita</option>
+        <option value="outro">Outro</option>
+      </select>
+      <select id="filtro-tarefa-prioridade" style="font-family:'Inter',sans-serif; font-size:13px; padding:8px 12px; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink);">
+        <option value="">Todas as prioridades</option>
+        <option value="urgente">Urgente</option>
+        <option value="alta">Alta</option>
+        <option value="normal">Normal</option>
+      </select>
+    </div>
+    <button class="btn-primary" id="btn-nova-tarefa-rapida">+ Nova tarefa</button>
+  </div>
+  <div id="tarefas-lista-panorama"></div>
 </div>
 
 <div class="overlay" id="overlay">

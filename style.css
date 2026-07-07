@@ -1036,3 +1036,46 @@ html[data-theme="dark"] .cal-pill.tarefa-alta{ background:#3A2E00; color:#FFC107
 .tarefa-secao-label{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--ink-soft); margin:12px 0 6px; }
 .tarefa-anexo-item{ display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:4px; }
 .tarefa-anexo-link{ cursor:pointer; color:var(--blue); text-decoration:underline; }
+
+.tarefas-view{ max-width:1320px; margin:0 auto; padding:18px 28px 60px; display:none; }
+.tarefas-view.open{ display:block; }
+.tarefas-toolbar{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin-bottom:18px;
+}
+.tarefas-toolbar .busca-cliente-input{ max-width:280px; margin-bottom:0; }
+.tarefas-grupo{ margin-bottom:24px; }
+.tarefas-grupo-titulo{
+  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px;
+  text-transform:uppercase; letter-spacing:0.4px; margin:0 0 10px;
+  display:flex; align-items:center; gap:8px;
+}
+.tarefas-grupo-titulo .badge-count{
+  font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;
+  background:var(--line); color:var(--ink-soft);
+}
+.tarefa-lista-row{
+  display:flex; align-items:flex-start; gap:10px;
+  background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  padding:10px 14px; margin-bottom:6px; cursor:pointer;
+  transition:border-color .12s ease;
+}
+.tarefa-lista-row:hover{ border-color:var(--amber); }
+.tarefa-lista-row.concluida{ opacity:0.5; }
+.tarefa-lista-row.concluida .tarefa-lista-titulo{ text-decoration:line-through; }
+.tarefa-lista-check{
+  width:20px; height:20px; border-radius:5px; border:2px solid var(--line);
+  flex:0 0 20px; margin-top:2px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:12px;
+}
+.tarefa-lista-check.marcada{ background:var(--green); border-color:var(--green); color:#fff; }
+.tarefa-lista-corpo{ flex:1; min-width:0; }
+.tarefa-lista-titulo{ font-weight:600; font-size:13px; margin:0 0 3px; }
+.tarefa-lista-meta{ display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--ink-faint); }
+.tarefa-lista-data-atrasada{ color:var(--red); font-weight:700; }
+.tarefa-lista-data-hoje{ color:var(--amber-dark); font-weight:700; }
+.tarefa-lista-acoes{ display:flex; gap:6px; align-items:center; flex:0 0 auto; }
+.form-nova-tarefa-rapida{
+  background:var(--panel); border:1px solid var(--amber); border-radius:10px;
+  padding:18px 20px; margin-bottom:18px;
+}

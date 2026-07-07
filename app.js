@@ -348,6 +348,174 @@ async function loadTarefasDoMes(ano, mes){
   return res.data.map(tarefaFromDb);
 }
 
+async function loadTodasTarefas(filtros){
+  var query = sb.from('tarefas').select('*').eq('user_id', currentUserId);
+
+  if(filtros.status === 'pendentes') query = query.eq('concluida', false);
+  else if(filtros.status === 'concluidas') query = query.eq('concluida', true);
+  else if(filtros.status === 'atrasadas'){
+    query = query.eq('concluida', false).lt('data', todayStr());
+  }
+  else if(filtros.status === 'hoje'){
+    query = query.eq('data', todayStr());
+  }
+  else if(filtros.status === 'proximos7'){
+    var d7 = new Date(); d7.setDate(d7.getDate() + 7);
+    query = query.eq('concluida', false).gte('data', todayStr()).lte('data', d7.toISOString().slice(0,10));
+  }
+
+  if(filtros.categoria) query = query.eq('categoria', filtros.categoria);
+  if(filtros.prioridade) query = query.eq('prioridade', filtros.prioridade);
+
+  query = query.order('data', {ascending:true});
+
+  var res = await query;
+  if(res.error){ console.error('Erro ao carregar tarefas', res.error); return []; }
+  return res.data.map(tarefaFromDb);
+}
+
+var buscaTarefaTexto = '';
+
+async function renderTarefasView(){
+  var lista = document.getElementById('tarefas-lista-panorama');
+  lista.innerHTML = '<p class="anexo-vazio">Carregando tarefas...</p>';
+
+  var filtros = {
+    status: document.getElementById('filtro-tarefa-status').value,
+    categoria: document.getElementById('filtro-tarefa-categoria').value,
+    prioridade: document.getElementById('filtro-tarefa-prioridade').value
+  };
+
+  var todasTarefas = await loadTodasTarefas(filtros);
+
+  var termo = buscaTarefaTexto.trim().toLowerCase();
+  if(termo){
+    todasTarefas = todasTarefas.filter(function(t){
+      return t.titulo.toLowerCase().indexOf(termo) !== -1 ||
+             (t.descricao && t.descricao.toLowerCase().indexOf(termo) !== -1);
+    });
+  }
+
+  if(todasTarefas.length === 0){
+    lista.innerHTML = '<p class="anexo-vazio">Nenhuma tarefa encontrada para os filtros selecionados.</p>';
+    return;
+  }
+
+  var hoje = todayStr();
+  var d7 = new Date(); d7.setDate(d7.getDate() + 7);
+  var d7str = d7.toISOString().slice(0,10);
+
+  var atrasadas = todasTarefas.filter(function(t){ return !t.concluida && t.data < hoje; });
+  var deHoje = todasTarefas.filter(function(t){ return t.data === hoje; });
+  var proximas = todasTarefas.filter(function(t){ return !t.concluida && t.data > hoje && t.data <= d7str; });
+  var futuras = todasTarefas.filter(function(t){ return !t.concluida && t.data > d7str; });
+  var concluidas = todasTarefas.filter(function(t){ return t.concluida; });
+
+  var grupos = [];
+  if(filtros.status === 'todas' || filtros.status === 'atrasadas'){
+    if(atrasadas.length) grupos.push({ titulo:'🔴 Atrasadas', tarefas: atrasadas, cor:'var(--red)' });
+  }
+  if(filtros.status === 'todas' || filtros.status === 'hoje' || filtros.status === 'pendentes'){
+    if(deHoje.length) grupos.push({ titulo:'🟡 Hoje', tarefas: deHoje, cor:'var(--amber-dark)' });
+  }
+  if(filtros.status === 'todas' || filtros.status === 'proximos7' || filtros.status === 'pendentes'){
+    if(proximas.length) grupos.push({ titulo:'🔵 Próximos 7 dias', tarefas: proximas, cor:'var(--blue)' });
+  }
+  if(filtros.status === 'todas' || filtros.status === 'pendentes'){
+    if(futuras.length) grupos.push({ titulo:'⬜ Futuras', tarefas: futuras, cor:'var(--ink-soft)' });
+  }
+  if(filtros.status === 'todas' || filtros.status === 'concluidas'){
+    if(concluidas.length) grupos.push({ titulo:'✅ Concluídas', tarefas: concluidas, cor:'var(--green)' });
+  }
+
+  if(grupos.length === 0){
+    lista.innerHTML = '<p class="anexo-vazio">Nenhuma tarefa encontrada para os filtros selecionados.</p>';
+    return;
+  }
+
+  function fmtDataCompleta(dataStr){
+    var d = new Date(dataStr + 'T00:00:00');
+    return d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+  }
+
+  function buildLinhaHtml(t){
+    var dataStr = t.data;
+    var dataAtrasada = !t.concluida && dataStr < hoje;
+    var dataHoje = dataStr === hoje;
+    var dataClasse = dataAtrasada ? 'tarefa-lista-data-atrasada' : (dataHoje ? 'tarefa-lista-data-hoje' : '');
+    var checklistInfo = t.checklist && t.checklist.length > 0
+      ? t.checklist.filter(function(c){return c.concluido;}).length + '/' + t.checklist.length + ' itens'
+      : '';
+
+    return '<div class="tarefa-lista-row' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '" data-tarefa-data="' + dataStr + '">' +
+      '<div class="tarefa-lista-check' + (t.concluida ? ' marcada' : '') + '" data-check-pan="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
+      '<div class="tarefa-lista-corpo">' +
+        '<p class="tarefa-lista-titulo">' + escapeHtml(t.titulo) + '</p>' +
+        '<div class="tarefa-lista-meta">' +
+          '<span class="' + dataClasse + '">' + (dataAtrasada ? '⚠ ' : '') + fmtDataCompleta(dataStr) + '</span>' +
+          '<span>' + t.categoria + '</span>' +
+          (t.prioridade !== 'normal' ? '<span style="color:' + (t.prioridade === 'urgente' ? 'var(--red)' : '#856404') + '; font-weight:700;">' + t.prioridade + '</span>' : '') +
+          (t.descricao ? '<span>' + escapeHtml(t.descricao.slice(0,50)) + (t.descricao.length > 50 ? '…' : '') + '</span>' : '') +
+          (checklistInfo ? '<span>☑ ' + checklistInfo + '</span>' : '') +
+          (t.anexos && t.anexos.length > 0 ? '<span>📎 ' + t.anexos.length + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="tarefa-lista-acoes">' +
+        '<button class="btn-ghost" style="font-size:12px; padding:4px 8px;" data-abrir-cal="' + dataStr + '" title="Ver no calendário">📅</button>' +
+        '<button class="tarefa-del" data-del-pan="' + t.id + '" title="Excluir">✕</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  lista.innerHTML = grupos.map(function(g){
+    return '<div class="tarefas-grupo">' +
+      '<div class="tarefas-grupo-titulo" style="color:' + g.cor + ';">' + g.titulo + ' <span class="badge-count">' + g.tarefas.length + '</span></div>' +
+      g.tarefas.map(buildLinhaHtml).join('') +
+    '</div>';
+  }).join('');
+
+  // Check — concluir/reabrir
+  lista.querySelectorAll('[data-check-pan]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-check-pan');
+      btn.textContent = '...';
+      var res = await sb.from('tarefas').select('*').eq('id', tid).single();
+      if(res.error) return;
+      var tarefa = tarefaFromDb(res.data);
+      tarefa.concluida = !tarefa.concluida;
+      await atualizarTarefa(tarefa);
+      renderTarefasView();
+    });
+  });
+
+  // Excluir
+  lista.querySelectorAll('[data-del-pan]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir esta tarefa?');
+      if(!ok) return;
+      await excluirTarefa(btn.getAttribute('data-del-pan'));
+      toast('Tarefa excluída.', 'sucesso');
+      renderTarefasView();
+    });
+  });
+
+  // Abrir no calendário
+  lista.querySelectorAll('[data-abrir-cal]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var dataStr = btn.getAttribute('data-abrir-cal');
+      var d = new Date(dataStr + 'T00:00:00');
+      calendarioRef = new Date(d.getFullYear(), d.getMonth(), 1);
+      diaSelecionado = dataStr;
+      switchTab('calendario');
+      await renderCalendario();
+      await renderDetalheDoDia(dataStr);
+    });
+  });
+}
+
 async function criarTarefa(tarefa){
   var res = await sb.from('tarefas').insert({
     user_id: currentUserId,
@@ -2866,6 +3034,7 @@ document.getElementById('tab-dash').addEventListener('click', function(){ switch
 document.getElementById('tab-clientes').addEventListener('click', function(){ switchTab('clientes'); });
 document.getElementById('tab-calendario').addEventListener('click', function(){ switchTab('calendario'); });
 document.getElementById('tab-metas').addEventListener('click', function(){ switchTab('metas'); });
+document.getElementById('tab-tarefas').addEventListener('click', function(){ switchTab('tarefas'); });
 
 document.getElementById('busca-cliente').addEventListener('input', function(){
   buscaClienteTexto = this.value;
@@ -2883,6 +3052,7 @@ function switchTab(tab){
   document.getElementById('tab-clientes').classList.toggle('active', tab === 'clientes');
   document.getElementById('tab-calendario').classList.toggle('active', tab === 'calendario');
   document.getElementById('tab-metas').classList.toggle('active', tab === 'metas');
+  document.getElementById('tab-tarefas').classList.toggle('active', tab === 'tarefas');
   document.getElementById('board').style.display = tab === 'funil' ? 'grid' : 'none';
   var headersRow = document.getElementById('board-headers');
   if (headersRow) headersRow.style.display = tab === 'funil' ? 'grid' : 'none';
@@ -2890,6 +3060,7 @@ function switchTab(tab){
   document.getElementById('clientes-view').classList.toggle('open', tab === 'clientes');
   document.getElementById('calendario-view').classList.toggle('open', tab === 'calendario');
   document.getElementById('metas-view').classList.toggle('open', tab === 'metas');
+  document.getElementById('tarefas-view').classList.toggle('open', tab === 'tarefas');
   document.querySelector('.filters').style.display = tab === 'funil' ? 'flex' : 'none';
   var periodoFiltroEl = document.querySelector('.periodo-filtro');
   if(periodoFiltroEl) periodoFiltroEl.style.display = tab === 'funil' || tab === 'dash' ? 'flex' : 'none';
@@ -2897,6 +3068,7 @@ function switchTab(tab){
   if(tab === 'clientes') renderClientesView();
   if(tab === 'calendario') renderCalendario();
   if(tab === 'metas') renderMetasView();
+  if(tab === 'tarefas') renderTarefasView();
 }
 
 function showLogin(){
@@ -3033,6 +3205,58 @@ document.getElementById('btn-logout').addEventListener('click', async function()
   currentUserId = null;
   showLogin();
 });
+
+document.getElementById('btn-nova-tarefa-rapida').addEventListener('click', function(){
+  var lista = document.getElementById('tarefas-lista-panorama');
+  var formExistente = document.getElementById('form-nova-tarefa-panorama');
+  if(formExistente){ formExistente.remove(); return; }
+
+  var form = document.createElement('div');
+  form.id = 'form-nova-tarefa-panorama';
+  form.className = 'form-nova-tarefa-rapida';
+  form.innerHTML =
+    '<h4 style="margin:0 0 12px; font-size:14px;">Nova tarefa</h4>' +
+    '<div class="row2">' +
+      '<div class="field"><label>Título *</label><input type="text" id="pan-tarefa-titulo" placeholder="Ex: Ligar para fornecedor..."></div>' +
+      '<div class="field"><label>Data</label><input type="date" id="pan-tarefa-data" value="' + todayStr() + '"></div>' +
+    '</div>' +
+    '<div class="row2">' +
+      '<div class="field"><label>Prioridade</label><select id="pan-tarefa-prior"><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>' +
+      '<div class="field"><label>Categoria</label><select id="pan-tarefa-cat"><option value="administrativo">Administrativo</option><option value="financeiro">Financeiro</option><option value="visita">Visita</option><option value="outro">Outro</option></select></div>' +
+    '</div>' +
+    '<div class="field"><label>Notas (opcional)</label><textarea id="pan-tarefa-desc" placeholder="Detalhes..."></textarea></div>' +
+    '<div style="display:flex; gap:8px;">' +
+      '<button class="btn-primary" id="btn-salvar-pan-tarefa">Salvar tarefa</button>' +
+      '<button class="btn-ghost" id="btn-cancelar-pan-tarefa">Cancelar</button>' +
+    '</div>';
+
+  lista.insertAdjacentElement('beforebegin', form);
+
+  document.getElementById('btn-cancelar-pan-tarefa').addEventListener('click', function(){ form.remove(); });
+  document.getElementById('btn-salvar-pan-tarefa').addEventListener('click', async function(){
+    var titulo = document.getElementById('pan-tarefa-titulo').value.trim();
+    if(!titulo){ toast('Informe um título para a tarefa.', 'erro'); return; }
+    this.disabled = true; this.textContent = 'Salvando...';
+    await criarTarefa({
+      titulo: titulo,
+      descricao: document.getElementById('pan-tarefa-desc').value.trim(),
+      data: document.getElementById('pan-tarefa-data').value || todayStr(),
+      prioridade: document.getElementById('pan-tarefa-prior').value,
+      categoria: document.getElementById('pan-tarefa-cat').value
+    });
+    toast('Tarefa criada!', 'sucesso');
+    form.remove();
+    renderTarefasView();
+  });
+});
+
+document.getElementById('busca-tarefa').addEventListener('input', function(){
+  buscaTarefaTexto = this.value;
+  renderTarefasView();
+});
+document.getElementById('filtro-tarefa-status').addEventListener('change', function(){ renderTarefasView(); });
+document.getElementById('filtro-tarefa-categoria').addEventListener('change', function(){ renderTarefasView(); });
+document.getElementById('filtro-tarefa-prioridade').addEventListener('change', function(){ renderTarefasView(); });
 
 async function iniciarApp(){
   var sessionRes = await sb.auth.getSession();
