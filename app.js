@@ -1869,6 +1869,7 @@ document.getElementById('overlay-cliente').addEventListener('click', function(e)
 var calendarioRef = new Date();
 var metasRef = new Date();
 var diaSelecionado = null;
+var tarefasExpandidas = {};
 
 var MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 var DIAS_SEMANA_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -2560,6 +2561,8 @@ async function renderDetalheDoDia(dataStr){
     : '<p class="anexo-vazio">Nenhum follow-up para este dia.</p>';
 
   var box = document.getElementById('cal-dia-detalhe');
+  var idsExpandidosAntes = Object.keys(tarefasExpandidas).filter(function(id){ return tarefasExpandidas[id]; });
+
   box.innerHTML =
     '<div class="cal-dia-detalhe-box">' +
       '<h3>' + titulo + '</h3>' +
@@ -2570,13 +2573,20 @@ async function renderDetalheDoDia(dataStr){
       '<button class="btn-ghost" id="btn-mostrar-form-tarefa" style="margin-top:8px; font-size:13px;">+ Nova tarefa</button>' +
     '</div>';
 
+  idsExpandidosAntes.forEach(function(tid){
+    var det = document.getElementById('det-' + tid);
+    if(det) det.classList.add('aberto');
+  });
+
   // Expandir/recolher ao clicar no item (mas não nos botões internos)
   box.querySelectorAll('.tarefa-item').forEach(function(item){
     item.addEventListener('click', function(e){
       if(e.target.closest('button') || e.target.closest('input') || e.target.closest('label') || e.target.closest('[data-check-id]') || e.target.closest('[data-cl-check]')) return;
       var tid = item.getAttribute('data-tarefa-id');
       var det = document.getElementById('det-' + tid);
-      if(det) det.classList.toggle('aberto');
+      if(!det) return;
+      det.classList.toggle('aberto');
+      tarefasExpandidas[tid] = det.classList.contains('aberto');
     });
   });
 
@@ -2620,7 +2630,6 @@ async function renderDetalheDoDia(dataStr){
       tarefa.checklist.push({ id: Date.now().toString(), texto: val, concluido: false });
       await atualizarTarefa(tarefa);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
@@ -2635,7 +2644,6 @@ async function renderDetalheDoDia(dataStr){
       tarefa.checklist[idx].concluido = !tarefa.checklist[idx].concluido;
       await atualizarTarefa(tarefa);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
@@ -2650,7 +2658,6 @@ async function renderDetalheDoDia(dataStr){
       tarefa.checklist.splice(idx, 1);
       await atualizarTarefa(tarefa);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
@@ -2678,7 +2685,6 @@ async function renderDetalheDoDia(dataStr){
       if(!ok) return;
       await excluirAnexoTarefa(tarefa, tarefa.anexos[idx]);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
@@ -2693,7 +2699,6 @@ async function renderDetalheDoDia(dataStr){
       if(label) label.textContent = 'Enviando...';
       await uploadAnexoTarefa(tarefa, input.files[0]);
       renderDetalheDoDia(dataStr);
-      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 100);
     });
   });
 
