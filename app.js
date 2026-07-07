@@ -2482,9 +2482,68 @@ async function renderMetasView(){
 
 async function renderDetalheDoDia(dataStr){
   var itens = leadsNoDia(dataStr);
-  var tarefasDia = await loadTarefasDoDia(dataStr);
   var d = new Date(dataStr + 'T00:00:00');
   var titulo = d.getDate() + ' de ' + MESES_PT[d.getMonth()] + ' de ' + d.getFullYear();
+  var tarefasDia = await loadTarefasDoDia(dataStr);
+
+  function buildTarefaHtml(t){
+    var cls = 'tarefa-prioridade-' + t.prioridade;
+    var checklistHtml = '';
+    if(t.checklist && t.checklist.length > 0){
+      checklistHtml = '<p class="tarefa-secao-label">Checklist (' + t.checklist.filter(function(c){return c.concluido;}).length + '/' + t.checklist.length + ')</p>';
+      checklistHtml += t.checklist.map(function(item, idx){
+        return '<div class="checklist-item">' +
+          '<div class="checklist-check' + (item.concluido ? ' marcada' : '') + '" data-cl-check data-tarefa-id="' + t.id + '" data-cl-idx="' + idx + '">' + (item.concluido ? '✓' : '') + '</div>' +
+          '<span class="checklist-texto' + (item.concluido ? ' riscado' : '') + '">' + escapeHtml(item.texto) + '</span>' +
+          '<button class="checklist-del" data-cl-del data-tarefa-id="' + t.id + '" data-cl-idx="' + idx + '" title="Remover">✕</button>' +
+        '</div>';
+      }).join('');
+    }
+    checklistHtml += '<div class="add-checklist-row">' +
+      '<input type="text" id="cl-input-' + t.id + '" class="campo-padrao campo-padrao-flex" placeholder="Adicionar item ao checklist...">' +
+      '<button class="btn-ghost" style="font-size:12px;" data-cl-add data-tarefa-id="' + t.id + '">+ Adicionar</button>' +
+    '</div>';
+
+    var anexosHtml = '<p class="tarefa-secao-label">Anexos</p>';
+    if(t.anexos && t.anexos.length > 0){
+      anexosHtml += t.anexos.map(function(a, idx){
+        return '<div class="tarefa-anexo-item">' +
+          '<span class="tarefa-anexo-link" data-anexo-abrir data-tarefa-id="' + t.id + '" data-anx-idx="' + idx + '">📎 ' + escapeHtml(a.nome) + '</span>' +
+          '<span style="color:var(--ink-faint); font-size:11px;">(' + fmtTamanho(a.tamanho) + ')</span>' +
+          '<button class="tarefa-del" data-anexo-del data-tarefa-id="' + t.id + '" data-anx-idx="' + idx + '" title="Excluir">✕</button>' +
+        '</div>';
+      }).join('');
+    }
+    anexosHtml += '<label class="anexo-upload-label" style="font-size:12px; margin-top:6px;">📎 Adicionar arquivo (até 10MB)<input type="file" class="tarefa-file-input" data-tarefa-id="' + t.id + '" style="display:none;"></label>';
+
+    return '<div class="tarefa-item' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '">' +
+      '<div class="tarefa-check' + (t.concluida ? ' marcada' : '') + '" data-check-id="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
+      '<div class="tarefa-corpo">' +
+        '<p class="tarefa-titulo">' + escapeHtml(t.titulo) + '</p>' +
+        '<div class="tarefa-meta">' +
+          '<span>' + t.categoria + '</span>' +
+          (t.prioridade !== 'normal' ? '<span class="' + cls + '">' + t.prioridade + '</span>' : '') +
+          '<span>' + fmtDateBR(t.data) + '</span>' +
+          (t.checklist && t.checklist.length > 0 ? '<span>✓ ' + t.checklist.filter(function(c){return c.concluido;}).length + '/' + t.checklist.length + '</span>' : '') +
+          (t.anexos && t.anexos.length > 0 ? '<span>📎 ' + t.anexos.length + '</span>' : '') +
+        '</div>' +
+        '<div class="tarefa-detalhe" id="det-' + t.id + '">' +
+          (t.descricao ? '<p style="font-size:13px; margin:0 0 8px; color:var(--ink-soft);">' + escapeHtml(t.descricao) + '</p>' : '') +
+          checklistHtml +
+          anexosHtml +
+          '<div style="display:flex; gap:8px; margin-top:12px;">' +
+            '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-edit-id="' + t.id + '">✏️ Editar</button>' +
+          '</div>' +
+          '<div id="form-edit-tarefa-' + t.id + '" style="display:none; margin-top:10px;"></div>' +
+        '</div>' +
+      '</div>' +
+      '<button class="tarefa-del" data-del-id="' + t.id + '" title="Excluir">✕</button>' +
+    '</div>';
+  }
+
+  var tarefasHtml = tarefasDia.length
+    ? tarefasDia.map(function(t){ return buildTarefaHtml(t); }).join('')
+    : '<p class="anexo-vazio">Nenhuma tarefa para este dia.</p>';
 
   var corpo = itens.length
     ? itens.map(function(l){
@@ -2496,52 +2555,33 @@ async function renderDetalheDoDia(dataStr){
           '</div>' +
         '</div>';
       }).join('')
-    : '<p class="anexo-vazio">Nenhum follow-up ou atividade agendada para este dia.</p>';
+    : '<p class="anexo-vazio">Nenhum follow-up para este dia.</p>';
 
   var box = document.getElementById('cal-dia-detalhe');
-
-  var tarefasHtml = tarefasDia.length
-    ? tarefasDia.map(function(t){
-        var cls = 'tarefa-prioridade-' + t.prioridade;
-        return '<div class="tarefa-item' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '">' +
-          '<div class="tarefa-check' + (t.concluida ? ' marcada' : '') + '" data-check-id="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
-          '<div class="tarefa-corpo">' +
-            '<p class="tarefa-titulo">' + escapeHtml(t.titulo) + '</p>' +
-            '<div class="tarefa-meta">' +
-              '<span>' + t.categoria + '</span>' +
-              (t.prioridade !== 'normal' ? '<span class="' + cls + '">' + t.prioridade + '</span>' : '') +
-              '<span>' + fmtDateBR(t.data) + '</span>' +
-              (t.descricao ? '<span>' + escapeHtml(t.descricao) + '</span>' : '') +
-            '</div>' +
-          '</div>' +
-          '<div style="display:flex; gap:4px;">' +
-            '<button class="btn-ghost" style="font-size:12px; padding:4px 8px;" data-edit-id="' + t.id + '" title="Editar">✏️</button>' +
-            '<button class="tarefa-del" data-del-id="' + t.id + '" title="Excluir">✕</button>' +
-          '</div>' +
-        '</div>' +
-        '<div id="form-edit-tarefa-' + t.id + '" style="display:none; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:8px;"></div>';
-      }).join('')
-    : '<p class="anexo-vazio">Nenhuma tarefa para este dia.</p>';
-
   box.innerHTML =
     '<div class="cal-dia-detalhe-box">' +
       '<h3>' + titulo + '</h3>' +
-
-      (itens.length > 0
-        ? '<p class="cliente-section-title" style="margin-top:0;">Follow-ups</p>' + corpo
-        : '<p class="anexo-vazio">Nenhum follow-up para este dia.</p>'
-      ) +
-
+      '<p class="cliente-section-title" style="margin-top:0;">Follow-ups</p>' + corpo +
       '<p class="cliente-section-title">Tarefas</p>' +
       '<div id="tarefas-lista-dia">' + tarefasHtml + '</div>' +
-
       '<div id="form-nova-tarefa-container"></div>' +
       '<button class="btn-ghost" id="btn-mostrar-form-tarefa" style="margin-top:8px; font-size:13px;">+ Nova tarefa</button>' +
     '</div>';
 
-  // Listeners de check (concluir/reabrir tarefa)
+  // Expandir/recolher ao clicar no item (mas não nos botões internos)
+  box.querySelectorAll('.tarefa-item').forEach(function(item){
+    item.addEventListener('click', function(e){
+      if(e.target.closest('button') || e.target.closest('input') || e.target.closest('label') || e.target.closest('[data-check-id]') || e.target.closest('[data-cl-check]')) return;
+      var tid = item.getAttribute('data-tarefa-id');
+      var det = document.getElementById('det-' + tid);
+      if(det) det.classList.toggle('aberto');
+    });
+  });
+
+  // Check tarefa concluída
   box.querySelectorAll('[data-check-id]').forEach(function(btn){
-    btn.addEventListener('click', async function(){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
       var tid = btn.getAttribute('data-check-id');
       var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
       if(!tarefa) return;
@@ -2552,9 +2592,10 @@ async function renderDetalheDoDia(dataStr){
     });
   });
 
-  // Listeners de excluir tarefa
+  // Excluir tarefa
   box.querySelectorAll('[data-del-id]').forEach(function(btn){
-    btn.addEventListener('click', async function(){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
       var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir esta tarefa?');
       if(!ok) return;
       await excluirTarefa(btn.getAttribute('data-del-id'));
@@ -2563,56 +2604,139 @@ async function renderDetalheDoDia(dataStr){
     });
   });
 
-  // Listeners de editar tarefa
+  // Checklist — adicionar item
+  box.querySelectorAll('[data-cl-add]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-tarefa-id');
+      var input = document.getElementById('cl-input-' + tid);
+      var val = input ? input.value.trim() : '';
+      if(!val) return;
+      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+      if(!tarefa) return;
+      tarefa.checklist = tarefa.checklist || [];
+      tarefa.checklist.push({ id: Date.now().toString(), texto: val, concluido: false });
+      await atualizarTarefa(tarefa);
+      renderDetalheDoDia(dataStr);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+    });
+  });
+
+  // Checklist — marcar/desmarcar item
+  box.querySelectorAll('[data-cl-check]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-tarefa-id');
+      var idx = Number(btn.getAttribute('data-cl-idx'));
+      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+      if(!tarefa || !tarefa.checklist[idx]) return;
+      tarefa.checklist[idx].concluido = !tarefa.checklist[idx].concluido;
+      await atualizarTarefa(tarefa);
+      renderDetalheDoDia(dataStr);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+    });
+  });
+
+  // Checklist — remover item
+  box.querySelectorAll('[data-cl-del]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-tarefa-id');
+      var idx = Number(btn.getAttribute('data-cl-idx'));
+      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+      if(!tarefa) return;
+      tarefa.checklist.splice(idx, 1);
+      await atualizarTarefa(tarefa);
+      renderDetalheDoDia(dataStr);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+    });
+  });
+
+  // Anexos — abrir
+  box.querySelectorAll('[data-anexo-abrir]').forEach(function(el){
+    el.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = el.getAttribute('data-tarefa-id');
+      var idx = Number(el.getAttribute('data-anx-idx'));
+      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+      if(!tarefa || !tarefa.anexos[idx]) return;
+      await abrirAnexoTarefa(tarefa.anexos[idx]);
+    });
+  });
+
+  // Anexos — excluir
+  box.querySelectorAll('[data-anexo-del]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-tarefa-id');
+      var idx = Number(btn.getAttribute('data-anx-idx'));
+      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+      if(!tarefa || !tarefa.anexos[idx]) return;
+      var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir este arquivo?');
+      if(!ok) return;
+      await excluirAnexoTarefa(tarefa, tarefa.anexos[idx]);
+      renderDetalheDoDia(dataStr);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+    });
+  });
+
+  // Anexos — upload
+  box.querySelectorAll('.tarefa-file-input').forEach(function(input){
+    input.addEventListener('change', async function(e){
+      e.stopPropagation();
+      var tid = input.getAttribute('data-tarefa-id');
+      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+      if(!tarefa || !input.files[0]) return;
+      var label = input.closest('label');
+      if(label) label.textContent = 'Enviando...';
+      await uploadAnexoTarefa(tarefa, input.files[0]);
+      renderDetalheDoDia(dataStr);
+      setTimeout(function(){ var det = document.getElementById('det-' + tid); if(det) det.classList.add('aberto'); }, 50);
+    });
+  });
+
+  // Editar tarefa
   box.querySelectorAll('[data-edit-id]').forEach(function(btn){
-    btn.addEventListener('click', function(){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
       var tid = btn.getAttribute('data-edit-id');
       var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
       if(!tarefa) return;
-
       var formDiv = document.getElementById('form-edit-tarefa-' + tid);
-      if(formDiv.style.display !== 'none'){
-        formDiv.style.display = 'none';
-        return;
-      }
-
+      if(formDiv.style.display !== 'none'){ formDiv.style.display = 'none'; return; }
       formDiv.style.display = 'block';
       formDiv.innerHTML =
-        '<div class="field"><label>Título *</label><input type="text" id="edit-tar-titulo-' + tid + '" value="' + escapeHtml(tarefa.titulo) + '"></div>' +
+        '<div class="field"><label>Título *</label><input type="text" id="edt-titulo-' + tid + '" value="' + escapeHtml(tarefa.titulo) + '"></div>' +
         '<div class="row2">' +
-          '<div class="field"><label>Data</label><input type="date" id="edit-tar-data-' + tid + '" value="' + tarefa.data + '"></div>' +
-          '<div class="field"><label>Prioridade</label><select id="edit-tar-prior-' + tid + '">' +
+          '<div class="field"><label>Data</label><input type="date" id="edt-data-' + tid + '" value="' + tarefa.data + '"></div>' +
+          '<div class="field"><label>Prioridade</label><select id="edt-prior-' + tid + '">' +
             '<option value="normal"' + (tarefa.prioridade==='normal'?' selected':'') + '>Normal</option>' +
             '<option value="alta"' + (tarefa.prioridade==='alta'?' selected':'') + '>Alta</option>' +
             '<option value="urgente"' + (tarefa.prioridade==='urgente'?' selected':'') + '>Urgente</option>' +
           '</select></div>' +
         '</div>' +
-        '<div class="field"><label>Categoria</label><select id="edit-tar-cat-' + tid + '">' +
+        '<div class="field"><label>Categoria</label><select id="edt-cat-' + tid + '">' +
           '<option value="administrativo"' + (tarefa.categoria==='administrativo'?' selected':'') + '>Administrativo</option>' +
           '<option value="financeiro"' + (tarefa.categoria==='financeiro'?' selected':'') + '>Financeiro</option>' +
           '<option value="visita"' + (tarefa.categoria==='visita'?' selected':'') + '>Visita</option>' +
           '<option value="outro"' + (tarefa.categoria==='outro'?' selected':'') + '>Outro</option>' +
         '</select></div>' +
-        '<div class="field"><label>Notas</label><textarea id="edit-tar-desc-' + tid + '">' + escapeHtml(tarefa.descricao) + '</textarea></div>' +
+        '<div class="field"><label>Notas</label><textarea id="edt-desc-' + tid + '">' + escapeHtml(tarefa.descricao) + '</textarea></div>' +
         '<div style="display:flex; gap:8px;">' +
-          '<button class="btn-primary" style="font-size:13px;" id="btn-salvar-edit-' + tid + '">Salvar</button>' +
-          '<button class="btn-ghost" style="font-size:13px;" id="btn-cancelar-edit-' + tid + '">Cancelar</button>' +
+          '<button class="btn-primary" style="font-size:13px;" id="edt-salvar-' + tid + '">Salvar</button>' +
+          '<button class="btn-ghost" style="font-size:13px;" id="edt-cancelar-' + tid + '">Cancelar</button>' +
         '</div>';
 
-      document.getElementById('btn-cancelar-edit-' + tid).addEventListener('click', function(){
-        formDiv.style.display = 'none';
-      });
-
-      document.getElementById('btn-salvar-edit-' + tid).addEventListener('click', async function(){
-        var novoTitulo = document.getElementById('edit-tar-titulo-' + tid).value.trim();
+      document.getElementById('edt-cancelar-' + tid).addEventListener('click', function(){ formDiv.style.display = 'none'; });
+      document.getElementById('edt-salvar-' + tid).addEventListener('click', async function(){
+        var novoTitulo = document.getElementById('edt-titulo-' + tid).value.trim();
         if(!novoTitulo){ toast('O título não pode ser vazio.', 'erro'); return; }
-        this.disabled = true;
-        this.textContent = 'Salvando...';
+        this.disabled = true; this.textContent = 'Salvando...';
         tarefa.titulo = novoTitulo;
-        tarefa.data = document.getElementById('edit-tar-data-' + tid).value || tarefa.data;
-        tarefa.prioridade = document.getElementById('edit-tar-prior-' + tid).value;
-        tarefa.categoria = document.getElementById('edit-tar-cat-' + tid).value;
-        tarefa.descricao = document.getElementById('edit-tar-desc-' + tid).value.trim();
+        tarefa.data = document.getElementById('edt-data-' + tid).value || tarefa.data;
+        tarefa.prioridade = document.getElementById('edt-prior-' + tid).value;
+        tarefa.categoria = document.getElementById('edt-cat-' + tid).value;
+        tarefa.descricao = document.getElementById('edt-desc-' + tid).value.trim();
         await atualizarTarefa(tarefa);
         toast('Tarefa atualizada!', 'sucesso');
         renderDetalheDoDia(dataStr);
@@ -2621,60 +2745,10 @@ async function renderDetalheDoDia(dataStr){
     });
   });
 
-  // Formulário de nova tarefa
-  document.getElementById('btn-mostrar-form-tarefa').addEventListener('click', function(){
-    var container = document.getElementById('form-nova-tarefa-container');
-    if(container.innerHTML !== ''){
-      container.innerHTML = '';
-      this.textContent = '+ Nova tarefa';
-      return;
-    }
-    this.textContent = '✕ Cancelar';
-    container.innerHTML =
-      '<div class="form-nova-tarefa">' +
-        '<h4>Nova tarefa — ' + titulo + '</h4>' +
-        '<div class="field"><label>Título *</label><input type="text" id="nova-tarefa-titulo" placeholder="Ex: Ligar para fornecedor, enviar NF..."></div>' +
-        '<div class="row2">' +
-          '<div class="field"><label>Categoria</label><select id="nova-tarefa-cat">' +
-            '<option value="administrativo">Administrativo</option>' +
-            '<option value="financeiro">Financeiro</option>' +
-            '<option value="visita">Visita</option>' +
-            '<option value="outro">Outro</option>' +
-          '</select></div>' +
-          '<div class="field"><label>Prioridade</label><select id="nova-tarefa-prior">' +
-            '<option value="normal">Normal</option>' +
-            '<option value="alta">Alta</option>' +
-            '<option value="urgente">Urgente</option>' +
-          '</select></div>' +
-        '</div>' +
-        '<div class="field"><label>Notas (opcional)</label><textarea id="nova-tarefa-desc" placeholder="Detalhes..."></textarea></div>' +
-        '<button class="btn-primary" id="btn-salvar-nova-tarefa">Salvar tarefa</button>' +
-      '</div>';
-
-    document.getElementById('btn-salvar-nova-tarefa').addEventListener('click', async function(){
-      var titulo = document.getElementById('nova-tarefa-titulo').value.trim();
-      if(!titulo){ toast('Informe um título para a tarefa.', 'erro'); return; }
-      this.disabled = true;
-      this.textContent = 'Salvando...';
-      await criarTarefa({
-        titulo: titulo,
-        descricao: document.getElementById('nova-tarefa-desc').value.trim(),
-        data: dataStr,
-        prioridade: document.getElementById('nova-tarefa-prior').value,
-        categoria: document.getElementById('nova-tarefa-cat').value
-      });
-      toast('Tarefa criada!', 'sucesso');
-      renderDetalheDoDia(dataStr);
-      renderCalendario();
-    });
-  });
-
+  // Follow-up listeners
   box.querySelectorAll('.negociacao-row').forEach(function(row){
-    row.addEventListener('click', function(){
-      openModal(row.getAttribute('data-leadid'));
-    });
+    row.addEventListener('click', function(){ openModal(row.getAttribute('data-leadid')); });
   });
-
   box.querySelectorAll('.btn-concluir-followup').forEach(function(btn){
     btn.addEventListener('click', async function(e){
       e.stopPropagation();
@@ -2683,6 +2757,51 @@ async function renderDetalheDoDia(dataStr){
       if(!leadAlvo) return;
       btn.disabled = true;
       await concluirFollowUp(leadAlvo);
+      renderCalendario();
+      renderDetalheDoDia(dataStr);
+    });
+  });
+
+  // Nova tarefa
+  document.getElementById('btn-mostrar-form-tarefa').addEventListener('click', function(){
+    var container = document.getElementById('form-nova-tarefa-container');
+    if(container.innerHTML !== ''){ container.innerHTML = ''; this.textContent = '+ Nova tarefa'; return; }
+    this.textContent = '✕ Cancelar';
+    container.innerHTML =
+      '<div class="form-nova-tarefa">' +
+        '<h4>Nova tarefa — ' + titulo + '</h4>' +
+        '<div class="field"><label>Título *</label><input type="text" id="nova-tarefa-titulo" placeholder="Ex: Ligar para fornecedor..."></div>' +
+        '<div class="row2">' +
+          '<div class="field"><label>Data</label><input type="date" id="nova-tarefa-data" value="' + dataStr + '"></div>' +
+          '<div class="field"><label>Prioridade</label><select id="nova-tarefa-prior">' +
+            '<option value="normal">Normal</option>' +
+            '<option value="alta">Alta</option>' +
+            '<option value="urgente">Urgente</option>' +
+          '</select></div>' +
+        '</div>' +
+        '<div class="field"><label>Categoria</label><select id="nova-tarefa-cat">' +
+          '<option value="administrativo">Administrativo</option>' +
+          '<option value="financeiro">Financeiro</option>' +
+          '<option value="visita">Visita</option>' +
+          '<option value="outro">Outro</option>' +
+        '</select></div>' +
+        '<div class="field"><label>Notas (opcional)</label><textarea id="nova-tarefa-desc" placeholder="Detalhes..."></textarea></div>' +
+        '<button class="btn-primary" id="btn-salvar-nova-tarefa">Salvar tarefa</button>' +
+      '</div>';
+
+    document.getElementById('btn-salvar-nova-tarefa').addEventListener('click', async function(){
+      var t = document.getElementById('nova-tarefa-titulo').value.trim();
+      if(!t){ toast('Informe um título para a tarefa.', 'erro'); return; }
+      this.disabled = true; this.textContent = 'Salvando...';
+      await criarTarefa({
+        titulo: t,
+        descricao: document.getElementById('nova-tarefa-desc').value.trim(),
+        data: document.getElementById('nova-tarefa-data').value || dataStr,
+        prioridade: document.getElementById('nova-tarefa-prior').value,
+        categoria: document.getElementById('nova-tarefa-cat').value
+      });
+      toast('Tarefa criada!', 'sucesso');
+      renderDetalheDoDia(dataStr);
       renderCalendario();
     });
   });

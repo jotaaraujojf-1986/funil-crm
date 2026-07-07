@@ -1010,3 +1010,29 @@ html[data-theme="dark"] .cal-pill.tarefa-alta{ background:#3A2E00; color:#FFC107
   padding:14px; margin-top:10px;
 }
 .form-nova-tarefa h4{ font-size:13px; font-weight:700; margin:0 0 10px; }
+
+.tarefa-item{ cursor:pointer; }
+.tarefa-detalhe{
+  display:none;
+  padding:10px 12px 14px 42px;
+  border-top:1px solid var(--line);
+  margin-top:6px;
+}
+.tarefa-detalhe.aberto{ display:block; }
+.checklist-item{
+  display:flex; align-items:center; gap:8px;
+  padding:5px 0; font-size:13px;
+}
+.checklist-check{
+  width:18px; height:18px; border-radius:4px; border:2px solid var(--line);
+  background:transparent; cursor:pointer; flex:0 0 18px;
+  display:flex; align-items:center; justify-content:center; font-size:11px;
+}
+.checklist-check.marcada{ background:var(--green); border-color:var(--green); color:#fff; }
+.checklist-texto.riscado{ text-decoration:line-through; color:var(--ink-faint); }
+.checklist-del{ background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:11px; padding:0 4px; }
+.checklist-del:hover{ color:var(--red); }
+.add-checklist-row{ display:flex; gap:8px; margin-top:6px; }
+.tarefa-secao-label{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--ink-soft); margin:12px 0 6px; }
+.tarefa-anexo-item{ display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:4px; }
+.tarefa-anexo-link{ cursor:pointer; color:var(--blue); text-decoration:underline; }
