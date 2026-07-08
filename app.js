@@ -2145,9 +2145,17 @@ async function renderMetasView(){
   var hoje = new Date();
   var ano = metasRef.getFullYear();
   var mes = metasRef.getMonth();
+  var anoAtual = ano;
 
   document.getElementById('metas-titulo').textContent = MESES_PT[mes].charAt(0).toUpperCase() + MESES_PT[mes].slice(1) + ' de ' + ano;
-  var lancamentos = await loadLancamentosDoMes(ano, mes);
+  var resultados = await Promise.all([
+    loadLancamentosDoMes(ano, mes),
+    loadLancamentosDoAno(anoAtual),
+    loadMetasMensais(anoAtual)
+  ]);
+  var lancamentos = resultados[0];
+  var lancamentosAno = resultados[1];
+  var metasMensaisAno = resultados[2];
 
   // Calcular dias úteis do mês (seg-sex + sábados marcados pelo usuário)
   function getSabadosDoMes(ano, mes){
@@ -2192,9 +2200,6 @@ async function renderMetasView(){
   var totalDiasUteis = getDiasUteisDoMes(ano, mes, sabadosUteis);
   var diasUteisAteHoje = getDiasUteisAteHoje(ano, mes, sabadosUteis);
   var hojeStr = todayStr();
-  var anoAtual = ano;
-  var lancamentosAno = await loadLancamentosDoAno(anoAtual);
-  var metasMensaisAno = await loadMetasMensais(anoAtual);
 
   function getMetaMes(m){
     var found = metasMensaisAno.find(function(x){ return x.mes === m; });
@@ -2378,16 +2383,23 @@ async function renderMetasView(){
 
   // Listeners sábados
   container.querySelectorAll('.sabado-chip').forEach(function(chip){
-    chip.addEventListener('click', async function(){
+    chip.addEventListener('click', function(){
       var dataStr = chip.getAttribute('data-sabado');
       var idx = sabadosUteis.indexOf(dataStr);
       if(idx !== -1){
         sabadosUteis.splice(idx, 1);
+        chip.classList.remove('ativo');
       } else {
         sabadosUteis.push(dataStr);
+        chip.classList.add('ativo');
       }
-      await salvarSabadosUteis(sabadosUteis);
+      // Atualiza a tela imediatamente com o estado local
       renderMetasView();
+      // Salva no banco em segundo plano sem bloquear a interface
+      salvarSabadosUteis(sabadosUteis).catch(function(e){
+        console.error('Erro ao salvar sábados', e);
+        toast('Não foi possível salvar. Tente novamente.', 'erro');
+      });
     });
   });
 
@@ -2408,16 +2420,21 @@ async function renderMetasView(){
       toast('Informe um valor maior que zero.', 'erro');
       return;
     }
-    this.disabled = true;
-    this.textContent = 'Registrando...';
-    var novo = await criarLancamento(data, valor, descricao);
-    if(novo){
-      toast('Lançamento registrado!', 'sucesso');
-      renderMetasView();
-    } else {
-      this.disabled = false;
-      this.textContent = 'Registrar lançamento';
-    }
+    // Mostra feedback imediato
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Registrando...';
+    toast('Lançamento registrado!', 'sucesso');
+    // Recarrega a tela sem esperar o banco
+    renderMetasView();
+    // Salva no banco em segundo plano
+    criarLancamento(data, valor, descricao).then(function(novo){
+      if(!novo){
+        toast('Erro ao salvar lançamento. Recarregue a página.', 'erro');
+      }
+    }).catch(function(){
+      toast('Erro ao salvar lançamento. Recarregue a página.', 'erro');
+    });
   });
 
   // Excluir lançamento
