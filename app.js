@@ -73,7 +73,10 @@ function uid(){ return 'l' + Date.now() + Math.floor(Math.random()*10000); }
 
 function todayStr(){
   var d = new Date();
-  return d.toISOString().slice(0,10);
+  var ano = d.getFullYear();
+  var mes = String(d.getMonth() + 1).padStart(2, '0');
+  var dia = String(d.getDate()).padStart(2, '0');
+  return ano + '-' + mes + '-' + dia;
 }
 
 function addDays(dateStr, n){
@@ -2152,7 +2155,7 @@ async function renderMetasView(){
     var d = new Date(ano, mes, 1);
     while(d.getMonth() === mes){
       if(d.getDay() === 6){
-        sabados.push(d.toISOString().slice(0,10));
+        sabados.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
       }
       d.setDate(d.getDate()+1);
     }
@@ -2164,7 +2167,7 @@ async function renderMetasView(){
     var d = new Date(ano, mes, 1);
     while(d.getMonth() === mes){
       var dow = d.getDay();
-      var dataStr = d.toISOString().slice(0,10);
+      var dataStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
       if(dow >= 1 && dow <= 5) count++;
       else if(dow === 6 && sabadosExtras.indexOf(dataStr) !== -1) count++;
       d.setDate(d.getDate()+1);
@@ -2178,7 +2181,7 @@ async function renderMetasView(){
     var d = new Date(ano, mes, 1);
     while(d.getMonth() === mes && d <= hoje){
       var dow = d.getDay();
-      var dataStr = d.toISOString().slice(0,10);
+      var dataStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
       if(dow >= 1 && dow <= 5) count++;
       else if(dow === 6 && sabadosExtras.indexOf(dataStr) !== -1) count++;
       d.setDate(d.getDate()+1);
@@ -2214,7 +2217,7 @@ async function renderMetasView(){
     var d = new Date(amanha);
     while(d.getMonth() === mes){
       var dow = d.getDay();
-      var dataStr = d.toISOString().slice(0,10);
+      var dataStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
       if(dow >= 1 && dow <= 5) count++;
       else if(dow === 6 && sabadosExtras.indexOf(dataStr) !== -1) count++;
       d.setDate(d.getDate()+1);
