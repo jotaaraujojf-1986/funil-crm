@@ -378,6 +378,7 @@ async function loadTodasTarefas(filtros){
 }
 
 var buscaTarefaTexto = '';
+var tarefasExpandidasPan = {};
 
 async function renderTarefasView(){
   var lista = document.getElementById('tarefas-lista-panorama');
@@ -450,23 +451,77 @@ async function renderTarefasView(){
       ? t.checklist.filter(function(c){return c.concluido;}).length + '/' + t.checklist.length + ' itens'
       : '';
 
-    return '<div class="tarefa-lista-row' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '" data-tarefa-data="' + dataStr + '">' +
-      '<div class="tarefa-lista-check' + (t.concluida ? ' marcada' : '') + '" data-check-pan="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
-      '<div class="tarefa-lista-corpo">' +
-        '<p class="tarefa-lista-titulo">' + escapeHtml(t.titulo) + '</p>' +
-        '<div class="tarefa-lista-meta">' +
-          '<span class="' + dataClasse + '">' + (dataAtrasada ? '⚠ ' : '') + fmtDataCompleta(dataStr) + '</span>' +
-          '<span>' + t.categoria + '</span>' +
-          (t.prioridade !== 'normal' ? '<span style="color:' + (t.prioridade === 'urgente' ? 'var(--red)' : '#856404') + '; font-weight:700;">' + t.prioridade + '</span>' : '') +
-          (t.descricao ? '<span>' + escapeHtml(t.descricao.slice(0,50)) + (t.descricao.length > 50 ? '…' : '') + '</span>' : '') +
-          (checklistInfo ? '<span>☑ ' + checklistInfo + '</span>' : '') +
-          (t.anexos && t.anexos.length > 0 ? '<span>📎 ' + t.anexos.length + '</span>' : '') +
+    function fmtDataCompleta(dataStr){
+      var d = new Date(dataStr + 'T00:00:00');
+      return d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+    }
+
+    // Checklist HTML
+    var checklistHtml = '<p class="tarefa-secao-label">Checklist</p>';
+    if(t.checklist && t.checklist.length > 0){
+      checklistHtml += t.checklist.map(function(item, idx){
+        return '<div class="checklist-item">' +
+          '<div class="checklist-check' + (item.concluido ? ' marcada' : '') + '" data-pan-cl-check data-tarefa-id="' + t.id + '" data-cl-idx="' + idx + '">' + (item.concluido ? '✓' : '') + '</div>' +
+          '<span class="checklist-texto' + (item.concluido ? ' riscado' : '') + '">' + escapeHtml(item.texto) + '</span>' +
+          '<button class="checklist-del" data-pan-cl-del data-tarefa-id="' + t.id + '" data-cl-idx="' + idx + '" title="Remover">✕</button>' +
+        '</div>';
+      }).join('');
+    } else {
+      checklistHtml += '<p class="anexo-vazio">Nenhum item ainda.</p>';
+    }
+    checklistHtml += '<div class="add-checklist-row">' +
+      '<input type="text" id="pan-cl-input-' + t.id + '" class="campo-padrao campo-padrao-flex" placeholder="Adicionar item...">' +
+      '<button class="btn-ghost" style="font-size:12px;" data-pan-cl-add data-tarefa-id="' + t.id + '">+ Adicionar</button>' +
+    '</div>';
+
+    // Anexos HTML
+    var anexosHtml = '<p class="tarefa-secao-label">Anexos</p>';
+    if(t.anexos && t.anexos.length > 0){
+      anexosHtml += t.anexos.map(function(a, idx){
+        return '<div class="tarefa-anexo-item">' +
+          '<span class="tarefa-anexo-link" data-pan-anx-abrir data-tarefa-id="' + t.id + '" data-anx-idx="' + idx + '">📎 ' + escapeHtml(a.nome) + '</span>' +
+          '<span style="color:var(--ink-faint);font-size:11px;">(' + fmtTamanho(a.tamanho) + ')</span>' +
+          '<button class="tarefa-del" data-pan-anx-del data-tarefa-id="' + t.id + '" data-anx-idx="' + idx + '" title="Excluir">✕</button>' +
+        '</div>';
+      }).join('');
+    } else {
+      anexosHtml += '<p class="anexo-vazio">Nenhum arquivo anexado.</p>';
+    }
+    anexosHtml += '<label class="anexo-upload-label" style="font-size:12px; margin-top:6px; cursor:pointer;">📎 Adicionar arquivo<input type="file" class="pan-file-input" data-tarefa-id="' + t.id + '" style="display:none;"></label>';
+
+    var detalheHtml =
+      '<div class="tarefa-lista-detalhe" id="pan-det-' + t.id + '" style="display:none; padding:12px 14px 14px 50px; border-top:1px solid var(--line);">' +
+        (t.descricao ? '<p style="font-size:13px; color:var(--ink-soft); margin:0 0 12px;">' + escapeHtml(t.descricao) + '</p>' : '') +
+        '<div class="row2" style="align-items:start;">' +
+          '<div>' + checklistHtml + '</div>' +
+          '<div>' + anexosHtml + '</div>' +
+        '</div>' +
+        '<div style="margin-top:12px;">' +
+          '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-pan-edit-id="' + t.id + '">✏️ Editar</button>' +
+        '</div>' +
+        '<div id="pan-form-edit-' + t.id + '" style="display:none; margin-top:10px; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:12px;"></div>' +
+      '</div>';
+
+    return '<div class="tarefa-lista-wrapper" data-tid="' + t.id + '">' +
+      '<div class="tarefa-lista-row' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '" data-tarefa-data="' + dataStr + '">' +
+        '<div class="tarefa-lista-check' + (t.concluida ? ' marcada' : '') + '" data-check-pan="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
+        '<div class="tarefa-lista-corpo">' +
+          '<p class="tarefa-lista-titulo">' + escapeHtml(t.titulo) + '</p>' +
+          '<div class="tarefa-lista-meta">' +
+            '<span class="' + dataClasse + '">' + (dataAtrasada ? '⚠ ' : '') + fmtDataCompleta(dataStr) + '</span>' +
+            '<span>' + t.categoria + '</span>' +
+            (t.prioridade !== 'normal' ? '<span style="color:' + (t.prioridade === 'urgente' ? 'var(--red)' : '#856404') + '; font-weight:700;">' + t.prioridade + '</span>' : '') +
+            (t.descricao ? '<span>' + escapeHtml(t.descricao.slice(0,50)) + (t.descricao.length > 50 ? '…' : '') + '</span>' : '') +
+            (checklistInfo ? '<span>☑ ' + checklistInfo + '</span>' : '') +
+            (t.anexos && t.anexos.length > 0 ? '<span>📎 ' + t.anexos.length + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="tarefa-lista-acoes">' +
+          '<button class="btn-ghost" style="font-size:12px; padding:4px 8px;" data-abrir-cal="' + dataStr + '" title="Ver no calendário">📅</button>' +
+          '<button class="tarefa-del" data-del-pan="' + t.id + '" title="Excluir">✕</button>' +
         '</div>' +
       '</div>' +
-      '<div class="tarefa-lista-acoes">' +
-        '<button class="btn-ghost" style="font-size:12px; padding:4px 8px;" data-abrir-cal="' + dataStr + '" title="Ver no calendário">📅</button>' +
-        '<button class="tarefa-del" data-del-pan="' + t.id + '" title="Excluir">✕</button>' +
-      '</div>' +
+      detalheHtml +
     '</div>';
   }
 
@@ -476,6 +531,27 @@ async function renderTarefasView(){
       g.tarefas.map(buildLinhaHtml).join('') +
     '</div>';
   }).join('');
+
+  // Restaurar estado expandido
+  Object.keys(tarefasExpandidasPan).forEach(function(tid){
+    if(tarefasExpandidasPan[tid]){
+      var det = document.getElementById('pan-det-' + tid);
+      if(det) det.style.display = 'block';
+    }
+  });
+
+  // Expandir ao clicar na row (mas não em botões)
+  lista.querySelectorAll('.tarefa-lista-row').forEach(function(row){
+    row.addEventListener('click', function(e){
+      if(e.target.closest('button') || e.target.closest('[data-check-pan]')) return;
+      var tid = row.getAttribute('data-tarefa-id');
+      var det = document.getElementById('pan-det-' + tid);
+      if(!det) return;
+      var aberto = det.style.display !== 'none';
+      det.style.display = aberto ? 'none' : 'block';
+      tarefasExpandidasPan[tid] = !aberto;
+    });
+  });
 
   // Check — concluir/reabrir
   lista.querySelectorAll('[data-check-pan]').forEach(function(btn){
@@ -515,6 +591,157 @@ async function renderTarefasView(){
       switchTab('calendario');
       await renderCalendario();
       await renderDetalheDoDia(dataStr);
+    });
+  });
+
+  // Checklist — adicionar
+  lista.querySelectorAll('[data-pan-cl-add]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-tarefa-id');
+      var input = document.getElementById('pan-cl-input-' + tid);
+      var val = input ? input.value.trim() : '';
+      if(!val) return;
+      var res = await sb.from('tarefas').select('*').eq('id', tid).single();
+      if(res.error) return;
+      var tarefa = tarefaFromDb(res.data);
+      tarefa.checklist.push({ id: Date.now().toString(), texto: val, concluido: false });
+      await atualizarTarefa(tarefa);
+      tarefasExpandidasPan[tid] = true;
+      renderTarefasView();
+    });
+  });
+
+  // Checklist — marcar/desmarcar
+  lista.querySelectorAll('[data-pan-cl-check]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-tarefa-id');
+      var idx = Number(btn.getAttribute('data-cl-idx'));
+      var res = await sb.from('tarefas').select('*').eq('id', tid).single();
+      if(res.error) return;
+      var tarefa = tarefaFromDb(res.data);
+      if(!tarefa.checklist[idx]) return;
+      tarefa.checklist[idx].concluido = !tarefa.checklist[idx].concluido;
+      await atualizarTarefa(tarefa);
+      tarefasExpandidasPan[tid] = true;
+      renderTarefasView();
+    });
+  });
+
+  // Checklist — remover
+  lista.querySelectorAll('[data-pan-cl-del]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-tarefa-id');
+      var idx = Number(btn.getAttribute('data-cl-idx'));
+      var res = await sb.from('tarefas').select('*').eq('id', tid).single();
+      if(res.error) return;
+      var tarefa = tarefaFromDb(res.data);
+      tarefa.checklist.splice(idx, 1);
+      await atualizarTarefa(tarefa);
+      tarefasExpandidasPan[tid] = true;
+      renderTarefasView();
+    });
+  });
+
+  // Anexos — abrir
+  lista.querySelectorAll('[data-pan-anx-abrir]').forEach(function(el){
+    el.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = el.getAttribute('data-tarefa-id');
+      var idx = Number(el.getAttribute('data-anx-idx'));
+      var res = await sb.from('tarefas').select('*').eq('id', tid).single();
+      if(res.error) return;
+      var tarefa = tarefaFromDb(res.data);
+      if(!tarefa.anexos[idx]) return;
+      await abrirAnexoTarefa(tarefa.anexos[idx]);
+    });
+  });
+
+  // Anexos — excluir
+  lista.querySelectorAll('[data-pan-anx-del]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-tarefa-id');
+      var idx = Number(btn.getAttribute('data-anx-idx'));
+      var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir este arquivo?');
+      if(!ok) return;
+      var res = await sb.from('tarefas').select('*').eq('id', tid).single();
+      if(res.error) return;
+      var tarefa = tarefaFromDb(res.data);
+      if(!tarefa.anexos[idx]) return;
+      await excluirAnexoTarefa(tarefa, tarefa.anexos[idx]);
+      tarefasExpandidasPan[tid] = true;
+      renderTarefasView();
+    });
+  });
+
+  // Anexos — upload
+  lista.querySelectorAll('.pan-file-input').forEach(function(input){
+    input.addEventListener('change', async function(e){
+      e.stopPropagation();
+      var tid = input.getAttribute('data-tarefa-id');
+      if(!input.files[0]) return;
+      var label = input.closest('label');
+      if(label) label.textContent = 'Enviando...';
+      var res = await sb.from('tarefas').select('*').eq('id', tid).single();
+      if(res.error) return;
+      var tarefa = tarefaFromDb(res.data);
+      await uploadAnexoTarefa(tarefa, input.files[0]);
+      tarefasExpandidasPan[tid] = true;
+      renderTarefasView();
+    });
+  });
+
+  // Editar tarefa
+  lista.querySelectorAll('[data-pan-edit-id]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-pan-edit-id');
+      var formDiv = document.getElementById('pan-form-edit-' + tid);
+      if(formDiv.style.display !== 'none'){ formDiv.style.display = 'none'; return; }
+      var res = await sb.from('tarefas').select('*').eq('id', tid).single();
+      if(res.error) return;
+      var tarefa = tarefaFromDb(res.data);
+      formDiv.style.display = 'block';
+      formDiv.innerHTML =
+        '<div class="field"><label>Título *</label><input type="text" id="pedt-titulo-' + tid + '" value="' + escapeHtml(tarefa.titulo) + '"></div>' +
+        '<div class="row2">' +
+          '<div class="field"><label>Data</label><input type="date" id="pedt-data-' + tid + '" value="' + tarefa.data + '"></div>' +
+          '<div class="field"><label>Prioridade</label><select id="pedt-prior-' + tid + '">' +
+            '<option value="normal"' + (tarefa.prioridade==='normal'?' selected':'') + '>Normal</option>' +
+            '<option value="alta"' + (tarefa.prioridade==='alta'?' selected':'') + '>Alta</option>' +
+            '<option value="urgente"' + (tarefa.prioridade==='urgente'?' selected':'') + '>Urgente</option>' +
+          '</select></div>' +
+        '</div>' +
+        '<div class="field"><label>Categoria</label><select id="pedt-cat-' + tid + '">' +
+          '<option value="administrativo"' + (tarefa.categoria==='administrativo'?' selected':'') + '>Administrativo</option>' +
+          '<option value="financeiro"' + (tarefa.categoria==='financeiro'?' selected':'') + '>Financeiro</option>' +
+          '<option value="visita"' + (tarefa.categoria==='visita'?' selected':'') + '>Visita</option>' +
+          '<option value="outro"' + (tarefa.categoria==='outro'?' selected':'') + '>Outro</option>' +
+        '</select></div>' +
+        '<div class="field"><label>Notas</label><textarea id="pedt-desc-' + tid + '">' + escapeHtml(tarefa.descricao) + '</textarea></div>' +
+        '<div style="display:flex; gap:8px;">' +
+          '<button class="btn-primary" style="font-size:13px;" id="pedt-salvar-' + tid + '">Salvar</button>' +
+          '<button class="btn-ghost" style="font-size:13px;" id="pedt-cancelar-' + tid + '">Cancelar</button>' +
+        '</div>';
+
+      document.getElementById('pedt-cancelar-' + tid).addEventListener('click', function(){ formDiv.style.display = 'none'; });
+      document.getElementById('pedt-salvar-' + tid).addEventListener('click', async function(){
+        var novoTitulo = document.getElementById('pedt-titulo-' + tid).value.trim();
+        if(!novoTitulo){ toast('O título não pode ser vazio.', 'erro'); return; }
+        this.disabled = true; this.textContent = 'Salvando...';
+        tarefa.titulo = novoTitulo;
+        tarefa.data = document.getElementById('pedt-data-' + tid).value || tarefa.data;
+        tarefa.prioridade = document.getElementById('pedt-prior-' + tid).value;
+        tarefa.categoria = document.getElementById('pedt-cat-' + tid).value;
+        tarefa.descricao = document.getElementById('pedt-desc-' + tid).value.trim();
+        await atualizarTarefa(tarefa);
+        toast('Tarefa atualizada!', 'sucesso');
+        tarefasExpandidasPan[tid] = true;
+        renderTarefasView();
+      });
     });
   });
 }
@@ -692,6 +919,40 @@ async function abrirAnexo(anexo){
     return;
   }
   window.open(res.data.signedUrl, '_blank');
+}
+
+async function abrirAnexoTarefa(anexo){
+  await abrirAnexo(anexo);
+}
+
+async function excluirAnexoTarefa(tarefa, anexo){
+  var res = await sb.storage.from('anexos').remove([anexo.path]);
+  if(res.error){
+    console.error('Erro ao excluir anexo', res.error);
+    showSyncError();
+    return;
+  }
+  tarefa.anexos = (tarefa.anexos || []).filter(function(a){ return a.path !== anexo.path; });
+  await atualizarTarefa(tarefa);
+}
+
+async function uploadAnexoTarefa(tarefa, file){
+  if(file.size > 10 * 1024 * 1024){
+    toast('Arquivo muito grande. O limite é 10MB por arquivo.', 'erro');
+    return null;
+  }
+  var caminho = currentUserId + '/tarefas/' + tarefa.id + '/' + Date.now() + '_' + file.name.replace(/[^\w.\-]/g, '_');
+  var res = await sb.storage.from('anexos').upload(caminho, file);
+  if(res.error){
+    console.error('Erro ao enviar anexo', res.error);
+    toast('Não foi possível enviar o arquivo. Tente novamente.', 'erro');
+    return null;
+  }
+  var anexo = { path: caminho, nome: file.name, tamanho: file.size, enviadoEm: new Date().toISOString() };
+  tarefa.anexos = tarefa.anexos || [];
+  tarefa.anexos.push(anexo);
+  await atualizarTarefa(tarefa);
+  return anexo;
 }
 
 function fmtTamanho(bytes){

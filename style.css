@@ -1079,3 +1079,21 @@ html[data-theme="dark"] .cal-pill.tarefa-alta{ background:#3A2E00; color:#FFC107
   background:var(--panel); border:1px solid var(--amber); border-radius:10px;
   padding:18px 20px; margin-bottom:18px;
 }
+
+.tarefa-lista-wrapper{
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  margin-bottom:6px;
+  overflow:hidden;
+}
+.tarefa-lista-wrapper .tarefa-lista-row{
+  border:none;
+  border-radius:0;
+  margin-bottom:0;
+  background:transparent;
+}
+.tarefa-lista-wrapper .tarefa-lista-row:hover{
+  border-color:transparent;
+  background:rgba(232,163,23,0.05);
+}
