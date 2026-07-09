@@ -3030,7 +3030,7 @@ async function renderDetalheDoDia(dataStr){
   // Expandir/recolher ao clicar no item (mas não nos botões internos)
   box.querySelectorAll('.tarefa-item').forEach(function(item){
     item.addEventListener('click', function(e){
-      if(e.target.closest('button') || e.target.closest('input') || e.target.closest('label') || e.target.closest('[data-check-id]') || e.target.closest('[data-cl-check]')) return;
+      if(e.target.closest('button') || e.target.closest('input') || e.target.closest('textarea') || e.target.closest('select') || e.target.closest('label') || e.target.closest('[data-check-id]') || e.target.closest('[data-cl-check]')) return;
       var tid = item.getAttribute('data-tarefa-id');
       var det = document.getElementById('det-' + tid);
       if(!det) return;
