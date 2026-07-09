@@ -2681,21 +2681,17 @@ async function renderMetasView(){
       toast('Informe um valor maior que zero.', 'erro');
       return;
     }
-    // Mostra feedback imediato
     var btn = this;
     btn.disabled = true;
     btn.textContent = 'Registrando...';
-    toast('Lançamento registrado!', 'sucesso');
-    // Recarrega a tela sem esperar o banco
-    renderMetasView();
-    // Salva no banco em segundo plano
-    criarLancamento(data, valor, descricao).then(function(novo){
-      if(!novo){
-        toast('Erro ao salvar lançamento. Recarregue a página.', 'erro');
-      }
-    }).catch(function(){
-      toast('Erro ao salvar lançamento. Recarregue a página.', 'erro');
-    });
+    var novo = await criarLancamento(data, valor, descricao);
+    if(novo){
+      toast('Lançamento registrado!', 'sucesso');
+      renderMetasView();
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Registrar lançamento';
+    }
   });
 
   // Excluir lançamento
