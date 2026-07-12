@@ -3543,6 +3543,82 @@ function showLogin(){
   document.getElementById('app').classList.add('hidden');
 }
 
+function showCriarEquipe(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+
+  var tela = document.getElementById('criar-equipe-screen');
+  if(!tela){
+    tela = document.createElement('div');
+    tela.id = 'criar-equipe-screen';
+    tela.className = 'login-screen';
+    document.body.appendChild(tela);
+  }
+  tela.classList.remove('hidden');
+  tela.innerHTML =
+    '<div class="login-box">' +
+      '<div class="mark">Tr</div>' +
+      '<h1>Bem-vindo ao Tractar</h1>' +
+      '<p class="sub">Para começar, crie sua equipe. Você será o administrador.</p>' +
+      '<div class="field"><label>Nome da equipe</label><input type="text" id="f-nome-equipe" placeholder="Ex: Equipe Comercial, Distribuidora XYZ..."></div>' +
+      '<div class="field"><label>Seu nome</label><input type="text" id="f-nome-admin" placeholder="Seu nome completo"></div>' +
+      '<button class="btn-primary" id="btn-criar-equipe" style="width:100%; margin-top:8px;">Criar equipe e entrar</button>' +
+      '<button class="btn-ghost" id="btn-logout-criar-equipe" style="width:100%; margin-top:8px;">Sair</button>' +
+    '</div>';
+
+  document.getElementById('btn-logout-criar-equipe').addEventListener('click', async function(){
+    await sb.auth.signOut();
+    location.reload();
+  });
+
+  document.getElementById('btn-criar-equipe').addEventListener('click', async function(){
+    var nomeEquipe = document.getElementById('f-nome-equipe').value.trim();
+    var nomeAdmin = document.getElementById('f-nome-admin').value.trim();
+    if(!nomeEquipe || !nomeAdmin){
+      toast('Preencha o nome da equipe e o seu nome.', 'erro');
+      return;
+    }
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Criando...';
+
+    var resEquipe = await sb.from('equipes').insert({ nome: nomeEquipe }).select().single();
+    if(resEquipe.error){
+      toast('Erro ao criar equipe: ' + resEquipe.error.message, 'erro');
+      btn.disabled = false;
+      btn.textContent = 'Criar equipe e entrar';
+      return;
+    }
+    equipeAtual = resEquipe.data;
+
+    var sessao = await sb.auth.getSession();
+    var emailAdmin = sessao.data.session.user.email;
+
+    var resMembro = await sb.from('membros_equipe').insert({
+      user_id: currentUserId,
+      equipe_id: equipeAtual.id,
+      papel: 'admin',
+      nome: nomeAdmin,
+      email: emailAdmin
+    });
+
+    if(resMembro.error){
+      toast('Erro ao configurar administrador: ' + resMembro.error.message, 'erro');
+      btn.disabled = false;
+      btn.textContent = 'Criar equipe e entrar';
+      return;
+    }
+
+    papelAtual = 'admin';
+    tela.classList.add('hidden');
+    showApp();
+    await loadLeadsFromDb();
+    await loadClientesFromDb();
+    await loadConfiguracoes();
+    render();
+  });
+}
+
 function showApp(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
@@ -3736,12 +3812,24 @@ async function iniciarApp(){
     return;
   }
   currentUserId = session.user.id;
-  await loadEquipe();
+
+  var membro = await loadEquipe();
+
+  if(!membro){
+    showCriarEquipe();
+    return;
+  }
+
   showApp();
-  await loadLeadsFromDb();
-  await loadClientesFromDb();
-  await loadConfiguracoes();
+  await Promise.all([
+    loadLeadsFromDb(),
+    loadClientesFromDb(),
+    loadConfiguracoes()
+  ]);
   render();
+
+  var headerEquipe = document.getElementById('equipe-nome-header');
+  if(headerEquipe && equipeAtual) headerEquipe.textContent = equipeAtual.nome;
 }
 
 iniciarApp();
