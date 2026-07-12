@@ -22,12 +22,13 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var currentUserId = null;
 var leads = [];
 var clientes = [];
-var equipeAtual = null;
-var papelAtual = null;
 var filtroAtivo = 'todos';
 var periodoTipo = 'todos';
 var periodoInicio = null;
 var periodoFim = null;
+var equipeAtual = null;
+var papelAtual = null;
+var filtroVendedorId = '';
 var limitesEtapa = {
   lead: {alerta:7, critico:14},
   contato: {alerta:7, critico:14},
@@ -138,6 +139,7 @@ async function concluirFollowUp(lead){
 function fromDb(row){
   return {
     id: row.id,
+    userId: row.user_id,
     nome: row.nome,
     contato: row.contato,
     canal: row.canal,
@@ -3595,6 +3597,16 @@ document.getElementById('filtro-tag-cliente').addEventListener('change', functio
   renderClientesView();
 });
 
+document.getElementById('filtro-vendedor').addEventListener('change', function(){
+  filtroVendedorId = this.value;
+  loadLeadsFromDb().then(function(){
+    if(filtroVendedorId){
+      leads = leads.filter(function(l){ return l.userId === filtroVendedorId; });
+    }
+    render();
+  });
+});
+
 function switchTab(tab){
   document.getElementById('tab-funil').classList.toggle('active', tab === 'funil');
   document.getElementById('tab-dash').classList.toggle('active', tab === 'dash');
@@ -3709,6 +3721,19 @@ function showApp(){
   document.getElementById('app').classList.remove('hidden');
   var tabEquipe = document.getElementById('tab-equipe');
   if(tabEquipe) tabEquipe.style.display = papelAtual === 'admin' ? '' : 'none';
+
+  if(papelAtual === 'admin'){
+    document.getElementById('filtro-vendedor').style.display = '';
+    sb.from('membros_equipe').select('*').eq('equipe_id', equipeAtual.id).eq('ativo', true).then(function(res){
+      if(res.data){
+        var sel = document.getElementById('filtro-vendedor');
+        sel.innerHTML = '<option value="">Todos os vendedores</option>' +
+          res.data.map(function(m){
+            return '<option value="' + m.user_id + '">' + escapeHtml(m.nome) + '</option>';
+          }).join('');
+      }
+    });
+  }
 }
 
 function setLoginError(msg){
