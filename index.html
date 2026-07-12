@@ -19,8 +19,8 @@
     <p class="sub">Entre com seu e-mail e senha para acessar seus clientes.</p>
     <div class="login-error" id="login-error"></div>
     <div class="field">
-      <label>E-mail</label>
-      <input id="login-email" type="email" placeholder="voce@email.com">
+      <label id="login-email-label">E-mail</label>
+      <input id="login-email" type="text" placeholder="voce@email.com" autocomplete="username">
     </div>
     <div class="field">
       <label>Senha</label>
@@ -58,6 +58,7 @@
     <button class="tab" id="tab-calendario" data-tab="calendario">Calendário</button>
     <button class="tab" id="tab-metas" data-tab="metas">Metas</button>
     <button class="tab" id="tab-tarefas" data-tab="tarefas">Tarefas</button>
+    <button class="tab" id="tab-equipe" data-tab="equipe" style="display:none;">Equipe</button>
   </div>
   <div class="periodo-filtro">
     <select id="periodo-select">
@@ -173,6 +174,10 @@
     <button class="btn-primary" id="btn-nova-tarefa-rapida">+ Nova tarefa</button>
   </div>
   <div id="tarefas-lista-panorama"></div>
+</div>
+
+<div class="equipe-view" id="equipe-view">
+  <div id="equipe-container"></div>
 </div>
 
 <div class="overlay" id="overlay">

@@ -22,6 +22,8 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var currentUserId = null;
 var leads = [];
 var clientes = [];
+var equipeAtual = null;
+var papelAtual = null;
 var filtroAtivo = 'todos';
 var periodoTipo = 'todos';
 var periodoInicio = null;
@@ -879,6 +881,145 @@ async function loadConfiguracoes(){
     // primeiro acesso: cria a linha de configuração com os valores padrão
     await sb.from('configuracoes').insert({ user_id: currentUserId, limites_etapa: limitesEtapa, meta_mensal: metaMensal });
   }
+}
+
+async function loadEquipe(){
+  var res = await sb.from('membros_equipe')
+    .select('*, equipes(*)')
+    .eq('user_id', currentUserId)
+    .eq('ativo', true)
+    .maybeSingle();
+  if(res.error){ console.error('Erro ao carregar equipe', res.error); return null; }
+  if(!res.data) return null;
+  equipeAtual = res.data.equipes;
+  papelAtual = res.data.papel;
+  return res.data;
+}
+
+async function renderEquipeView(){
+  if(papelAtual !== 'admin') return;
+
+  var container = document.getElementById('equipe-container');
+  container.innerHTML = '<p class="anexo-vazio">Carregando equipe...</p>';
+
+  var res = await sb.from('membros_equipe')
+    .select('*')
+    .eq('equipe_id', equipeAtual.id)
+    .eq('ativo', true)
+    .order('created_at', {ascending:true});
+
+  if(res.error){ container.innerHTML = '<p class="anexo-vazio">Erro ao carregar membros.</p>'; return; }
+  var membros = res.data;
+
+  var html = '<div class="metas-section">';
+  html += '<h3>Equipe: ' + escapeHtml(equipeAtual.nome) + '</h3>';
+  html += membros.map(function(m){
+    var iniciais = m.nome.trim().slice(0,2).toUpperCase();
+    var ehEuMesmo = m.user_id === currentUserId;
+    return '<div class="membro-row">' +
+      '<div class="membro-avatar">' + iniciais + '</div>' +
+      '<div class="membro-info">' +
+        '<div class="membro-nome">' + escapeHtml(m.nome) + (ehEuMesmo ? ' (você)' : '') + '</div>' +
+        '<div class="membro-email">' + escapeHtml(m.username || m.email) + '</div>' +
+      '</div>' +
+      '<span class="membro-papel ' + m.papel + '">' + (m.papel === 'admin' ? 'Administrador' : 'Vendedor') + '</span>' +
+      (!ehEuMesmo ? '<button class="btn-ghost" style="font-size:12px; color:var(--red);" data-remover-id="' + m.id + '">Remover</button>' : '') +
+    '</div>';
+  }).join('');
+  html += '</div>';
+
+  html += '<div class="metas-section">';
+  html += '<h3>Adicionar vendedor</h3>';
+  html += '<p class="meta-dia-label" style="margin-bottom:12px;">Crie o acesso para um novo membro. O vendedor fará login com o nome de usuário e senha definidos aqui.</p>';
+  html += '<div class="row2">';
+  html += '<div class="field"><label>Nome completo</label><input type="text" id="novo-membro-nome" placeholder="Ex: João Silva"></div>';
+  html += '<div class="field"><label>Nome de usuário</label><input type="text" id="novo-membro-username" placeholder="Ex: joao.silva" style="text-transform:lowercase;"></div>';
+  html += '</div>';
+  html += '<div class="row2">';
+  html += '<div class="field"><label>Senha</label><input type="password" id="novo-membro-senha" placeholder="Mínimo 6 caracteres"></div>';
+  html += '<div class="field"><label>Papel</label><select id="novo-membro-papel"><option value="vendedor">Vendedor</option><option value="admin">Administrador</option></select></div>';
+  html += '</div>';
+  html += '<button class="btn-primary" id="btn-adicionar-membro">Criar acesso</button>';
+  html += '</div>';
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('[data-remover-id]').forEach(function(btn){
+    btn.addEventListener('click', async function(){
+      var ok = await customConfirm('O membro perderá o acesso imediatamente.', 'Remover este membro da equipe?');
+      if(!ok) return;
+      await sb.from('membros_equipe').update({ ativo: false }).eq('id', btn.getAttribute('data-remover-id'));
+      toast('Membro removido.', 'sucesso');
+      renderEquipeView();
+    });
+  });
+
+  document.getElementById('btn-adicionar-membro').addEventListener('click', async function(){
+    var nome = document.getElementById('novo-membro-nome').value.trim();
+    var username = document.getElementById('novo-membro-username').value.trim().toLowerCase();
+    var senha = document.getElementById('novo-membro-senha').value;
+    var papel = document.getElementById('novo-membro-papel').value;
+
+    if(!nome || !username || !senha){
+      toast('Preencha todos os campos.', 'erro');
+      return;
+    }
+    if(senha.length < 6){
+      toast('A senha deve ter pelo menos 6 caracteres.', 'erro');
+      return;
+    }
+    if(!/^[a-z0-9._-]+$/.test(username)){
+      toast('Nome de usuário inválido. Use apenas letras minúsculas, números, ponto, hífen ou underscore.', 'erro');
+      return;
+    }
+
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Criando...';
+
+    try{
+      var sessao = await sb.auth.getSession();
+      var token = sessao.data.session.access_token;
+
+      var res = await fetch('https://atgwsmrottssynagejyw.supabase.co/functions/v1/criar-usuario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          nome: nome,
+          username: username,
+          senha: senha,
+          equipe_id: equipeAtual.id,
+          papel: papel
+        })
+      });
+
+      var dados = await res.json();
+
+      if(!res.ok || dados.error){
+        toast('Erro: ' + (dados.error || 'Não foi possível criar o usuário.'), 'erro');
+        btn.disabled = false;
+        btn.textContent = 'Criar acesso';
+        return;
+      }
+
+      toast(dados.mensagem || 'Acesso criado com sucesso!', 'sucesso');
+      document.getElementById('novo-membro-nome').value = '';
+      document.getElementById('novo-membro-username').value = '';
+      document.getElementById('novo-membro-senha').value = '';
+      btn.disabled = false;
+      btn.textContent = 'Criar acesso';
+      renderEquipeView();
+
+    }catch(err){
+      console.error('Erro ao criar usuário', err);
+      toast('Erro de conexão. Tente novamente.', 'erro');
+      btn.disabled = false;
+      btn.textContent = 'Criar acesso';
+    }
+  });
 }
 
 async function salvarConfiguracoes(novosLimites, novaMeta){
@@ -3357,6 +3498,7 @@ document.getElementById('tab-clientes').addEventListener('click', function(){ sw
 document.getElementById('tab-calendario').addEventListener('click', function(){ switchTab('calendario'); });
 document.getElementById('tab-metas').addEventListener('click', function(){ switchTab('metas'); });
 document.getElementById('tab-tarefas').addEventListener('click', function(){ switchTab('tarefas'); });
+document.getElementById('tab-equipe').addEventListener('click', function(){ switchTab('equipe'); });
 
 document.getElementById('busca-cliente').addEventListener('input', function(){
   buscaClienteTexto = this.value;
@@ -3375,6 +3517,7 @@ function switchTab(tab){
   document.getElementById('tab-calendario').classList.toggle('active', tab === 'calendario');
   document.getElementById('tab-metas').classList.toggle('active', tab === 'metas');
   document.getElementById('tab-tarefas').classList.toggle('active', tab === 'tarefas');
+  document.getElementById('tab-equipe').classList.toggle('active', tab === 'equipe');
   document.getElementById('board').style.display = tab === 'funil' ? 'grid' : 'none';
   var headersRow = document.getElementById('board-headers');
   if (headersRow) headersRow.style.display = tab === 'funil' ? 'grid' : 'none';
@@ -3383,6 +3526,7 @@ function switchTab(tab){
   document.getElementById('calendario-view').classList.toggle('open', tab === 'calendario');
   document.getElementById('metas-view').classList.toggle('open', tab === 'metas');
   document.getElementById('tarefas-view').classList.toggle('open', tab === 'tarefas');
+  document.getElementById('equipe-view').classList.toggle('open', tab === 'equipe');
   document.querySelector('.filters').style.display = tab === 'funil' ? 'flex' : 'none';
   var periodoFiltroEl = document.querySelector('.periodo-filtro');
   if(periodoFiltroEl) periodoFiltroEl.style.display = tab === 'funil' || tab === 'dash' ? 'flex' : 'none';
@@ -3391,6 +3535,7 @@ function switchTab(tab){
   if(tab === 'calendario') renderCalendario();
   if(tab === 'metas') renderMetasView();
   if(tab === 'tarefas') renderTarefasView();
+  if(tab === 'equipe') renderEquipeView();
 }
 
 function showLogin(){
@@ -3401,6 +3546,8 @@ function showLogin(){
 function showApp(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  var tabEquipe = document.getElementById('tab-equipe');
+  if(tabEquipe) tabEquipe.style.display = papelAtual === 'admin' ? '' : 'none';
 }
 
 function setLoginError(msg){
@@ -3421,7 +3568,8 @@ document.getElementById('link-cadastro').addEventListener('click', function(e){
 });
 
 document.getElementById('btn-login').addEventListener('click', async function(){
-  var email = document.getElementById('login-email').value.trim();
+  var emailOuUsername = document.getElementById('login-email').value.trim().toLowerCase();
+  var email = emailOuUsername.includes('@') ? emailOuUsername : emailOuUsername + '@tractar.app';
   var senha = document.getElementById('login-senha').value;
   setLoginError(null);
 
@@ -3588,6 +3736,7 @@ async function iniciarApp(){
     return;
   }
   currentUserId = session.user.id;
+  await loadEquipe();
   showApp();
   await loadLeadsFromDb();
   await loadClientesFromDb();
