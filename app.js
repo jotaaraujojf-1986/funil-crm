@@ -160,10 +160,10 @@ function fromDb(row){
 function toDb(lead){
   return {
     user_id: currentUserId,
+    equipe_id: equipeAtual ? equipeAtual.id : null,
     nome: lead.nome,
     contato: lead.contato || null,
     canal: lead.canal,
-    interesse: lead.interesse || null,
     valor: Number(lead.valor) || 0,
     stage: lead.stage,
     next_follow_up: lead.nextFollowUp || null,
@@ -180,7 +180,13 @@ function toDb(lead){
 }
 
 async function loadLeadsFromDb(){
-  var res = await sb.from('leads').select('*').order('created_at', {ascending:true});
+  var query = sb.from('leads').select('*');
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query.order('created_at', {ascending:true});
   if(res.error){
     console.error('Erro ao carregar leads', res.error);
     leads = [];
@@ -230,15 +236,16 @@ function clienteFromDb(row){
 function clienteToDb(cliente){
   return {
     user_id: currentUserId,
+    equipe_id: equipeAtual ? equipeAtual.id : null,
     nome: cliente.nome,
     contato: cliente.contato || null,
     canal: cliente.canal || null,
     notas: cliente.notas || null,
     criado: cliente.criado || todayStr(),
     cnpj: cliente.cnpj || null,
-    tags: cliente.tags || [],
     responsavel: cliente.responsavel || null,
-    tipo: cliente.tipo || 'juridica'
+    tipo: cliente.tipo || 'juridica',
+    tags: cliente.tags || []
   };
 }
 
@@ -267,7 +274,13 @@ async function buscarDadosCnpj(cnpj){
 }
 
 async function loadClientesFromDb(){
-  var res = await sb.from('clientes').select('*').order('nome', {ascending:true});
+  var query = sb.from('clientes').select('*');
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query.order('nome', {ascending:true});
   if(res.error){ console.error('Erro ao carregar clientes', res.error); clientes = []; return; }
   clientes = res.data.map(clienteFromDb);
 }
@@ -295,7 +308,13 @@ function interacaoFromDb(row){
 }
 
 async function loadInteracoesDoCliente(clienteId){
-  var res = await sb.from('interacoes').select('*').eq('cliente_id', clienteId).order('data', {ascending:false});
+  var query = sb.from('interacoes').select('*').eq('cliente_id', clienteId);
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query.order('data', {ascending:false});
   if(res.error){ console.error('Erro ao carregar interações', res.error); return []; }
   return res.data.map(interacaoFromDb);
 }
@@ -303,6 +322,7 @@ async function loadInteracoesDoCliente(clienteId){
 async function criarInteracaoNoDb(interacao){
   var res = await sb.from('interacoes').insert({
     user_id: currentUserId,
+    equipe_id: equipeAtual ? equipeAtual.id : null,
     cliente_id: interacao.clienteId,
     lead_id: interacao.leadId || null,
     tipo: interacao.tipo,
@@ -333,8 +353,13 @@ function tarefaFromDb(row){
 }
 
 async function loadTarefasDoDia(dataStr){
-  var res = await sb.from('tarefas').select('*')
-    .eq('user_id', currentUserId)
+  var query = sb.from('tarefas').select('*');
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query
     .eq('data', dataStr)
     .order('created_at', {ascending:true});
   if(res.error){ console.error('Erro ao carregar tarefas', res.error); return []; }
@@ -344,8 +369,13 @@ async function loadTarefasDoDia(dataStr){
 async function loadTarefasDoMes(ano, mes){
   var inicio = ano + '-' + String(mes+1).padStart(2,'0') + '-01';
   var fim = new Date(ano, mes+1, 0).toISOString().slice(0,10);
-  var res = await sb.from('tarefas').select('*')
-    .eq('user_id', currentUserId)
+  var query = sb.from('tarefas').select('*');
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query
     .gte('data', inicio)
     .lte('data', fim)
     .order('data', {ascending:true});
@@ -354,7 +384,12 @@ async function loadTarefasDoMes(ano, mes){
 }
 
 async function loadTodasTarefas(filtros){
-  var query = sb.from('tarefas').select('*').eq('user_id', currentUserId);
+  var query = sb.from('tarefas').select('*');
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
 
   if(filtros.status === 'pendentes') query = query.eq('concluida', false);
   else if(filtros.status === 'concluidas') query = query.eq('concluida', true);
@@ -757,6 +792,7 @@ async function renderTarefasView(){
 async function criarTarefa(tarefa){
   var res = await sb.from('tarefas').insert({
     user_id: currentUserId,
+    equipe_id: equipeAtual ? equipeAtual.id : null,
     titulo: tarefa.titulo,
     descricao: tarefa.descricao || null,
     data: tarefa.data,
@@ -790,8 +826,13 @@ async function excluirTarefa(id){
 async function loadLancamentosDoMes(ano, mes){
   var inicio = ano + '-' + String(mes+1).padStart(2,'0') + '-01';
   var fim = new Date(ano, mes+1, 0).toISOString().slice(0,10);
-  var res = await sb.from('lancamentos_diarios').select('*')
-    .eq('user_id', currentUserId)
+  var query = sb.from('lancamentos_diarios').select('*');
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query
     .gte('data', inicio)
     .lte('data', fim)
     .order('data', {ascending:false});
@@ -804,6 +845,7 @@ async function loadLancamentosDoMes(ano, mes){
 async function criarLancamento(data, valor, descricao){
   var res = await sb.from('lancamentos_diarios').insert({
     user_id: currentUserId,
+    equipe_id: equipeAtual ? equipeAtual.id : null,
     data: data,
     valor: valor,
     descricao: descricao || null
@@ -818,13 +860,24 @@ async function excluirLancamento(id){
 }
 
 async function salvarSabadosUteis(sabados){
-  var res = await sb.from('configuracoes').upsert({ user_id: currentUserId, limites_etapa: limitesEtapa, meta_mensal: metaMensal, sabados_uteis: sabados });
+  var res = await sb.from('configuracoes').upsert({
+    user_id: currentUserId,
+    equipe_id: equipeAtual ? equipeAtual.id : null,
+    limites_etapa: limitesEtapa,
+    meta_mensal: 0,
+    sabados_uteis: sabados
+  });
   if(res.error){ console.error('Erro ao salvar sábados', res.error); showSyncError(); }
 }
 
 async function loadMetasMensais(ano){
-  var res = await sb.from('metas_mensais').select('*')
-    .eq('user_id', currentUserId)
+  var query = sb.from('metas_mensais').select('*');
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query
     .eq('ano', ano)
     .order('mes', {ascending:true});
   if(res.error){ console.error('Erro ao carregar metas mensais', res.error); return []; }
@@ -832,15 +885,19 @@ async function loadMetasMensais(ano){
 }
 
 async function salvarMetaMensal(ano, mes, valor){
-  await sb.from('metas_mensais').delete()
-    .eq('user_id', currentUserId)
-    .eq('ano', Number(ano))
-    .eq('mes', Number(mes));
+  var queryDel = sb.from('metas_mensais').delete();
+  if (equipeAtual) {
+    queryDel = queryDel.eq('equipe_id', equipeAtual.id);
+  } else {
+    queryDel = queryDel.eq('user_id', currentUserId);
+  }
+  await queryDel.eq('ano', Number(ano)).eq('mes', Number(mes));
 
   if(!valor || valor <= 0) return true;
 
   var res = await sb.from('metas_mensais').insert({
     user_id: currentUserId,
+    equipe_id: equipeAtual ? equipeAtual.id : null,
     ano: Number(ano),
     mes: Number(mes),
     valor: Number(valor)
@@ -857,8 +914,13 @@ async function salvarMetaMensal(ano, mes, valor){
 async function loadLancamentosDoAno(ano){
   var inicio = ano + '-01-01';
   var fim = ano + '-12-31';
-  var res = await sb.from('lancamentos_diarios').select('*')
-    .eq('user_id', currentUserId)
+  var query = sb.from('lancamentos_diarios').select('*');
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query
     .gte('data', inicio)
     .lte('data', fim)
     .order('data', {ascending:true});
@@ -871,7 +933,13 @@ async function loadLancamentosDoAno(ano){
 // ---------- Configurações (limites de tempo por etapa) ----------
 
 async function loadConfiguracoes(){
-  var res = await sb.from('configuracoes').select('*').eq('user_id', currentUserId).maybeSingle();
+  var query = sb.from('configuracoes').select('*');
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query.maybeSingle();
   if(res.error){ console.error('Erro ao carregar configurações', res.error); return; }
   if(res.data && res.data.limites_etapa){
     limitesEtapa = res.data.limites_etapa;
@@ -879,7 +947,12 @@ async function loadConfiguracoes(){
     sabadosUteis = Array.isArray(res.data.sabados_uteis) ? res.data.sabados_uteis : [];
   } else {
     // primeiro acesso: cria a linha de configuração com os valores padrão
-    await sb.from('configuracoes').insert({ user_id: currentUserId, limites_etapa: limitesEtapa, meta_mensal: metaMensal });
+    await sb.from('configuracoes').insert({
+      user_id: currentUserId,
+      equipe_id: equipeAtual ? equipeAtual.id : null,
+      limites_etapa: limitesEtapa,
+      meta_mensal: metaMensal
+    });
   }
 }
 
@@ -1025,7 +1098,13 @@ async function renderEquipeView(){
 async function salvarConfiguracoes(novosLimites, novaMeta){
   limitesEtapa = novosLimites;
   metaMensal = novaMeta;
-  var res = await sb.from('configuracoes').upsert({ user_id: currentUserId, limites_etapa: novosLimites, meta_mensal: 0, sabados_uteis: sabadosUteis });
+  var res = await sb.from('configuracoes').upsert({
+    user_id: currentUserId,
+    equipe_id: equipeAtual ? equipeAtual.id : null,
+    limites_etapa: novosLimites,
+    meta_mensal: 0,
+    sabados_uteis: sabadosUteis
+  });
   if(res.error){ console.error('Erro ao salvar configurações', res.error); showSyncError(); }
 }
 
@@ -1821,7 +1900,13 @@ function openModal(id){
 }
 
 async function loadInteracoesDoLead(leadId){
-  var res = await sb.from('interacoes').select('*').eq('lead_id', leadId).order('data', {ascending:false});
+  var query = sb.from('interacoes').select('*').eq('lead_id', leadId);
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  var res = await query.order('data', {ascending:false});
   if(res.error){ console.error('Erro ao carregar atividade do negócio', res.error); return []; }
   return res.data.map(interacaoFromDb);
 }
