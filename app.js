@@ -487,7 +487,10 @@ async function renderTarefasView(){
     } else {
       anexosHtml += '<p class="anexo-vazio">Nenhum arquivo anexado.</p>';
     }
-    anexosHtml += '<label class="anexo-upload-label" style="font-size:12px; margin-top:6px; cursor:pointer;">📎 Adicionar arquivo<input type="file" class="pan-file-input" data-tarefa-id="' + t.id + '" style="display:none;"></label>';
+    anexosHtml += '<div class="anexo-drop-area pan-drop-area" data-tarefa-id="' + t.id + '" style="margin-top:6px; padding:10px;">' +
+      '<input type="file" class="pan-file-input" data-tarefa-id="' + t.id + '">' +
+      '📎 Arraste ou clique para anexar' +
+    '</div>';
 
     var detalheHtml =
       '<div class="tarefa-lista-detalhe" id="pan-det-' + t.id + '" style="display:none; padding:12px 14px 14px 50px; border-top:1px solid var(--line);">' +
@@ -678,20 +681,23 @@ async function renderTarefasView(){
   });
 
   // Anexos — upload
-  lista.querySelectorAll('.pan-file-input').forEach(function(input){
-    input.addEventListener('change', async function(e){
-      e.stopPropagation();
-      var tid = input.getAttribute('data-tarefa-id');
-      if(!input.files[0]) return;
-      var label = input.closest('label');
-      if(label) label.textContent = 'Enviando...';
+  lista.querySelectorAll('.pan-drop-area').forEach(function(dropArea){
+    var tid = dropArea.getAttribute('data-tarefa-id');
+    var input = dropArea.querySelector('.pan-file-input');
+    async function enviarArquivo(file){
+      dropArea.textContent = 'Enviando...';
       var res = await sb.from('tarefas').select('*').eq('id', tid).single();
       if(res.error) return;
       var tarefa = tarefaFromDb(res.data);
-      await uploadAnexoTarefa(tarefa, input.files[0]);
+      await uploadAnexoTarefa(tarefa, file);
       tarefasExpandidasPan[tid] = true;
       renderTarefasView();
+    }
+    input.addEventListener('change', async function(e){
+      e.stopPropagation();
+      if(input.files[0]) await enviarArquivo(input.files[0]);
     });
+    setupDropArea(dropArea, enviarArquivo);
   });
 
   // Editar tarefa
@@ -923,6 +929,31 @@ async function abrirAnexo(anexo){
 
 async function abrirAnexoTarefa(anexo){
   await abrirAnexo(anexo);
+}
+
+function setupDropArea(areaEl, onFile){
+  areaEl.addEventListener('dragover', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    areaEl.classList.add('drag-over');
+  });
+  areaEl.addEventListener('dragleave', function(e){
+    e.stopPropagation();
+    areaEl.classList.remove('drag-over');
+  });
+  areaEl.addEventListener('drop', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    areaEl.classList.remove('drag-over');
+    var files = e.dataTransfer.files;
+    if(files && files.length > 0){
+      onFile(files[0]);
+    }
+  });
+  areaEl.addEventListener('click', function(){
+    var input = areaEl.querySelector('input[type="file"]');
+    if(input) input.click();
+  });
 }
 
 async function excluirAnexoTarefa(tarefa, anexo){
@@ -1703,9 +1734,10 @@ function renderAnexosArea(lead){
 
   area.innerHTML =
     listaHtml +
-    '<label class="anexo-upload-label">📎 Adicionar arquivo (PDF, imagem, etc. — até 10MB)' +
-      '<input type="file" id="f-anexo-input" style="display:none;">' +
-    '</label>';
+    '<div class="anexo-drop-area" id="f-anexo-drop">' +
+      '<input type="file" id="f-anexo-input">' +
+      '📎 Arraste um arquivo aqui ou clique para escolher<br><span style="font-size:11px;">PDF, imagem, etc. — até 10MB</span>' +
+    '</div>';
 
   area.querySelectorAll('.anexo-abrir').forEach(function(a){
     a.addEventListener('click', function(e){
@@ -1727,12 +1759,16 @@ function renderAnexosArea(lead){
     });
   });
 
+  var dropArea = document.getElementById('f-anexo-drop');
   var input = document.getElementById('f-anexo-input');
   input.addEventListener('change', async function(){
-    var file = input.files[0];
-    if(!file) return;
-    var label = input.closest('.anexo-upload-label');
-    label.textContent = 'Enviando...';
+    if(!input.files[0]) return;
+    dropArea.textContent = 'Enviando...';
+    await uploadAnexo(lead, input.files[0]);
+    renderAnexosArea(lead);
+  });
+  setupDropArea(dropArea, async function(file){
+    dropArea.textContent = 'Enviando...';
     await uploadAnexo(lead, file);
     renderAnexosArea(lead);
   });
@@ -2962,7 +2998,10 @@ async function renderDetalheDoDia(dataStr){
         '</div>';
       }).join('');
     }
-    anexosHtml += '<label class="anexo-upload-label" style="font-size:12px; margin-top:6px;">📎 Adicionar arquivo (até 10MB)<input type="file" class="tarefa-file-input" data-tarefa-id="' + t.id + '" style="display:none;"></label>';
+    anexosHtml += '<div class="anexo-drop-area tarefa-drop-area" data-tarefa-id="' + t.id + '" style="margin-top:6px; padding:10px;">' +
+      '<input type="file" class="tarefa-file-input" data-tarefa-id="' + t.id + '">' +
+      '📎 Arraste ou clique para anexar' +
+    '</div>';
 
     return '<div class="tarefa-item' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '">' +
       '<div class="tarefa-check' + (t.concluida ? ' marcada' : '') + '" data-check-id="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
@@ -3134,15 +3173,21 @@ async function renderDetalheDoDia(dataStr){
   });
 
   // Anexos — upload
-  box.querySelectorAll('.tarefa-file-input').forEach(function(input){
+  box.querySelectorAll('.tarefa-drop-area').forEach(function(dropArea){
+    var tid = dropArea.getAttribute('data-tarefa-id');
+    var input = dropArea.querySelector('.tarefa-file-input');
+    var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+    if(!tarefa) return;
     input.addEventListener('change', async function(e){
       e.stopPropagation();
-      var tid = input.getAttribute('data-tarefa-id');
-      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
-      if(!tarefa || !input.files[0]) return;
-      var label = input.closest('label');
-      if(label) label.textContent = 'Enviando...';
+      if(!input.files[0]) return;
+      dropArea.textContent = 'Enviando...';
       await uploadAnexoTarefa(tarefa, input.files[0]);
+      renderDetalheDoDia(dataStr);
+    });
+    setupDropArea(dropArea, async function(file){
+      dropArea.textContent = 'Enviando...';
+      await uploadAnexoTarefa(tarefa, file);
       renderDetalheDoDia(dataStr);
     });
   });

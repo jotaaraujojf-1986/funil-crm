@@ -1097,3 +1097,27 @@ html[data-theme="dark"] .cal-pill.tarefa-alta{ background:#3A2E00; color:#FFC107
   border-color:transparent;
   background:rgba(232,163,23,0.05);
 }
+
+.anexo-drop-area{
+  border:2px dashed var(--line);
+  border-radius:8px;
+  padding:16px;
+  text-align:center;
+  font-size:13px;
+  color:var(--ink-faint);
+  cursor:pointer;
+  transition:border-color .15s ease, background .15s ease;
+  margin-top:6px;
+}
+.anexo-drop-area:hover{
+  border-color:var(--amber);
+  color:var(--ink);
+}
+.anexo-drop-area.drag-over{
+  border-color:var(--amber);
+  background:rgba(232,163,23,0.08);
+  color:var(--ink);
+}
+.anexo-drop-area input[type="file"]{
+  display:none;
+}
