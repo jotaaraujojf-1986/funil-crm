@@ -29,6 +29,7 @@ var periodoFim = null;
 var equipeAtual = null;
 var papelAtual = null;
 var filtroVendedorId = '';
+var membrosDaEquipe = {};
 
 function getUserIdFiltro(){
   if(filtroVendedorId) return filtroVendedorId;
@@ -346,6 +347,7 @@ async function excluirInteracaoNoDb(id){
 function tarefaFromDb(row){
   return {
     id: row.id,
+    userId: row.user_id,
     titulo: row.titulo,
     descricao: row.descricao || '',
     data: String(row.data).slice(0,10),
@@ -529,6 +531,7 @@ async function renderTarefasView(){
           '<div class="tarefa-lista-meta">' +
             '<span class="' + dataClasse + '">' + (dataAtrasada ? '⚠ ' : '') + fmtDataCompleta(dataStr) + '</span>' +
             '<span>' + t.categoria + '</span>' +
+            (papelAtual === 'admin' && !filtroVendedorId && t.userId && membrosDaEquipe[t.userId] ? '<span class="badge-vendedor">👤 ' + escapeHtml(membrosDaEquipe[t.userId]) + '</span>' : '') +
             (t.prioridade !== 'normal' ? '<span style="color:' + (t.prioridade === 'urgente' ? 'var(--red)' : '#856404') + '; font-weight:700;">' + t.prioridade + '</span>' : '') +
             (t.descricao ? '<span>' + escapeHtml(t.descricao.slice(0,50)) + (t.descricao.length > 50 ? '…' : '') + '</span>' : '') +
             (checklistInfo ? '<span>☑ ' + checklistInfo + '</span>' : '') +
@@ -1067,6 +1070,19 @@ async function atualizarFiltroVendedores(){
     }).join('');
 }
 
+async function loadMembrosDaEquipe(){
+  if(papelAtual !== 'admin' || !equipeAtual) return;
+  var res = await sb.from('membros_equipe')
+    .select('user_id, nome')
+    .eq('equipe_id', equipeAtual.id)
+    .eq('ativo', true);
+  if(res.error || !res.data) return;
+  membrosDaEquipe = {};
+  res.data.forEach(function(m){
+    membrosDaEquipe[m.user_id] = m.nome;
+  });
+}
+
 async function salvarConfiguracoes(novosLimites, novaMeta){
   limitesEtapa = novosLimites;
   metaMensal = novaMeta;
@@ -1537,10 +1553,15 @@ function buildCard(lead, stageColor){
   }
   followUpGroupHtml += '</div>';
 
+  var vendedorBadge = '';
+  if(papelAtual === 'admin' && !filtroVendedorId && lead.userId && membrosDaEquipe[lead.userId]){
+    vendedorBadge = '<span class="badge-vendedor">👤 ' + escapeHtml(membrosDaEquipe[lead.userId]) + '</span>';
+  }
+
   card.innerHTML =
     '<p class="name">' + escapeHtml(lead.nome) + '</p>' +
     '<p class="meta">' + escapeHtml(canalLabel) + '<span class="dot"></span><span class="value">' + fmtMoney(lead.valor) + '</span></p>' +
-    (tempoEtapa || atividade ? '<p class="card-extra">' + tempoEtapa + atividade + '</p>' : '') +
+    (tempoEtapa || atividade || vendedorBadge ? '<p class="card-extra">' + tempoEtapa + atividade + vendedorBadge + '</p>' : '') +
     '<div class="card-bottom">' + followUpGroupHtml + waButtonHtml + '</div>';
 
   card.querySelectorAll('a').forEach(function(a){
@@ -3707,6 +3728,7 @@ function showApp(){
   if(papelAtual === 'admin'){
     document.getElementById('filtro-vendedor').style.display = '';
     atualizarFiltroVendedores();
+    loadMembrosDaEquipe();
   }
 }
 
