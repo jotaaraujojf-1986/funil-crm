@@ -1206,3 +1206,15 @@ html[data-theme="dark"] .badge-vendedor{ background:rgba(43,108,163,0.25); }
   color:var(--steel-dark);
   font-weight:700;
 }
+
+#titulo-secao-ativa{
+  font-family:'Barlow Condensed', sans-serif;
+  font-weight:700;
+  font-size:18px;
+  color:#fff;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
