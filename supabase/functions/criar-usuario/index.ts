@@ -12,26 +12,12 @@ serve(async (req) => {
   }
 
   try {
-    const { nome, username, senha, equipe_id, papel } = await req.json();
-
-    if (!nome || !username || !senha || !equipe_id || !papel) {
-      return new Response(
-        JSON.stringify({ error: "Campos obrigatórios: nome, username, senha, equipe_id, papel" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
-
-    // Validar formato do username
-    const usernameRegex = /^[a-z0-9._-]+$/;
-    if (!usernameRegex.test(username)) {
-      return new Response(
-        JSON.stringify({ error: "Nome de usuário inválido. Use apenas letras minúsculas, números, ponto, hífen ou underscore." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const dominio = Deno.env.get("TRACTAR_DOMINIO") ?? "tractar.app";
-    const emailFicticio = username + "@" + dominio;
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -39,60 +25,71 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Verificar se quem está chamando é admin da equipe
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Não autorizado" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabaseUser = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
+    // Verificar usuário pelo token
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(
+      authHeader.replace("Bearer ", "")
     );
 
-    const { data: { user } } = await supabaseUser.auth.getUser();
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: "Não autorizado" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (userError || !userData.user) {
+      return new Response(JSON.stringify({ error: "Token inválido" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    // Verificar se é admin da equipe
-    const { data: membro } = await supabaseAdmin
+    const callerId = userData.user.id;
+
+    // Buscar equipe e papel do usuário que está chamando
+    const { data: membroCaller, error: membroError } = await supabaseAdmin
       .from("membros_equipe")
-      .select("papel")
-      .eq("user_id", user.id)
-      .eq("equipe_id", equipe_id)
+      .select("papel, equipe_id")
+      .eq("user_id", callerId)
       .eq("ativo", true)
       .maybeSingle();
 
-    if (!membro || membro.papel !== "admin") {
-      return new Response(
-        JSON.stringify({ error: "Somente administradores podem criar usuários" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (membroError || !membroCaller) {
+      return new Response(JSON.stringify({ error: "Usuário não pertence a nenhuma equipe" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
+
+    if (membroCaller.papel !== "admin") {
+      return new Response(JSON.stringify({ error: "Somente administradores podem criar usuários" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const { nome, username, senha, papel } = await req.json();
+
+    if (!nome || !username || !senha || !papel) {
+      return new Response(JSON.stringify({ error: "Campos obrigatórios: nome, username, senha, papel" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const usernameRegex = /^[a-z0-9._-]+$/;
+    if (!usernameRegex.test(username)) {
+      return new Response(JSON.stringify({ error: "Nome de usuário inválido. Use apenas letras minúsculas, números, ponto, hífen ou underscore." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const dominio = Deno.env.get("TRACTAR_DOMINIO") ?? "tractar.app";
+    const emailFicticio = username + "@" + dominio;
 
     // Verificar se username já existe
     const { data: existente } = await supabaseAdmin
       .from("membros_equipe")
       .select("id")
-      .eq("email", emailFicticio)
+      .eq("username", username)
       .maybeSingle();
 
     if (existente) {
-      return new Response(
-        JSON.stringify({ error: "Nome de usuário já está em uso. Escolha outro." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Nome de usuário já está em uso." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    // Criar usuário sem confirmação de e-mail
+    // Criar usuário
     const { data: novoUser, error: errUser } = await supabaseAdmin.auth.admin.createUser({
       email: emailFicticio,
       password: senha,
@@ -101,18 +98,17 @@ serve(async (req) => {
     });
 
     if (errUser) {
-      return new Response(
-        JSON.stringify({ error: errUser.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: errUser.message }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    // Vincular à equipe
+    // Vincular à mesma equipe do admin
     const { error: errMembro } = await supabaseAdmin
       .from("membros_equipe")
       .insert({
         user_id: novoUser.user.id,
-        equipe_id,
+        equipe_id: membroCaller.equipe_id,
         papel,
         nome,
         email: emailFicticio,
@@ -121,25 +117,22 @@ serve(async (req) => {
 
     if (errMembro) {
       await supabaseAdmin.auth.admin.deleteUser(novoUser.user.id);
-      return new Response(
-        JSON.stringify({ error: "Erro ao vincular usuário à equipe: " + errMembro.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Erro ao vincular usuário à equipe: " + errMembro.message }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        user_id: novoUser.user.id,
-        mensagem: nome + " foi adicionado à equipe. Login: " + username
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({
+      success: true,
+      user_id: novoUser.user.id,
+      mensagem: nome + " foi adicionado à equipe. Login: " + username
+    }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: "Erro interno: " + err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Erro interno: " + err.message }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
   }
 });

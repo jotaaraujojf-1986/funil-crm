@@ -185,6 +185,9 @@ async function loadLeadsFromDb(){
   var query = sb.from('leads').select('*');
   if(equipeAtual){
     query = query.eq('equipe_id', equipeAtual.id);
+    if(filtroVendedorId){
+      query = query.eq('user_id', filtroVendedorId);
+    }
   } else {
     query = query.eq('user_id', currentUserId);
   }
@@ -1087,6 +1090,7 @@ async function renderEquipeView(){
       btn.disabled = false;
       btn.textContent = 'Criar acesso';
       renderEquipeView();
+      atualizarFiltroVendedores();
 
     }catch(err){
       console.error('Erro ao criar usuário', err);
@@ -1095,6 +1099,21 @@ async function renderEquipeView(){
       btn.textContent = 'Criar acesso';
     }
   });
+}
+
+async function atualizarFiltroVendedores(){
+  if(papelAtual !== 'admin' || !equipeAtual) return;
+  var res = await sb.from('membros_equipe')
+    .select('*')
+    .eq('equipe_id', equipeAtual.id)
+    .eq('ativo', true);
+  if(res.error || !res.data) return;
+  var sel = document.getElementById('filtro-vendedor');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Todos os vendedores</option>' +
+    res.data.map(function(m){
+      return '<option value="' + m.user_id + '">' + escapeHtml(m.nome) + '</option>';
+    }).join('');
 }
 
 async function salvarConfiguracoes(novosLimites, novaMeta){
@@ -3597,14 +3616,10 @@ document.getElementById('filtro-tag-cliente').addEventListener('change', functio
   renderClientesView();
 });
 
-document.getElementById('filtro-vendedor').addEventListener('change', function(){
+document.getElementById('filtro-vendedor').addEventListener('change', async function(){
   filtroVendedorId = this.value;
-  loadLeadsFromDb().then(function(){
-    if(filtroVendedorId){
-      leads = leads.filter(function(l){ return l.userId === filtroVendedorId; });
-    }
-    render();
-  });
+  await loadLeadsFromDb();
+  render();
 });
 
 function switchTab(tab){
@@ -3724,15 +3739,7 @@ function showApp(){
 
   if(papelAtual === 'admin'){
     document.getElementById('filtro-vendedor').style.display = '';
-    sb.from('membros_equipe').select('*').eq('equipe_id', equipeAtual.id).eq('ativo', true).then(function(res){
-      if(res.data){
-        var sel = document.getElementById('filtro-vendedor');
-        sel.innerHTML = '<option value="">Todos os vendedores</option>' +
-          res.data.map(function(m){
-            return '<option value="' + m.user_id + '">' + escapeHtml(m.nome) + '</option>';
-          }).join('');
-      }
-    });
+    atualizarFiltroVendedores();
   }
 }
 
