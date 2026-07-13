@@ -966,38 +966,58 @@ async function renderEquipeView(){
   if(res.error){ container.innerHTML = '<p class="anexo-vazio">Erro ao carregar membros.</p>'; return; }
   var membros = res.data;
 
-  var html = '<div class="metas-section">';
-  html += '<h3>Equipe: ' + escapeHtml(equipeAtual.nome) + '</h3>';
+  var html = '';
+
+  // Linha 1: cabeçalho da equipe (largura total)
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div class="metas-section" style="border-left:4px solid var(--amber);">';
+  html += '<div style="display:flex; align-items:center; gap:14px;">';
+  html += '<div class="membro-avatar" style="width:48px; height:48px; font-size:20px; background:var(--amber); color:var(--steel-dark);">' + (equipeAtual.nome || 'E').slice(0,2).toUpperCase() + '</div>';
+  html += '<div><h3 style="margin:0; font-family:\'Barlow Condensed\',sans-serif; font-size:22px; font-weight:800;">' + escapeHtml(equipeAtual.nome) + '</h3>';
+  html += '<p style="margin:4px 0 0; font-size:12px; color:var(--ink-faint);">' + membros.length + ' membro(s) ativo(s)</p></div>';
+  html += '</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // Linha 2: duas colunas
+  html += '<div class="metas-grid">';
+
+  // Coluna esquerda: lista de membros
+  html += '<div class="metas-section">';
+  html += '<h3>Membros da equipe</h3>';
   html += membros.map(function(m){
     var iniciais = m.nome.trim().slice(0,2).toUpperCase();
     var ehEuMesmo = m.user_id === currentUserId;
     return '<div class="membro-row">' +
       '<div class="membro-avatar">' + iniciais + '</div>' +
       '<div class="membro-info">' +
-        '<div class="membro-nome">' + escapeHtml(m.nome) + (ehEuMesmo ? ' (você)' : '') + '</div>' +
+        '<div class="membro-nome">' + escapeHtml(m.nome) + (ehEuMesmo ? ' <span style="font-size:10px; color:var(--ink-faint); font-weight:400;">(você)</span>' : '') + '</div>' +
         '<div class="membro-email">' + escapeHtml(m.username || m.email) + '</div>' +
       '</div>' +
-      '<span class="membro-papel ' + m.papel + '">' + (m.papel === 'admin' ? 'Administrador' : 'Vendedor') + '</span>' +
-      '<button class="btn-ghost" style="font-size:12px;" data-editar-membro-id="' + m.user_id + '" data-editar-membro-nome="' + escapeHtml(m.nome) + '" data-editar-membro-username="' + escapeHtml(m.username || '') + '">✏️ Editar</button>' +
-      (!ehEuMesmo ? '<button class="btn-ghost" style="font-size:12px; color:var(--red);" data-remover-id="' + m.id + '">Remover</button>' : '') +
+      '<span class="membro-papel ' + m.papel + '">' + (m.papel === 'admin' ? 'Admin' : 'Vendedor') + '</span>' +
+      '<div style="display:flex; gap:6px;">' +
+        '<button class="btn-ghost" style="font-size:12px; padding:4px 8px;" data-editar-membro-id="' + m.user_id + '" data-editar-membro-nome="' + escapeHtml(m.nome) + '" data-editar-membro-username="' + escapeHtml(m.username || '') + '">✏️</button>' +
+        (!ehEuMesmo ? '<button class="btn-ghost" style="font-size:12px; padding:4px 8px; color:var(--red);" data-remover-id="' + m.id + '">✕</button>' : '') +
+      '</div>' +
     '</div>' +
     '<div id="form-editar-membro-' + m.user_id + '" style="display:none; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:8px;"></div>';
   }).join('');
   html += '</div>';
 
+  // Coluna direita: adicionar membro
   html += '<div class="metas-section">';
   html += '<h3>Adicionar vendedor</h3>';
-  html += '<p class="meta-dia-label" style="margin-bottom:12px;">Crie o acesso para um novo membro. O vendedor fará login com o nome de usuário e senha definidos aqui.</p>';
+  html += '<p class="meta-dia-label" style="margin-bottom:14px;">Crie o acesso para um novo membro. O vendedor fará login com o nome de usuário e senha definidos aqui.</p>';
+  html += field('Nome completo', '<input type="text" id="novo-membro-nome" placeholder="Ex: João Silva">');
+  html += field('Nome de usuário', '<input type="text" id="novo-membro-username" placeholder="Ex: joao.silva">');
   html += '<div class="row2">';
-  html += '<div class="field"><label>Nome completo</label><input type="text" id="novo-membro-nome" placeholder="Ex: João Silva"></div>';
-  html += '<div class="field"><label>Nome de usuário</label><input type="text" id="novo-membro-username" placeholder="Ex: joao.silva" style="text-transform:lowercase;"></div>';
-  html += '</div>';
-  html += '<div class="row2">';
-  html += '<div class="field"><label>Senha</label><input type="password" id="novo-membro-senha" placeholder="Mínimo 6 caracteres"></div>';
-  html += '<div class="field"><label>Papel</label><select id="novo-membro-papel"><option value="vendedor">Vendedor</option><option value="admin">Administrador</option></select></div>';
+  html += field('Senha', '<input type="password" id="novo-membro-senha" placeholder="Mínimo 6 caracteres">');
+  html += field('Papel', '<select id="novo-membro-papel"><option value="vendedor">Vendedor</option><option value="admin">Administrador</option></select>');
   html += '</div>';
   html += '<button class="btn-primary" id="btn-adicionar-membro">Criar acesso</button>';
   html += '</div>';
+
+  html += '</div>'; // fecha metas-grid
 
   container.innerHTML = html;
 
