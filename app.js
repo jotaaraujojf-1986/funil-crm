@@ -29,6 +29,23 @@ var periodoFim = null;
 var equipeAtual = null;
 var papelAtual = null;
 var filtroVendedorId = '';
+
+function getUserIdFiltro(){
+  if(filtroVendedorId) return filtroVendedorId;
+  if(papelAtual === 'admin') return null;
+  return currentUserId;
+}
+
+function aplicarFiltroUsuario(query){
+  var uid = getUserIdFiltro();
+  if(equipeAtual){
+    query = query.eq('equipe_id', equipeAtual.id);
+    if(uid) query = query.eq('user_id', uid);
+  } else {
+    query = query.eq('user_id', currentUserId);
+  }
+  return query;
+}
 var limitesEtapa = {
   lead: {alerta:7, critico:14},
   contato: {alerta:7, critico:14},
@@ -182,21 +199,9 @@ function toDb(lead){
 }
 
 async function loadLeadsFromDb(){
-  var query = sb.from('leads').select('*');
-  if(equipeAtual){
-    query = query.eq('equipe_id', equipeAtual.id);
-    if(filtroVendedorId){
-      query = query.eq('user_id', filtroVendedorId);
-    }
-  } else {
-    query = query.eq('user_id', currentUserId);
-  }
+  var query = aplicarFiltroUsuario(sb.from('leads').select('*'));
   var res = await query.order('created_at', {ascending:true});
-  if(res.error){
-    console.error('Erro ao carregar leads', res.error);
-    leads = [];
-    return;
-  }
+  if(res.error){ console.error('Erro ao carregar leads', res.error); leads = []; return; }
   leads = res.data.map(fromDb);
 }
 
@@ -279,12 +284,7 @@ async function buscarDadosCnpj(cnpj){
 }
 
 async function loadClientesFromDb(){
-  var query = sb.from('clientes').select('*');
-  if(equipeAtual){
-    query = query.eq('equipe_id', equipeAtual.id);
-  } else {
-    query = query.eq('user_id', currentUserId);
-  }
+  var query = aplicarFiltroUsuario(sb.from('clientes').select('*'));
   var res = await query.order('nome', {ascending:true});
   if(res.error){ console.error('Erro ao carregar clientes', res.error); clientes = []; return; }
   clientes = res.data.map(clienteFromDb);
@@ -358,60 +358,34 @@ function tarefaFromDb(row){
 }
 
 async function loadTarefasDoDia(dataStr){
-  var query = sb.from('tarefas').select('*');
-  if(equipeAtual){
-    query = query.eq('equipe_id', equipeAtual.id);
-  } else {
-    query = query.eq('user_id', currentUserId);
-  }
-  var res = await query
-    .eq('data', dataStr)
-    .order('created_at', {ascending:true});
+  var query = aplicarFiltroUsuario(sb.from('tarefas').select('*'));
+  var res = await query.eq('data', dataStr).order('created_at', {ascending:true});
   if(res.error){ console.error('Erro ao carregar tarefas', res.error); return []; }
   return res.data.map(tarefaFromDb);
 }
 
 async function loadTarefasDoMes(ano, mes){
-  var inicio = ano + '-' + String(mes+1).padStart(2,'0') + '-01';
+  var inicio = ano + '-' + String(mes+1).padStart(2,'0').padStart(2,'00') + '-01';
   var fim = new Date(ano, mes+1, 0).toISOString().slice(0,10);
-  var query = sb.from('tarefas').select('*');
-  if(equipeAtual){
-    query = query.eq('equipe_id', equipeAtual.id);
-  } else {
-    query = query.eq('user_id', currentUserId);
-  }
-  var res = await query
-    .gte('data', inicio)
-    .lte('data', fim)
-    .order('data', {ascending:true});
+  var query = aplicarFiltroUsuario(sb.from('tarefas').select('*'));
+  var res = await query.gte('data', inicio).lte('data', fim).order('data', {ascending:true});
   if(res.error){ console.error('Erro ao carregar tarefas do mês', res.error); return []; }
   return res.data.map(tarefaFromDb);
 }
 
 async function loadTodasTarefas(filtros){
-  var query = sb.from('tarefas').select('*');
-  if(equipeAtual){
-    query = query.eq('equipe_id', equipeAtual.id);
-  } else {
-    query = query.eq('user_id', currentUserId);
-  }
+  var query = aplicarFiltroUsuario(sb.from('tarefas').select('*'));
 
   if(filtros.status === 'pendentes') query = query.eq('concluida', false);
   else if(filtros.status === 'concluidas') query = query.eq('concluida', true);
-  else if(filtros.status === 'atrasadas'){
-    query = query.eq('concluida', false).lt('data', todayStr());
-  }
-  else if(filtros.status === 'hoje'){
-    query = query.eq('data', todayStr());
-  }
+  else if(filtros.status === 'atrasadas') query = query.eq('concluida', false).lt('data', todayStr());
+  else if(filtros.status === 'hoje') query = query.eq('data', todayStr());
   else if(filtros.status === 'proximos7'){
     var d7 = new Date(); d7.setDate(d7.getDate() + 7);
     query = query.eq('concluida', false).gte('data', todayStr()).lte('data', d7.toISOString().slice(0,10));
   }
-
   if(filtros.categoria) query = query.eq('categoria', filtros.categoria);
   if(filtros.prioridade) query = query.eq('prioridade', filtros.prioridade);
-
   query = query.order('data', {ascending:true});
 
   var res = await query;
@@ -831,19 +805,11 @@ async function excluirTarefa(id){
 async function loadLancamentosDoMes(ano, mes){
   var inicio = ano + '-' + String(mes+1).padStart(2,'0') + '-01';
   var fim = new Date(ano, mes+1, 0).toISOString().slice(0,10);
-  var query = sb.from('lancamentos_diarios').select('*');
-  if(equipeAtual){
-    query = query.eq('equipe_id', equipeAtual.id);
-  } else {
-    query = query.eq('user_id', currentUserId);
-  }
-  var res = await query
-    .gte('data', inicio)
-    .lte('data', fim)
-    .order('data', {ascending:false});
+  var query = aplicarFiltroUsuario(sb.from('lancamentos_diarios').select('*'));
+  var res = await query.gte('data', inicio).lte('data', fim).order('data', {ascending:false});
   if(res.error){ console.error('Erro ao carregar lançamentos', res.error); return []; }
   return res.data.map(function(r){
-    return { id:r.id, data:r.data, valor:Number(r.valor)||0, descricao:r.descricao||'' };
+    return { id:r.id, data:String(r.data).slice(0,10), valor:Number(r.valor)||0, descricao:r.descricao||'' };
   });
 }
 
@@ -876,15 +842,8 @@ async function salvarSabadosUteis(sabados){
 }
 
 async function loadMetasMensais(ano){
-  var query = sb.from('metas_mensais').select('*');
-  if(equipeAtual){
-    query = query.eq('equipe_id', equipeAtual.id);
-  } else {
-    query = query.eq('user_id', currentUserId);
-  }
-  var res = await query
-    .eq('ano', ano)
-    .order('mes', {ascending:true});
+  var query = aplicarFiltroUsuario(sb.from('metas_mensais').select('*'));
+  var res = await query.eq('ano', ano).order('mes', {ascending:true});
   if(res.error){ console.error('Erro ao carregar metas mensais', res.error); return []; }
   return res.data.map(function(r){ return {mes: r.mes, valor: Number(r.valor)||0}; });
 }
@@ -919,16 +878,8 @@ async function salvarMetaMensal(ano, mes, valor){
 async function loadLancamentosDoAno(ano){
   var inicio = ano + '-01-01';
   var fim = ano + '-12-31';
-  var query = sb.from('lancamentos_diarios').select('*');
-  if(equipeAtual){
-    query = query.eq('equipe_id', equipeAtual.id);
-  } else {
-    query = query.eq('user_id', currentUserId);
-  }
-  var res = await query
-    .gte('data', inicio)
-    .lte('data', fim)
-    .order('data', {ascending:true});
+  var query = aplicarFiltroUsuario(sb.from('lancamentos_diarios').select('*'));
+  var res = await query.gte('data', inicio).lte('data', fim).order('data', {ascending:true});
   if(res.error){ console.error('Erro ao carregar lançamentos do ano', res.error); return []; }
   return res.data.map(function(r){
     return { id:r.id, data:String(r.data).slice(0,10), valor:Number(r.valor)||0, descricao:r.descricao||'' };
@@ -3618,8 +3569,24 @@ document.getElementById('filtro-tag-cliente').addEventListener('change', functio
 
 document.getElementById('filtro-vendedor').addEventListener('change', async function(){
   filtroVendedorId = this.value;
-  await loadLeadsFromDb();
-  render();
+
+  // Recarregar todos os dados com o novo filtro
+  await Promise.all([
+    loadLeadsFromDb(),
+    loadClientesFromDb()
+  ]);
+
+  // Re-renderizar a aba que está ativa no momento
+  var tabAtiva = document.querySelector('.tab.active');
+  var tabId = tabAtiva ? tabAtiva.id : 'tab-funil';
+
+  if(tabId === 'tab-funil'){ render(); }
+  else if(tabId === 'tab-dash'){ render(); renderDashboard(); }
+  else if(tabId === 'tab-clientes'){ renderClientesView(); }
+  else if(tabId === 'tab-calendario'){ renderCalendario(); }
+  else if(tabId === 'tab-metas'){ renderMetasView(); }
+  else if(tabId === 'tab-tarefas'){ renderTarefasView(); }
+  else { render(); }
 });
 
 function switchTab(tab){
