@@ -1066,8 +1066,6 @@ async function renderEquipeView(){
       return;
     }
     equipeAtual.nome = novoNome;
-    var headerEquipe = document.getElementById('equipe-nome-header');
-    if(headerEquipe) headerEquipe.textContent = novoNome;
     toast('Nome da equipe atualizado!', 'sucesso');
     renderEquipeView();
   });
@@ -4258,9 +4256,6 @@ async function iniciarApp(){
     loadConfiguracoes()
   ]);
   render();
-
-  var headerEquipe = document.getElementById('equipe-nome-header');
-  if(headerEquipe && equipeAtual) headerEquipe.textContent = equipeAtual.nome;
 }
 
 function abrirModalMinhaConta(){
