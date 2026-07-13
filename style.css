@@ -1139,3 +1139,67 @@ html[data-theme="dark"] .cal-pill.tarefa-alta{ background:#3A2E00; color:#FFC107
   background:rgba(43,108,163,0.12); color:var(--blue);
 }
 html[data-theme="dark"] .badge-vendedor{ background:rgba(43,108,163,0.25); }
+
+#sidebar-backdrop{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.45);
+  z-index:60;
+}
+#sidebar-backdrop.open{ display:block; }
+
+#sidebar-nav{
+  position:fixed;
+  top:0; left:0; bottom:0;
+  width:240px;
+  background:var(--panel);
+  border-right:1px solid var(--line);
+  box-shadow:4px 0 24px rgba(0,0,0,0.2);
+  z-index:70;
+  display:flex;
+  flex-direction:column;
+  transform:translateX(-100%);
+  transition:transform .25s ease;
+}
+#sidebar-nav.open{ transform:translateX(0); }
+
+#sidebar-header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:16px 16px 14px;
+  border-bottom:1px solid var(--line);
+}
+
+#sidebar-itens{
+  display:flex;
+  flex-direction:column;
+  padding:10px 8px;
+  gap:2px;
+  flex:1;
+  overflow-y:auto;
+}
+
+.sidebar-item{
+  background:transparent;
+  border:none;
+  color:var(--ink-soft);
+  font-family:'Inter', sans-serif;
+  font-size:14px;
+  font-weight:500;
+  text-align:left;
+  padding:11px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:background .12s ease, color .12s ease;
+}
+.sidebar-item:hover{
+  background:var(--line);
+  color:var(--ink);
+}
+.sidebar-item.active{
+  background:var(--amber);
+  color:var(--steel-dark);
+  font-weight:700;
+}

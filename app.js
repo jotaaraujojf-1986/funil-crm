@@ -31,6 +31,26 @@ var papelAtual = null;
 var filtroVendedorId = '';
 var membrosDaEquipe = {};
 
+var TITULOS_SECAO = {
+  funil: 'Funil',
+  dash: 'Dashboard',
+  clientes: 'Clientes',
+  calendario: 'Calendário',
+  metas: 'Metas',
+  tarefas: 'Tarefas',
+  equipe: 'Equipe'
+};
+
+function abrirSidebar(){
+  document.getElementById('sidebar-nav').classList.add('open');
+  document.getElementById('sidebar-backdrop').classList.add('open');
+}
+
+function fecharSidebar(){
+  document.getElementById('sidebar-nav').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('open');
+}
+
 function getUserIdFiltro(){
   if(filtroVendedorId) return filtroVendedorId;
   if(papelAtual === 'admin') return null;
@@ -3768,7 +3788,7 @@ document.getElementById('periodo-select').addEventListener('change', function(){
   document.getElementById('periodo-custom').classList.toggle('hidden', periodoTipo !== 'personalizado');
   if(periodoTipo !== 'personalizado'){
     render();
-    if(document.getElementById('tab-dash').classList.contains('active')) renderDashboard();
+    if(document.querySelector('.sidebar-item[data-tab="dash"]').classList.contains('active')) renderDashboard();
   }
 });
 
@@ -3777,19 +3797,23 @@ function aplicarPeriodoPersonalizado(){
   periodoFim = document.getElementById('periodo-fim').value || null;
   if(periodoInicio && periodoFim){
     render();
-    if(document.getElementById('tab-dash').classList.contains('active')) renderDashboard();
+    if(document.querySelector('.sidebar-item[data-tab="dash"]').classList.contains('active')) renderDashboard();
   }
 }
 document.getElementById('periodo-inicio').addEventListener('change', aplicarPeriodoPersonalizado);
 document.getElementById('periodo-fim').addEventListener('change', aplicarPeriodoPersonalizado);
 
-document.getElementById('tab-funil').addEventListener('click', function(){ switchTab('funil'); });
-document.getElementById('tab-dash').addEventListener('click', function(){ switchTab('dash'); });
-document.getElementById('tab-clientes').addEventListener('click', function(){ switchTab('clientes'); });
-document.getElementById('tab-calendario').addEventListener('click', function(){ switchTab('calendario'); });
-document.getElementById('tab-metas').addEventListener('click', function(){ switchTab('metas'); });
-document.getElementById('tab-tarefas').addEventListener('click', function(){ switchTab('tarefas'); });
-document.getElementById('tab-equipe').addEventListener('click', function(){ switchTab('equipe'); });
+document.getElementById('btn-menu').addEventListener('click', abrirSidebar);
+document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
+document.getElementById('sidebar-backdrop').addEventListener('click', fecharSidebar);
+
+document.querySelectorAll('.sidebar-item').forEach(function(item){
+  item.addEventListener('click', function(){
+    var tab = item.getAttribute('data-tab');
+    fecharSidebar();
+    switchTab(tab);
+  });
+});
 
 document.getElementById('busca-cliente').addEventListener('input', function(){
   buscaClienteTexto = this.value;
@@ -3811,38 +3835,48 @@ document.getElementById('filtro-vendedor').addEventListener('change', async func
   ]);
 
   // Re-renderizar a aba que está ativa no momento
-  var tabAtiva = document.querySelector('.tab.active');
-  var tabId = tabAtiva ? tabAtiva.id : 'tab-funil';
+  var tabAtiva = document.querySelector('.sidebar-item.active');
+  var tabId = tabAtiva ? tabAtiva.getAttribute('data-tab') : 'funil';
 
-  if(tabId === 'tab-funil'){ render(); }
-  else if(tabId === 'tab-dash'){ render(); renderDashboard(); }
-  else if(tabId === 'tab-clientes'){ renderClientesView(); }
-  else if(tabId === 'tab-calendario'){ renderCalendario(); }
-  else if(tabId === 'tab-metas'){ renderMetasView(); }
-  else if(tabId === 'tab-tarefas'){ renderTarefasView(); }
+  if(tabId === 'funil'){ render(); }
+  else if(tabId === 'dash'){ render(); renderDashboard(); }
+  else if(tabId === 'clientes'){ renderClientesView(); }
+  else if(tabId === 'calendario'){ renderCalendario(); }
+  else if(tabId === 'metas'){ renderMetasView(); }
+  else if(tabId === 'tarefas'){ renderTarefasView(); }
   else { render(); }
 });
 
 function switchTab(tab){
-  document.getElementById('tab-funil').classList.toggle('active', tab === 'funil');
-  document.getElementById('tab-dash').classList.toggle('active', tab === 'dash');
-  document.getElementById('tab-clientes').classList.toggle('active', tab === 'clientes');
-  document.getElementById('tab-calendario').classList.toggle('active', tab === 'calendario');
-  document.getElementById('tab-metas').classList.toggle('active', tab === 'metas');
-  document.getElementById('tab-tarefas').classList.toggle('active', tab === 'tarefas');
-  document.getElementById('tab-equipe').classList.toggle('active', tab === 'equipe');
+  // Atualizar item ativo na sidebar
+  document.querySelectorAll('.sidebar-item').forEach(function(item){
+    item.classList.toggle('active', item.getAttribute('data-tab') === tab);
+  });
+
+  // Atualizar título da seção no toolbar
+  var tituloEl = document.getElementById('titulo-secao-ativa');
+  if(tituloEl) tituloEl.textContent = TITULOS_SECAO[tab] || tab;
+
+  // Mostrar/ocultar seções
   document.getElementById('board').style.display = tab === 'funil' ? 'grid' : 'none';
   var headersRow = document.getElementById('board-headers');
-  if (headersRow) headersRow.style.display = tab === 'funil' ? 'grid' : 'none';
+  if(headersRow) headersRow.style.display = tab === 'funil' ? 'grid' : 'none';
   document.getElementById('dash').classList.toggle('open', tab === 'dash');
   document.getElementById('clientes-view').classList.toggle('open', tab === 'clientes');
   document.getElementById('calendario-view').classList.toggle('open', tab === 'calendario');
   document.getElementById('metas-view').classList.toggle('open', tab === 'metas');
   document.getElementById('tarefas-view').classList.toggle('open', tab === 'tarefas');
   document.getElementById('equipe-view').classList.toggle('open', tab === 'equipe');
-  document.querySelector('.filters').style.display = tab === 'funil' ? 'flex' : 'none';
-  var periodoFiltroEl = document.querySelector('.periodo-filtro');
-  if(periodoFiltroEl) periodoFiltroEl.style.display = tab === 'funil' || tab === 'dash' ? 'flex' : 'none';
+
+  // Filtros: mostrar só no Funil e Dashboard
+  var filtersEl = document.querySelector('.filters');
+  if(filtersEl) filtersEl.style.display = tab === 'funil' ? 'flex' : 'none';
+  var periodoEl = document.querySelector('.periodo-filtro');
+  if(periodoEl) periodoEl.style.display = (tab === 'funil' || tab === 'dash') ? 'flex' : 'none';
+  var filtroVendEl = document.getElementById('filtro-vendedor');
+  if(filtroVendEl) filtroVendEl.style.display = (papelAtual === 'admin') ? '' : 'none';
+
+  // Renderizar a seção ativa
   if(tab === 'dash') renderDashboard();
   if(tab === 'clientes') renderClientesView();
   if(tab === 'calendario') renderCalendario();
@@ -3935,8 +3969,10 @@ function showCriarEquipe(){
 function showApp(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  var tabEquipe = document.getElementById('tab-equipe');
-  if(tabEquipe) tabEquipe.style.display = papelAtual === 'admin' ? '' : 'none';
+  var sidebarItemEquipe = document.getElementById('sidebar-item-equipe');
+  if(sidebarItemEquipe){
+    sidebarItemEquipe.style.display = papelAtual === 'admin' ? '' : 'none';
+  }
 
   var selFiltroVendedor = document.getElementById('filtro-vendedor');
   if(selFiltroVendedor){
@@ -4062,7 +4098,7 @@ function abrirModalConfig(){
     await salvarConfiguracoes(novosLimites, metaMensal);
     document.getElementById('overlay-config').classList.remove('open');
     render();
-    if(document.getElementById('tab-dash').classList.contains('active')) renderDashboard();
+    if(document.querySelector('.sidebar-item[data-tab="dash"]').classList.contains('active')) renderDashboard();
   };
 }
 

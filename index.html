@@ -53,14 +53,9 @@
 </div>
 
 <div class="toolbar">
-  <div class="tabs">
-    <button class="tab active" id="tab-funil" data-tab="funil">Funil</button>
-    <button class="tab" id="tab-dash" data-tab="dash">Dashboard</button>
-    <button class="tab" id="tab-clientes" data-tab="clientes">Clientes</button>
-    <button class="tab" id="tab-calendario" data-tab="calendario">Calendário</button>
-    <button class="tab" id="tab-metas" data-tab="metas">Metas</button>
-    <button class="tab" id="tab-tarefas" data-tab="tarefas">Tarefas</button>
-    <button class="tab" id="tab-equipe" data-tab="equipe" style="display:none;">Equipe</button>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <button id="btn-menu" style="background:transparent; border:1px solid rgba(255,255,255,0.25); color:#fff; font-size:20px; width:38px; height:38px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">≡</button>
+    <span id="titulo-secao-ativa" style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; color:#fff; text-transform:uppercase; letter-spacing:0.5px;">Funil</span>
   </div>
   <div class="periodo-filtro">
     <select id="periodo-select">
@@ -218,6 +213,24 @@
       </div>
     </div>
   </div>
+</div>
+
+<div id="sidebar-backdrop"></div>
+<div id="sidebar-nav">
+  <div id="sidebar-header">
+    <div class="mark" style="width:36px; height:36px; border-radius:7px; background:var(--amber); display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:17px; color:var(--steel-dark);">Tr</div>
+    <span style="font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:18px;">Tractar</span>
+    <button id="btn-fechar-sidebar" style="margin-left:auto; background:transparent; border:none; color:var(--ink-soft); font-size:22px; cursor:pointer; line-height:1; padding:4px;">✕</button>
+  </div>
+  <nav id="sidebar-itens">
+    <button class="sidebar-item active" data-tab="funil">Funil</button>
+    <button class="sidebar-item" data-tab="dash">Dashboard</button>
+    <button class="sidebar-item" data-tab="clientes">Clientes</button>
+    <button class="sidebar-item" data-tab="calendario">Calendário</button>
+    <button class="sidebar-item" data-tab="metas">Metas</button>
+    <button class="sidebar-item" data-tab="tarefas">Tarefas</button>
+    <button class="sidebar-item" data-tab="equipe" id="sidebar-item-equipe" style="display:none;">Equipe</button>
+  </nav>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
