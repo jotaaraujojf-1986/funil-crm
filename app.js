@@ -32,13 +32,13 @@ var filtroVendedorId = '';
 var membrosDaEquipe = {};
 
 var TITULOS_SECAO = {
-  funil: 'Funil',
-  dash: 'Dashboard',
-  clientes: 'Clientes',
-  calendario: 'Calendário',
-  metas: 'Metas',
-  tarefas: 'Tarefas',
-  equipe: 'Equipe'
+  funil: '⟡ Funil',
+  dash: '▦ Dashboard',
+  clientes: '◎ Clientes',
+  calendario: '▢ Calendário',
+  metas: '◈ Metas',
+  tarefas: '☑ Tarefas',
+  equipe: '◉ Equipe'
 };
 
 function abrirSidebar(){
