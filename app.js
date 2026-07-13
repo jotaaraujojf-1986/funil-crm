@@ -37,6 +37,10 @@ function getUserIdFiltro(){
   return currentUserId;
 }
 
+function getUserIdParaSalvar(){
+  return filtroVendedorId || currentUserId;
+}
+
 function aplicarFiltroUsuario(query){
   var uid = getUserIdFiltro();
   if(equipeAtual){
@@ -818,7 +822,7 @@ async function loadLancamentosDoMes(ano, mes){
 
 async function criarLancamento(data, valor, descricao){
   var res = await sb.from('lancamentos_diarios').insert({
-    user_id: currentUserId,
+    user_id: getUserIdParaSalvar(),
     equipe_id: equipeAtual ? equipeAtual.id : null,
     data: data,
     valor: valor,
@@ -834,8 +838,9 @@ async function excluirLancamento(id){
 }
 
 async function salvarSabadosUteis(sabados){
+  var uidSalvar = getUserIdParaSalvar();
   var res = await sb.from('configuracoes').upsert({
-    user_id: currentUserId,
+    user_id: uidSalvar,
     equipe_id: equipeAtual ? equipeAtual.id : null,
     limites_etapa: limitesEtapa,
     meta_mensal: 0,
@@ -852,22 +857,20 @@ async function loadMetasMensais(ano){
 }
 
 async function salvarMetaMensal(ano, mes, valor){
-  var queryDel = sb.from('metas_mensais').delete();
-  if (equipeAtual) {
-    queryDel = queryDel.eq('equipe_id', equipeAtual.id);
-  } else {
-    queryDel = queryDel.eq('user_id', currentUserId);
-  }
-  await queryDel.eq('ano', Number(ano)).eq('mes', Number(mes));
+  var uidSalvar = getUserIdParaSalvar();
+  await sb.from('metas_mensais').delete()
+    .eq('user_id', uidSalvar)
+    .eq('ano', Number(ano))
+    .eq('mes', Number(mes));
 
   if(!valor || valor <= 0) return true;
 
   var res = await sb.from('metas_mensais').insert({
-    user_id: currentUserId,
-    equipe_id: equipeAtual ? equipeAtual.id : null,
+    user_id: uidSalvar,
     ano: Number(ano),
     mes: Number(mes),
-    valor: Number(valor)
+    valor: Number(valor),
+    equipe_id: equipeAtual ? equipeAtual.id : null
   });
 
   if(res.error){
@@ -1192,8 +1195,9 @@ async function loadMembrosDaEquipe(){
 async function salvarConfiguracoes(novosLimites, novaMeta){
   limitesEtapa = novosLimites;
   metaMensal = novaMeta;
+  var uidSalvar = getUserIdParaSalvar();
   var res = await sb.from('configuracoes').upsert({
-    user_id: currentUserId,
+    user_id: uidSalvar,
     equipe_id: equipeAtual ? equipeAtual.id : null,
     limites_etapa: novosLimites,
     meta_mensal: 0,
