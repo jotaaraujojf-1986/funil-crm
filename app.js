@@ -2308,6 +2308,109 @@ function renderDashboard(){
     }
     document.getElementById('conversao-etapas').innerHTML = linhasHtml;
   }catch(e){ console.error('Erro ao calcular conversão por etapa', e); }
+
+  var areaEquipe = document.getElementById('dash-equipe');
+  if(areaEquipe){
+    areaEquipe.style.display = (papelAtual === 'admin' && equipeAtual) ? 'grid' : 'none';
+    areaEquipe.innerHTML = papelAtual === 'admin' ? '<p class="anexo-vazio">Carregando visão da equipe...</p>' : '';
+  }
+
+  // Visão de equipe — só para admin
+  if(papelAtual === 'admin' && equipeAtual){
+    renderDashboardEquipe(leadsFiltrados);
+  }
+}
+
+async function renderDashboardEquipe(leadsFiltrados){
+  var areaEquipe = document.getElementById('dash-equipe');
+  if(!areaEquipe) return;
+
+  // Carregar membros se ainda não carregados
+  if(Object.keys(membrosDaEquipe).length === 0){
+    await loadMembrosDaEquipe();
+  }
+
+  var membros = Object.entries(membrosDaEquipe);
+  if(membros.length === 0){
+    areaEquipe.innerHTML = '<p class="anexo-vazio">Nenhum membro encontrado na equipe.</p>';
+    return;
+  }
+
+  // Resumo geral da equipe
+  var totalLeadsEquipe = leadsFiltrados.length;
+  var fechadosEquipe = leadsFiltrados.filter(function(l){ return l.stage === 'fechado'; });
+  var valorEquipe = fechadosEquipe.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+  var conversaoEquipe = totalLeadsEquipe ? Math.round((fechadosEquipe.length / totalLeadsEquipe) * 100) : 0;
+  var ticketEquipe = fechadosEquipe.length ? valorEquipe / fechadosEquipe.length : 0;
+
+  var html = '';
+
+  // Card de resumo geral
+  html += '<div class="dash-card" style="grid-column:1/-1; border-left:4px solid var(--amber);">';
+  html += '<h3>Resumo da Equipe — ' + escapeHtml(equipeAtual.nome) + '</h3>';
+  html += '<div class="dash-kpis">';
+  html += kpiHtml(totalLeadsEquipe, 'Total de negócios');
+  html += kpiHtml(fechadosEquipe.length, 'Fechados');
+  html += kpiHtml(conversaoEquipe + '%', 'Taxa de conversão');
+  html += kpiHtml(fmtMoney(valorEquipe), 'Receita total');
+  html += kpiHtml(fmtMoney(ticketEquipe), 'Ticket médio');
+  html += '</div>';
+  html += '</div>';
+
+  // Cards por vendedor
+  membros.forEach(function(entry){
+    var uid = entry[0];
+    var nome = entry[1];
+
+    var leadsVendedor = leadsFiltrados.filter(function(l){ return l.userId === uid; });
+    var fechadosV = leadsVendedor.filter(function(l){ return l.stage === 'fechado'; });
+    var perdidosV = leadsVendedor.filter(function(l){ return l.stage === 'perdido'; });
+    var valorV = fechadosV.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+    var conversaoV = leadsVendedor.length ? Math.round((fechadosV.length / leadsVendedor.length) * 100) : 0;
+    var ticketV = fechadosV.length ? valorV / fechadosV.length : 0;
+    var emAbertoV = leadsVendedor.filter(function(l){ return l.stage !== 'fechado' && l.stage !== 'perdido'; });
+    var atrasadosV = leadsVendedor.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) < 0 && l.stage !== 'fechado' && l.stage !== 'perdido'; });
+
+    var iniciais = nome.trim().slice(0,2).toUpperCase();
+
+    html += '<div class="dash-card">';
+    html += '<div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">';
+    html += '<div class="membro-avatar" style="width:36px; height:36px; font-size:14px;">' + iniciais + '</div>';
+    html += '<div><div style="font-weight:700; font-size:14px;">' + escapeHtml(nome) + '</div>';
+    html += '<div style="font-size:11px; color:var(--ink-faint);">' + leadsVendedor.length + ' negócios no período</div></div>';
+    html += '</div>';
+
+    html += '<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:12px;">';
+    html += '<div class="kpi" style="padding:10px;"><div class="num" style="font-size:20px;">' + fmtMoney(valorV) + '</div><div class="lbl">Receita fechada</div></div>';
+    html += '<div class="kpi" style="padding:10px;"><div class="num" style="font-size:20px;">' + conversaoV + '%</div><div class="lbl">Conversão</div></div>';
+    html += '<div class="kpi" style="padding:10px;"><div class="num" style="font-size:20px;">' + emAbertoV.length + '</div><div class="lbl">Em aberto</div></div>';
+    html += '<div class="kpi" style="padding:10px;"><div class="num" style="font-size:20px; ' + (atrasadosV.length > 0 ? 'color:var(--red)' : '') + ';">' + atrasadosV.length + '</div><div class="lbl">Atrasados</div></div>';
+    html += '</div>';
+
+    // Mini barra de funil por etapa
+    var estagiosAtivos = STAGES.filter(function(s){ return s.id !== 'perdido'; });
+    html += '<div style="display:flex; gap:3px; height:6px; border-radius:4px; overflow:hidden;">';
+    estagiosAtivos.forEach(function(stage){
+      var qtd = leadsVendedor.filter(function(l){ return l.stage === stage.id; }).length;
+      var pct = leadsVendedor.length ? (qtd / leadsVendedor.length) * 100 : 0;
+      if(pct > 0){
+        html += '<div style="flex:' + pct + '; background:' + stage.color + ';" title="' + stage.label + ': ' + qtd + '"></div>';
+      }
+    });
+    html += '</div>';
+    html += '<div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">';
+    estagiosAtivos.forEach(function(stage){
+      var qtd = leadsVendedor.filter(function(l){ return l.stage === stage.id; }).length;
+      if(qtd > 0){
+        html += '<span style="font-size:10px; color:var(--ink-faint);"><span style="color:' + stage.color + ';">●</span> ' + stage.label + ': ' + qtd + '</span>';
+      }
+    });
+    html += '</div>';
+
+    html += '</div>';
+  });
+
+  areaEquipe.innerHTML = html;
 }
 
 function kpiHtml(value, label, delta){
