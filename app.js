@@ -3725,10 +3725,15 @@ function showApp(){
   var tabEquipe = document.getElementById('tab-equipe');
   if(tabEquipe) tabEquipe.style.display = papelAtual === 'admin' ? '' : 'none';
 
-  if(papelAtual === 'admin'){
-    document.getElementById('filtro-vendedor').style.display = '';
-    atualizarFiltroVendedores();
-    loadMembrosDaEquipe();
+  var selFiltroVendedor = document.getElementById('filtro-vendedor');
+  if(selFiltroVendedor){
+    if(papelAtual === 'admin'){
+      selFiltroVendedor.style.display = '';
+      atualizarFiltroVendedores();
+      loadMembrosDaEquipe();
+    } else {
+      selFiltroVendedor.style.display = 'none';
+    }
   }
 }
 
