@@ -955,8 +955,10 @@ async function renderEquipeView(){
         '<div class="membro-email">' + escapeHtml(m.username || m.email) + '</div>' +
       '</div>' +
       '<span class="membro-papel ' + m.papel + '">' + (m.papel === 'admin' ? 'Administrador' : 'Vendedor') + '</span>' +
+      '<button class="btn-ghost" style="font-size:12px;" data-editar-membro-id="' + m.user_id + '" data-editar-membro-nome="' + escapeHtml(m.nome) + '" data-editar-membro-username="' + escapeHtml(m.username || '') + '">✏️ Editar</button>' +
       (!ehEuMesmo ? '<button class="btn-ghost" style="font-size:12px; color:var(--red);" data-remover-id="' + m.id + '">Remover</button>' : '') +
-    '</div>';
+    '</div>' +
+    '<div id="form-editar-membro-' + m.user_id + '" style="display:none; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:8px;"></div>';
   }).join('');
   html += '</div>';
 
@@ -983,6 +985,110 @@ async function renderEquipeView(){
       await sb.from('membros_equipe').update({ ativo: false }).eq('id', btn.getAttribute('data-remover-id'));
       toast('Membro removido.', 'sucesso');
       renderEquipeView();
+    });
+  });
+
+  container.querySelectorAll('[data-editar-membro-id]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var uid = btn.getAttribute('data-editar-membro-id');
+      var nomeAtual = btn.getAttribute('data-editar-membro-nome');
+      var usernameAtual = btn.getAttribute('data-editar-membro-username');
+      var ehEuMesmo = uid === currentUserId;
+      var formDiv = document.getElementById('form-editar-membro-' + uid);
+
+      if(formDiv.style.display !== 'none'){
+        formDiv.style.display = 'none';
+        btn.textContent = '✏️ Editar';
+        return;
+      }
+
+      btn.textContent = '✕ Fechar';
+      formDiv.style.display = 'block';
+      formDiv.innerHTML =
+        '<p style="font-size:13px; font-weight:700; margin:0 0 12px;">Editar: ' + escapeHtml(nomeAtual) + '</p>' +
+        (ehEuMesmo
+          ? ''
+          : field('Novo nome de usuário', '<input type="text" id="em-username-' + uid + '" value="' + escapeHtml(usernameAtual) + '" placeholder="Ex: joao.silva">')
+        ) +
+        field('Nova senha', '<input type="password" id="em-senha-' + uid + '" placeholder="Deixe em branco para não alterar">') +
+        field('Confirmar nova senha', '<input type="password" id="em-confirmar-' + uid + '" placeholder="Repita a nova senha">') +
+        '<button class="btn-primary" style="font-size:13px;" id="em-salvar-' + uid + '">Salvar alterações</button>';
+
+      document.getElementById('em-salvar-' + uid).addEventListener('click', async function(){
+        var nova_senha = document.getElementById('em-senha-' + uid).value;
+        var confirmar = document.getElementById('em-confirmar-' + uid).value;
+        var novo_username = !ehEuMesmo && document.getElementById('em-username-' + uid)
+          ? document.getElementById('em-username-' + uid).value.trim().toLowerCase()
+          : null;
+
+        if(nova_senha && nova_senha.length < 6){
+          toast('A senha deve ter pelo menos 6 caracteres.', 'erro');
+          return;
+        }
+        if(nova_senha && nova_senha !== confirmar){
+          toast('As senhas não coincidem.', 'erro');
+          return;
+        }
+        if(!nova_senha && !novo_username){
+          toast('Informe ao menos um campo para alterar.', 'erro');
+          return;
+        }
+
+        var btn2 = this;
+        btn2.disabled = true;
+        btn2.textContent = 'Salvando...';
+
+        // Se for o próprio usuário, usa o método nativo do Supabase (mais seguro)
+        if(ehEuMesmo && nova_senha){
+          var res = await sb.auth.updateUser({ password: nova_senha });
+          if(res.error){
+            toast('Erro ao alterar senha: ' + res.error.message, 'erro');
+            btn2.disabled = false;
+            btn2.textContent = 'Salvar alterações';
+            return;
+          }
+          toast('Senha alterada com sucesso!', 'sucesso');
+          formDiv.style.display = 'none';
+          btn.textContent = '✏️ Editar';
+          return;
+        }
+
+        // Para outros usuários, chama a Edge Function
+        try{
+          var sessao = await sb.auth.getSession();
+          var token = sessao.data.session.access_token;
+          var payload = { target_user_id: uid };
+          if(nova_senha) payload.nova_senha = nova_senha;
+          if(novo_username) payload.novo_username = novo_username;
+
+          var res2 = await fetch('https://atgwsmrottssynagejyw.supabase.co/functions/v1/atualizar-usuario', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(payload)
+          });
+
+          var dados = await res2.json();
+          if(!res2.ok || dados.error){
+            toast('Erro: ' + (dados.error || 'Não foi possível atualizar.'), 'erro');
+            btn2.disabled = false;
+            btn2.textContent = 'Salvar alterações';
+            return;
+          }
+
+          toast(dados.mensagem || 'Dados atualizados!', 'sucesso');
+          formDiv.style.display = 'none';
+          btn.textContent = '✏️ Editar';
+          renderEquipeView();
+
+        }catch(err){
+          toast('Erro de conexão. Tente novamente.', 'erro');
+          btn2.disabled = false;
+          btn2.textContent = 'Salvar alterações';
+        }
+      });
     });
   });
 
@@ -3942,6 +4048,60 @@ async function iniciarApp(){
   var headerEquipe = document.getElementById('equipe-nome-header');
   if(headerEquipe && equipeAtual) headerEquipe.textContent = equipeAtual.nome;
 }
+
+function abrirModalMinhaConta(){
+  var modal = document.getElementById('modal-minha-conta');
+  modal.innerHTML =
+    '<h2>Minha conta</h2>' +
+    '<p class="meta-dia-label" style="margin-bottom:14px;">Altere sua senha de acesso.</p>' +
+    field('Nova senha', '<input type="password" id="mc-nova-senha" placeholder="Mínimo 6 caracteres">') +
+    field('Confirmar nova senha', '<input type="password" id="mc-confirmar-senha" placeholder="Repita a senha">') +
+    '<div class="modal-actions">' +
+      '<span></span>' +
+      '<div class="right-actions">' +
+        '<button class="btn-ghost" id="mc-cancelar">Cancelar</button>' +
+        '<button class="btn-primary" id="mc-salvar">Salvar senha</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('overlay-minha-conta').classList.add('open');
+
+  document.getElementById('mc-cancelar').addEventListener('click', function(){
+    document.getElementById('overlay-minha-conta').classList.remove('open');
+  });
+
+  document.getElementById('mc-salvar').addEventListener('click', async function(){
+    var nova = document.getElementById('mc-nova-senha').value;
+    var confirmar = document.getElementById('mc-confirmar-senha').value;
+    if(nova.length < 6){
+      toast('A senha deve ter pelo menos 6 caracteres.', 'erro');
+      return;
+    }
+    if(nova !== confirmar){
+      toast('As senhas não coincidem.', 'erro');
+      return;
+    }
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+    var res = await sb.auth.updateUser({ password: nova });
+    if(res.error){
+      toast('Erro ao alterar senha: ' + res.error.message, 'erro');
+      btn.disabled = false;
+      btn.textContent = 'Salvar senha';
+      return;
+    }
+    toast('Senha alterada com sucesso!', 'sucesso');
+    document.getElementById('overlay-minha-conta').classList.remove('open');
+  });
+}
+
+document.getElementById('btn-minha-conta').addEventListener('click', abrirModalMinhaConta);
+
+document.getElementById('overlay-minha-conta').addEventListener('click', function(e){
+  if(e.target.id === 'overlay-minha-conta')
+    document.getElementById('overlay-minha-conta').classList.remove('open');
+});
 
 iniciarApp();
 })();
