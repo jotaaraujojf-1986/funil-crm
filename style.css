@@ -1193,6 +1193,9 @@ html[data-theme="dark"] .badge-vendedor{ background:rgba(43,108,163,0.25); }
   border-radius:8px;
   cursor:pointer;
   transition:background .12s ease, color .12s ease;
+  display:flex;
+  align-items:center;
+  gap:10px;
 }
 .sidebar-item:hover{
   background:var(--line);
