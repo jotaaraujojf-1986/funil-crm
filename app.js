@@ -971,10 +971,22 @@ async function renderEquipeView(){
   // Linha 1: cabeçalho da equipe (largura total)
   html += '<div style="margin-bottom:16px;">';
   html += '<div class="metas-section" style="border-left:4px solid var(--amber);">';
-  html += '<div style="display:flex; align-items:center; gap:14px;">';
+  html += '<div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">';
   html += '<div class="membro-avatar" style="width:48px; height:48px; font-size:20px; background:var(--amber); color:var(--steel-dark);">' + (equipeAtual.nome || 'E').slice(0,2).toUpperCase() + '</div>';
-  html += '<div><h3 style="margin:0; font-family:\'Barlow Condensed\',sans-serif; font-size:22px; font-weight:800;">' + escapeHtml(equipeAtual.nome) + '</h3>';
-  html += '<p style="margin:4px 0 0; font-size:12px; color:var(--ink-faint);">' + membros.length + ' membro(s) ativo(s)</p></div>';
+  html += '<div style="flex:1; min-width:0;">';
+  html += '<div id="equipe-nome-display" style="display:flex; align-items:center; gap:10px;">';
+  html += '<h3 style="margin:0; font-family:\'Barlow Condensed\',sans-serif; font-size:22px; font-weight:800;">' + escapeHtml(equipeAtual.nome) + '</h3>';
+  html += '<button class="btn-ghost" style="font-size:12px; padding:4px 8px;" id="btn-editar-nome-equipe">✏️ Editar nome</button>';
+  html += '</div>';
+  html += '<div id="equipe-nome-form" style="display:none; margin-top:8px;">';
+  html += '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">';
+  html += '<input type="text" id="input-nome-equipe" value="' + escapeHtml(equipeAtual.nome) + '" style="font-family:\'Barlow Condensed\',sans-serif; font-size:18px; font-weight:700; flex:1; min-width:160px;" class="campo-padrao">';
+  html += '<button class="btn-primary" style="padding:8px 14px; font-size:13px;" id="btn-salvar-nome-equipe">Salvar</button>';
+  html += '<button class="btn-ghost" style="padding:8px 14px; font-size:13px;" id="btn-cancelar-nome-equipe">Cancelar</button>';
+  html += '</div>';
+  html += '</div>';
+  html += '<p style="margin:4px 0 0; font-size:12px; color:var(--ink-faint);">' + membros.length + ' membro(s) ativo(s)</p>';
+  html += '</div>';
   html += '</div>';
   html += '</div>';
   html += '</div>';
@@ -1020,6 +1032,45 @@ async function renderEquipeView(){
   html += '</div>'; // fecha metas-grid
 
   container.innerHTML = html;
+
+  var btnEditarNome = document.getElementById('btn-editar-nome-equipe');
+  var formNome = document.getElementById('equipe-nome-form');
+  var displayNome = document.getElementById('equipe-nome-display');
+
+  if(btnEditarNome){
+    btnEditarNome.addEventListener('click', function(){
+      formNome.style.display = 'block';
+      displayNome.style.display = 'none';
+    });
+  }
+
+  document.getElementById('btn-cancelar-nome-equipe').addEventListener('click', function(){
+    formNome.style.display = 'none';
+    displayNome.style.display = 'flex';
+  });
+
+  document.getElementById('btn-salvar-nome-equipe').addEventListener('click', async function(){
+    var novoNome = document.getElementById('input-nome-equipe').value.trim();
+    if(!novoNome){
+      toast('O nome da equipe não pode ser vazio.', 'erro');
+      return;
+    }
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+    var res = await sb.from('equipes').update({ nome: novoNome }).eq('id', equipeAtual.id);
+    if(res.error){
+      toast('Erro ao salvar o nome da equipe.', 'erro');
+      btn.disabled = false;
+      btn.textContent = 'Salvar';
+      return;
+    }
+    equipeAtual.nome = novoNome;
+    var headerEquipe = document.getElementById('equipe-nome-header');
+    if(headerEquipe) headerEquipe.textContent = novoNome;
+    toast('Nome da equipe atualizado!', 'sucesso');
+    renderEquipeView();
+  });
 
   container.querySelectorAll('[data-remover-id]').forEach(function(btn){
     btn.addEventListener('click', async function(){
