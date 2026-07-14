@@ -371,7 +371,6 @@ async function excluirInteracaoNoDb(id){
 function tarefaFromDb(row){
   return {
     id: row.id,
-    userId: row.user_id,
     titulo: row.titulo,
     descricao: row.descricao || '',
     data: String(row.data).slice(0,10),
@@ -379,7 +378,9 @@ function tarefaFromDb(row){
     categoria: row.categoria || 'administrativo',
     concluida: row.concluida || false,
     checklist: Array.isArray(row.checklist) ? row.checklist : [],
-    anexos: Array.isArray(row.anexos) ? row.anexos : []
+    anexos: Array.isArray(row.anexos) ? row.anexos : [],
+    historico: Array.isArray(row.historico) ? row.historico : [],
+    userId: row.user_id
   };
 }
 
@@ -534,6 +535,52 @@ async function renderTarefasView(){
       '📎 Arraste ou clique para anexar' +
     '</div>';
 
+    // Histórico da tarefa
+    var historicoHtml = '';
+    if(t.historico && t.historico.length > 0){
+      historicoHtml = '<div class="historico-tarefa">';
+      historicoHtml += '<p class="tarefa-secao-label">Histórico</p>';
+      historicoHtml += t.historico.map(function(h){
+        if(h.tipo === 'criacao'){
+          return '<div class="historico-item historico-tipo-criacao">' +
+            '<div><span class="hist-tipo">Criada</span> por ' + escapeHtml(h.nome) +
+            ' <span class="hist-data">· ' + fmtDateBR(h.data) + '</span></div>' +
+          '</div>';
+        }
+        if(h.tipo === 'transferencia'){
+          return '<div class="historico-item historico-tipo-transferencia">' +
+            '<div><span class="hist-tipo">Transferida</span> de ' + escapeHtml(h.de_nome) +
+            ' para <strong>' + escapeHtml(h.para_nome) + '</strong>' +
+            (h.feito_por ? ' por ' + escapeHtml(h.feito_por) : '') +
+            ' <span class="hist-data">· ' + fmtDateBR(h.data) + '</span></div>' +
+          '</div>';
+        }
+        return '';
+      }).join('');
+      historicoHtml += '</div>';
+    }
+
+    // Botão de transferência (só para admin)
+    var transferirHtml = '';
+    if(papelAtual === 'admin' && equipeAtual && Object.keys(membrosDaEquipe).length > 1){
+      var outrosMembros = Object.entries(membrosDaEquipe).filter(function(e){ return e[0] !== t.userId; });
+      if(outrosMembros.length > 0){
+        transferirHtml = '<div id="form-transferir-' + t.id + '" style="display:none;" class="form-transferencia">' +
+          '<p class="tarefa-secao-label" style="margin-top:0;">Transferir para</p>' +
+          '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">' +
+            '<select id="sel-transferir-' + t.id + '" style="flex:1;" class="campo-padrao">' +
+              outrosMembros.map(function(e){
+                return '<option value="' + e[0] + '">' + escapeHtml(e[1]) + '</option>';
+              }).join('') +
+            '</select>' +
+            '<button class="btn-primary" style="font-size:13px;" data-confirmar-transferir="' + t.id + '">Transferir</button>' +
+            '<button class="btn-ghost" style="font-size:13px;" data-cancelar-transferir="' + t.id + '">Cancelar</button>' +
+          '</div>' +
+        '</div>' +
+        '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-abrir-transferir="' + t.id + '">↔ Transferir</button>';
+      }
+    }
+
     var detalheHtml =
       '<div class="tarefa-lista-detalhe" id="pan-det-' + t.id + '" style="display:none; padding:12px 14px 14px 50px; border-top:1px solid var(--line);">' +
         (t.descricao ? '<p style="font-size:13px; color:var(--ink-soft); margin:0 0 12px;">' + escapeHtml(t.descricao) + '</p>' : '') +
@@ -541,9 +588,11 @@ async function renderTarefasView(){
           '<div>' + checklistHtml + '</div>' +
           '<div>' + anexosHtml + '</div>' +
         '</div>' +
-        '<div style="margin-top:12px;">' +
+        '<div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">' +
           '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-pan-edit-id="' + t.id + '">✏️ Editar</button>' +
+          transferirHtml +
         '</div>' +
+        historicoHtml +
         '<div id="pan-form-edit-' + t.id + '" style="display:none; margin-top:10px; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:12px;"></div>' +
       '</div>';
 
@@ -793,18 +842,64 @@ async function renderTarefasView(){
       });
     });
   });
+
+  lista.querySelectorAll('[data-abrir-transferir]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-abrir-transferir');
+      var form = document.getElementById('form-transferir-' + tid);
+      if(form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    });
+  });
+
+  lista.querySelectorAll('[data-cancelar-transferir]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-cancelar-transferir');
+      var form = document.getElementById('form-transferir-' + tid);
+      if(form) form.style.display = 'none';
+    });
+  });
+
+  lista.querySelectorAll('[data-confirmar-transferir]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-confirmar-transferir');
+      var sel = document.getElementById('sel-transferir-' + tid);
+      if(!sel) return;
+      var novoUserId = sel.value;
+      var novoNome = membrosDaEquipe[novoUserId] || 'Desconhecido';
+      btn.disabled = true;
+      btn.textContent = 'Transferindo...';
+      var res = await sb.from('tarefas').select('*').eq('id', tid).single();
+      if(res.error){ toast('Erro ao carregar tarefa.', 'erro'); return; }
+      var tarefa = tarefaFromDb(res.data);
+      await transferirTarefa(tarefa, novoUserId, novoNome);
+      toast('Tarefa transferida para ' + novoNome + '!', 'sucesso');
+      tarefasExpandidasPan[tid] = true;
+      renderTarefasView();
+    });
+  });
 }
 
 async function criarTarefa(tarefa){
-  var res = await sb.from('tarefas').insert({
+  var nomeCreator = membrosDaEquipe[currentUserId] || 'Usuário';
+  var historicoInicial = [{
+    tipo: 'criacao',
     user_id: currentUserId,
+    nome: nomeCreator,
+    data: todayStr()
+  }];
+  var res = await sb.from('tarefas').insert({
+    user_id: getUserIdParaSalvar(),
     equipe_id: equipeAtual ? equipeAtual.id : null,
     titulo: tarefa.titulo,
     descricao: tarefa.descricao || null,
     data: tarefa.data,
     prioridade: tarefa.prioridade || 'normal',
     categoria: tarefa.categoria || 'administrativo',
-    concluida: false
+    concluida: false,
+    historico: historicoInicial
   }).select().single();
   if(res.error){ console.error('Erro ao criar tarefa', res.error); showSyncError(); return null; }
   return tarefaFromDb(res.data);
@@ -819,9 +914,28 @@ async function atualizarTarefa(tarefa){
     categoria: tarefa.categoria,
     concluida: tarefa.concluida,
     checklist: tarefa.checklist || [],
-    anexos: tarefa.anexos || []
-  }).eq('id', tarefa.id).eq('user_id', currentUserId);
+    anexos: tarefa.anexos || [],
+    historico: tarefa.historico || [],
+    user_id: tarefa.userId
+  }).eq('id', tarefa.id);
   if(res.error){ console.error('Erro ao atualizar tarefa', res.error); showSyncError(); }
+}
+
+async function transferirTarefa(tarefa, novoUserId, novoNome){
+  var nomeAtual = membrosDaEquipe[tarefa.userId] || 'Desconhecido';
+  var evento = {
+    tipo: 'transferencia',
+    de_user_id: tarefa.userId,
+    de_nome: nomeAtual,
+    para_user_id: novoUserId,
+    para_nome: novoNome,
+    data: todayStr(),
+    feito_por: membrosDaEquipe[currentUserId] || 'Admin'
+  };
+  tarefa.historico = tarefa.historico || [];
+  tarefa.historico.push(evento);
+  tarefa.userId = novoUserId;
+  await atualizarTarefa(tarefa);
 }
 
 async function excluirTarefa(id){
@@ -3538,10 +3652,72 @@ async function renderDetalheDoDia(dataStr){
         '<div class="tarefa-detalhe" id="det-' + t.id + '">' +
           (t.descricao ? '<p style="font-size:13px; margin:0 0 8px; color:var(--ink-soft);">' + escapeHtml(t.descricao) + '</p>' : '') +
           checklistHtml +
-          anexosHtml +
-          '<div style="display:flex; gap:8px; margin-top:12px;">' +
-            '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-edit-id="' + t.id + '">✏️ Editar</button>' +
+    // Histórico da tarefa
+    var historicoHtml = '';
+    if(t.historico && t.historico.length > 0){
+      historicoHtml = '<div class="historico-tarefa">';
+      historicoHtml += '<p class="tarefa-secao-label">Histórico</p>';
+      historicoHtml += t.historico.map(function(h){
+        if(h.tipo === 'criacao'){
+          return '<div class="historico-item historico-tipo-criacao">' +
+            '<div><span class="hist-tipo">Criada</span> por ' + escapeHtml(h.nome) +
+            ' <span class="hist-data">· ' + fmtDateBR(h.data) + '</span></div>' +
+          '</div>';
+        }
+        if(h.tipo === 'transferencia'){
+          return '<div class="historico-item historico-tipo-transferencia">' +
+            '<div><span class="hist-tipo">Transferida</span> de ' + escapeHtml(h.de_nome) +
+            ' para <strong>' + escapeHtml(h.para_nome) + '</strong>' +
+            (h.feito_por ? ' por ' + escapeHtml(h.feito_por) : '') +
+            ' <span class="hist-data">· ' + fmtDateBR(h.data) + '</span></div>' +
+          '</div>';
+        }
+        return '';
+      }).join('');
+      historicoHtml += '</div>';
+    }
+
+    // Botão de transferência (só para admin)
+    var transferirHtml = '';
+    if(papelAtual === 'admin' && equipeAtual && Object.keys(membrosDaEquipe).length > 1){
+      var outrosMembros = Object.entries(membrosDaEquipe).filter(function(e){ return e[0] !== t.userId; });
+      if(outrosMembros.length > 0){
+        transferirHtml = '<div id="form-transferir-' + t.id + '" style="display:none;" class="form-transferencia">' +
+          '<p class="tarefa-secao-label" style="margin-top:0;">Transferir para</p>' +
+          '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">' +
+            '<select id="sel-transferir-' + t.id + '" style="flex:1;" class="campo-padrao">' +
+              outrosMembros.map(function(e){
+                return '<option value="' + e[0] + '">' + escapeHtml(e[1]) + '</option>';
+              }).join('') +
+            '</select>' +
+            '<button class="btn-primary" style="font-size:13px;" data-confirmar-transferir="' + t.id + '">Transferir</button>' +
+            '<button class="btn-ghost" style="font-size:13px;" data-cancelar-transferir="' + t.id + '">Cancelar</button>' +
           '</div>' +
+        '</div>' +
+        '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-abrir-transferir="' + t.id + '">↔ Transferir</button>';
+      }
+    }
+
+    return '<div class="tarefa-item' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '">' +
+      '<div class="tarefa-check' + (t.concluida ? ' marcada' : '') + '" data-check-id="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
+      '<div class="tarefa-corpo">' +
+        '<p class="tarefa-titulo">' + escapeHtml(t.titulo) + '</p>' +
+        '<div class="tarefa-meta">' +
+          '<span>' + t.categoria + '</span>' +
+          (t.prioridade !== 'normal' ? '<span class="' + cls + '">' + t.prioridade + '</span>' : '') +
+          '<span>' + fmtDateBR(t.data) + '</span>' +
+          (t.checklist && t.checklist.length > 0 ? '<span>✓ ' + t.checklist.filter(function(c){return c.concluido;}).length + '/' + t.checklist.length + '</span>' : '') +
+          (t.anexos && t.anexos.length > 0 ? '<span>📎 ' + t.anexos.length + '</span>' : '') +
+        '</div>' +
+        '<div class="tarefa-detalhe" id="det-' + t.id + '">' +
+          (t.descricao ? '<p style="font-size:13px; margin:0 0 8px; color:var(--ink-soft);">' + escapeHtml(t.descricao) + '</p>' : '') +
+          checklistHtml +
+          anexosHtml +
+          '<div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">' +
+            '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-edit-id="' + t.id + '">✏️ Editar</button>' +
+            transferirHtml +
+          '</div>' +
+          historicoHtml +
           '<div id="form-edit-tarefa-' + t.id + '" style="display:none; margin-top:10px;"></div>' +
         '</div>' +
       '</div>' +
@@ -3760,6 +3936,44 @@ async function renderDetalheDoDia(dataStr){
         renderDetalheDoDia(dataStr);
         renderCalendario();
       });
+    });
+  });
+
+  // Transferência de tarefas
+  box.querySelectorAll('[data-abrir-transferir]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-abrir-transferir');
+      var form = document.getElementById('form-transferir-' + tid);
+      if(form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    });
+  });
+
+  box.querySelectorAll('[data-cancelar-transferir]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-cancelar-transferir');
+      var form = document.getElementById('form-transferir-' + tid);
+      if(form) form.style.display = 'none';
+    });
+  });
+
+  box.querySelectorAll('[data-confirmar-transferir]').forEach(function(btn){
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var tid = btn.getAttribute('data-confirmar-transferir');
+      var sel = document.getElementById('sel-transferir-' + tid);
+      if(!sel) return;
+      var novoUserId = sel.value;
+      var novoNome = membrosDaEquipe[novoUserId] || 'Desconhecido';
+      var tarefa = tarefasDia.find(function(t){ return t.id === tid; });
+      if(!tarefa) return;
+      btn.disabled = true;
+      btn.textContent = 'Transferindo...';
+      await transferirTarefa(tarefa, novoUserId, novoNome);
+      toast('Tarefa transferida para ' + novoNome + '!', 'sucesso');
+      renderDetalheDoDia(dataStr);
+      renderCalendario();
     });
   });
 

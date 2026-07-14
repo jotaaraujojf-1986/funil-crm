@@ -1234,3 +1234,19 @@ html[data-theme="dark"] .badge-vendedor{ background:rgba(43,108,163,0.25); }
   align-items: center;
   gap: 8px;
 }
+
+.historico-tarefa{ margin-top:12px; border-top:1px solid var(--line); padding-top:10px; }
+.historico-item{
+  display:flex; align-items:flex-start; gap:8px;
+  font-size:12px; color:var(--ink-soft); padding:5px 0;
+  border-left:2px solid var(--line); padding-left:10px; margin-left:4px; margin-bottom:4px;
+}
+.historico-item .hist-tipo{ font-weight:700; color:var(--ink); }
+.historico-item .hist-data{ color:var(--ink-faint); font-size:11px; }
+.historico-tipo-criacao{ border-left-color:var(--green); }
+.historico-tipo-transferencia{ border-left-color:var(--blue); }
+
+.form-transferencia{
+  background:var(--bg); border:1px solid var(--line); border-radius:8px;
+  padding:12px; margin-top:10px;
+}
