@@ -3663,27 +3663,6 @@ async function renderDetalheDoDia(dataStr){
       historicoHtml += '</div>';
     }
 
-    // Botão de transferência (só para admin)
-    var transferirHtml = '';
-    if(papelAtual === 'admin' && equipeAtual && Object.keys(membrosDaEquipe).length > 1){
-      var outrosMembros = Object.entries(membrosDaEquipe).filter(function(e){ return e[0] !== t.userId; });
-      if(outrosMembros.length > 0){
-        transferirHtml = '<div id="form-transferir-' + t.id + '" style="display:none;" class="form-transferencia">' +
-          '<p class="tarefa-secao-label" style="margin-top:0;">Transferir para</p>' +
-          '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">' +
-            '<select id="sel-transferir-' + t.id + '" style="flex:1;" class="campo-padrao">' +
-              outrosMembros.map(function(e){
-                return '<option value="' + e[0] + '">' + escapeHtml(e[1]) + '</option>';
-              }).join('') +
-            '</select>' +
-            '<button class="btn-primary" style="font-size:13px;" data-confirmar-transferir="' + t.id + '">Transferir</button>' +
-            '<button class="btn-ghost" style="font-size:13px;" data-cancelar-transferir="' + t.id + '">Cancelar</button>' +
-          '</div>' +
-        '</div>' +
-        '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-abrir-transferir="' + t.id + '">↔ Transferir</button>';
-      }
-    }
-
     return '<div class="tarefa-item' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '">' +
       '<div class="tarefa-check' + (t.concluida ? ' marcada' : '') + '" data-check-id="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
       '<div class="tarefa-corpo">' +
@@ -3701,8 +3680,20 @@ async function renderDetalheDoDia(dataStr){
           anexosHtml +
           '<div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">' +
             '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-edit-id="' + t.id + '">✏️ Editar</button>' +
-            transferirHtml +
+            (papelAtual === 'admin' && equipeAtual && Object.keys(membrosDaEquipe).length > 1 ? '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-abrir-transferir="' + t.id + '">↔ Transferir</button>' : '') +
           '</div>' +
+          (papelAtual === 'admin' && equipeAtual && Object.keys(membrosDaEquipe).length > 1 ? '<div id="form-transferir-' + t.id + '" style="display:none;" class="form-transferencia">' +
+            '<p class="tarefa-secao-label" style="margin-top:0;">Transferir para</p>' +
+            '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">' +
+              '<select id="sel-transferir-' + t.id + '" style="flex:1;" class="campo-padrao">' +
+                Object.entries(membrosDaEquipe).filter(function(e){ return e[0] !== t.userId; }).map(function(e){
+                  return '<option value="' + e[0] + '">' + escapeHtml(e[1]) + '</option>';
+                }).join('') +
+              '</select>' +
+              '<button class="btn-primary" style="font-size:13px;" data-confirmar-transferir="' + t.id + '">Transferir</button>' +
+              '<button class="btn-ghost" style="font-size:13px;" data-cancelar-transferir="' + t.id + '">Cancelar</button>' +
+            '</div>' +
+          '</div>' : '') +
           historicoHtml +
           '<div id="form-edit-tarefa-' + t.id + '" style="display:none; margin-top:10px;"></div>' +
         '</div>' +
