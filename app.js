@@ -3638,20 +3638,6 @@ async function renderDetalheDoDia(dataStr){
       '📎 Arraste ou clique para anexar' +
     '</div>';
 
-    return '<div class="tarefa-item' + (t.concluida ? ' concluida' : '') + '" data-tarefa-id="' + t.id + '">' +
-      '<div class="tarefa-check' + (t.concluida ? ' marcada' : '') + '" data-check-id="' + t.id + '">' + (t.concluida ? '✓' : '') + '</div>' +
-      '<div class="tarefa-corpo">' +
-        '<p class="tarefa-titulo">' + escapeHtml(t.titulo) + '</p>' +
-        '<div class="tarefa-meta">' +
-          '<span>' + t.categoria + '</span>' +
-          (t.prioridade !== 'normal' ? '<span class="' + cls + '">' + t.prioridade + '</span>' : '') +
-          '<span>' + fmtDateBR(t.data) + '</span>' +
-          (t.checklist && t.checklist.length > 0 ? '<span>✓ ' + t.checklist.filter(function(c){return c.concluido;}).length + '/' + t.checklist.length + '</span>' : '') +
-          (t.anexos && t.anexos.length > 0 ? '<span>📎 ' + t.anexos.length + '</span>' : '') +
-        '</div>' +
-        '<div class="tarefa-detalhe" id="det-' + t.id + '">' +
-          (t.descricao ? '<p style="font-size:13px; margin:0 0 8px; color:var(--ink-soft);">' + escapeHtml(t.descricao) + '</p>' : '') +
-          checklistHtml +
     // Histórico da tarefa
     var historicoHtml = '';
     if(t.historico && t.historico.length > 0){
