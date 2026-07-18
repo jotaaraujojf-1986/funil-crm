@@ -4227,8 +4227,7 @@ function switchTab(tab){
   if(periodoEl) periodoEl.style.display = (tab === 'funil' || tab === 'dash') ? 'flex' : 'none';
   var filtroVendEl = document.getElementById('filtro-vendedor');
   if(filtroVendEl){
-    var abasMostrarFiltro = ['funil', 'dash'];
-    filtroVendEl.style.display = (papelAtual === 'admin' && abasMostrarFiltro.indexOf(tab) !== -1) ? '' : 'none';
+    filtroVendEl.style.display = (papelAtual === 'admin' && tab !== 'equipe') ? '' : 'none';
   }
 
   // Renderizar a seção ativa
