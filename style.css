@@ -1250,3 +1250,28 @@ html[data-theme="dark"] .badge-vendedor{ background:rgba(43,108,163,0.25); }
   background:var(--bg); border:1px solid var(--line); border-radius:8px;
   padding:12px; margin-top:10px;
 }
+
+.tipo-cliente-selector{
+  display:flex; gap:10px; margin-bottom:16px;
+}
+.tipo-cliente-option{
+  flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:12px; border-radius:8px; border:2px solid var(--line);
+  cursor:pointer; font-size:13px; font-weight:600; color:var(--ink-soft);
+  transition:all .15s ease; user-select:none;
+}
+.tipo-cliente-option input[type="radio"]{ display:none; }
+.tipo-cliente-option:hover{ border-color:var(--amber); color:var(--ink); }
+.tipo-cliente-option.selecionado{
+  border-color:var(--amber); background:rgba(232,163,23,0.1);
+  color:var(--ink); font-weight:700;
+}
+.tipo-cliente-option .tipo-check{
+  width:18px; height:18px; border-radius:4px; border:2px solid var(--line);
+  display:flex; align-items:center; justify-content:center; font-size:11px;
+  background:transparent; flex:0 0 18px;
+}
+.tipo-cliente-option.selecionado .tipo-check{
+  background:var(--amber); border-color:var(--amber); color:var(--steel-dark);
+}
+

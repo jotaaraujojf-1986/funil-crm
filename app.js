@@ -1994,16 +1994,33 @@ function openModal(id){
     '<div class="modal-trello-body">' +
       '<div class="modal-trello-col-principal">' +
 
-        '<input id="f-nome" class="modal-trello-titulo" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Nome / empresa">' +
+        (isNew ? '' : '<input id="f-nome" class="modal-trello-titulo" type="text" value="' + escapeHtml(lead.nome) + '" placeholder="Nome / empresa">') +
         '<p class="modal-trello-sub">' + (clienteVinculado ? 'Cliente: ' + escapeHtml(clienteVinculado.nome) : 'Negócio novo') + (lead.contato ? ' · ' + escapeHtml(lead.contato) : '') + '</p>' +
 
         (waLinkModal ? '<a class="wa-btn" style="margin-bottom:16px;" href="' + waLinkModal + '" target="_blank" rel="noopener">Abrir conversa no WhatsApp ↗</a>' : '') +
 
-        (isNew ? field('Cliente', '<select id="f-cliente-existente">' + clienteOptions + '</select>') : '') +
-        (isNew ? field('Tipo de cliente', '<select id="f-tipo-cliente"><option value="juridica">Pessoa Jurídica</option><option value="fisica">Pessoa Física</option></select>') : '') +
-        (isNew ? field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj" style="white-space:nowrap;">Buscar</button></div>') : '') +
-        (isNew ? field('Responsável (opcional)', '<input id="f-responsavel" type="text" placeholder="Nome de quem você fala na empresa">') : '') +
-        (isNew ? field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px; display:flex; align-items:center;">Adicionar</button></div></div>') : '') +
+        (isNew ?
+          '<div id="novo-cliente-campos">' +
+            '<div class="tipo-cliente-selector" id="tipo-selector">' +
+              '<label class="tipo-cliente-option selecionado" id="label-pj">' +
+                '<input type="radio" name="tipo-cli" value="juridica" checked>' +
+                '<div class="tipo-check">✓</div>' +
+                'Pessoa Jurídica (CNPJ)' +
+              '</label>' +
+              '<label class="tipo-cliente-option" id="label-pf">' +
+                '<input type="radio" name="tipo-cli" value="fisica">' +
+                '<div class="tipo-check"></div>' +
+                'Pessoa Física (CPF)' +
+              '</label>' +
+            '</div>' +
+            '<div id="campos-tipo-cliente">' +
+              field('Nome da empresa *', '<input id="f-nome-empresa" type="text" placeholder="Razão social ou nome fantasia">') +
+              field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj">Buscar</button></div>') +
+              field('Responsável (opcional)', '<input id="f-responsavel" type="text" placeholder="Nome de quem você fala na empresa">') +
+            '</div>' +
+            field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px;">Adicionar</button></div></div>') +
+          '</div>'
+        : '') +
 
         '<div class="row2" style="align-items:start;">' +
           '<div class="modal-trello-secao" style="margin-bottom:0;">' +
@@ -2117,45 +2134,56 @@ function openModal(id){
   }
 
   if(isNew){
-    document.getElementById('f-cliente-existente').addEventListener('change', function(){
-      var cid = this.value;
-      var specificFields = document.getElementById('novo-cliente-especifico-fields');
-      if(!cid){ return; }
-      var c = clientes.find(function(x){ return x.id === cid; });
-      if(!c) return;
-      document.getElementById('f-nome').value = c.nome;
-      document.getElementById('f-contato').value = maskTelefone(c.contato || '');
-      document.getElementById('f-canal').value = c.canal || 'whatsapp';
-    });
-
-    document.getElementById('btn-buscar-cnpj').addEventListener('click', async function(){
-      var btn = this;
-      btn.disabled = true;
-      btn.textContent = 'Buscando...';
-      var dados = await buscarDadosCnpj(document.getElementById('f-cnpj').value);
-      btn.disabled = false;
-      btn.textContent = 'Buscar';
-      if(dados){
-        if(dados.nome) document.getElementById('f-nome').value = dados.nome;
-        if(dados.contato) document.getElementById('f-contato').value = maskTelefone(dados.contato);
-      }
-    });
-
-    var tipoSelect = document.getElementById('f-tipo-cliente');
-    if(tipoSelect){
-      tipoSelect.addEventListener('change', function(){
-        var cnpjField = document.getElementById('f-cnpj');
-        var cnpjWrapper = cnpjField ? cnpjField.closest('.field') : null;
-        var responsavelInput = document.getElementById('f-responsavel');
-        if(this.value === 'fisica'){
-          if(cnpjWrapper) cnpjWrapper.style.display = 'none';
-          if(responsavelInput) responsavelInput.placeholder = 'Nome completo';
-        } else {
-          if(cnpjWrapper) cnpjWrapper.style.display = '';
-          if(responsavelInput) responsavelInput.placeholder = 'Nome de quem você fala na empresa';
-        }
+    // Listener de busca de CNPJ inicial (quando PJ é exibido por padrão)
+    var btnCnpjInicial = document.getElementById('btn-buscar-cnpj');
+    if(btnCnpjInicial){
+      btnCnpjInicial.addEventListener('click', async function(){
+        var btn = this;
+        btn.disabled = true; btn.textContent = 'Buscando...';
+        var dados = await buscarDadosCnpj(document.getElementById('f-cnpj').value);
+        btn.disabled = false; btn.textContent = 'Buscar';
+        if(dados && dados.nome) document.getElementById('f-nome-empresa').value = dados.nome;
       });
     }
+
+    // Listener de tipo de cliente (PJ/PF)
+    document.querySelectorAll('input[name="tipo-cli"]').forEach(function(radio){
+      radio.addEventListener('change', function(){
+        var tipo = this.value;
+        var camposDiv = document.getElementById('campos-tipo-cliente');
+        var labelPj = document.getElementById('label-pj');
+        var labelPf = document.getElementById('label-pf');
+
+        // Atualizar visual dos botões
+        labelPj.classList.toggle('selecionado', tipo === 'juridica');
+        labelPf.classList.toggle('selecionado', tipo === 'fisica');
+        labelPj.querySelector('.tipo-check').textContent = tipo === 'juridica' ? '✓' : '';
+        labelPf.querySelector('.tipo-check').textContent = tipo === 'fisica' ? '✓' : '';
+
+        // Trocar campos conforme o tipo
+        if(tipo === 'fisica'){
+          camposDiv.innerHTML =
+            field('Nome completo *', '<input id="f-nome-empresa" type="text" placeholder="Nome completo da pessoa">');
+        } else {
+          camposDiv.innerHTML =
+            field('Nome da empresa *', '<input id="f-nome-empresa" type="text" placeholder="Razão social ou nome fantasia">') +
+            field('CNPJ (opcional)', '<div style="display:flex; gap:8px;"><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" class="btn-ghost" id="btn-buscar-cnpj">Buscar</button></div>') +
+            field('Responsável (opcional)', '<input id="f-responsavel" type="text" placeholder="Nome de quem você fala na empresa">');
+
+          // Reativar o listener de busca de CNPJ
+          var btnCnpj = document.getElementById('btn-buscar-cnpj');
+          if(btnCnpj){
+            btnCnpj.addEventListener('click', async function(){
+              var btn = this;
+              btn.disabled = true; btn.textContent = 'Buscando...';
+              var dados = await buscarDadosCnpj(document.getElementById('f-cnpj').value);
+              btn.disabled = false; btn.textContent = 'Buscar';
+              if(dados && dados.nome) document.getElementById('f-nome-empresa').value = dados.nome;
+            });
+          }
+        }
+      });
+    });
 
     var tagsInput = document.getElementById('f-tags-input');
     var btnAddTagNovo = document.getElementById('btn-add-tag-novo-negocio');
@@ -2195,7 +2223,9 @@ function openModal(id){
   }
 
   document.getElementById('f-save').onclick = async function(){
-    var nome = document.getElementById('f-nome').value.trim();
+    var fNomeEl = document.getElementById('f-nome');
+    var nomeEmpresa = document.getElementById('f-nome-empresa') ? document.getElementById('f-nome-empresa').value.trim() : '';
+    var nome = fNomeEl ? fNomeEl.value.trim() : (document.getElementById('f-nome-empresa') ? document.getElementById('f-nome-empresa').value.trim() : '');
     lead.nome = nome || 'Sem nome';
     lead.contato = document.getElementById('f-contato').value.trim();
     lead.canal = document.getElementById('f-canal').value;
@@ -2219,20 +2249,21 @@ function openModal(id){
     saveBtn.textContent = 'Salvando...';
 
     if(isNew){
-      var clienteSelecionado = document.getElementById('f-cliente-existente').value;
+      var fClienteExistenteEl = document.getElementById('f-cliente-existente');
+      var clienteSelecionado = fClienteExistenteEl ? fClienteExistenteEl.value : '';
       if(clienteSelecionado){
         lead.clienteId = clienteSelecionado;
       } else {
         var cnpjInput = document.getElementById('f-cnpj');
         var novoCliente = await criarClienteNoDb({
-          nome: lead.nome,
+          nome: nomeEmpresa || nome,
           contato: lead.contato,
           canal: lead.canal,
           criado: todayStr(),
           cnpj: cnpjInput ? cnpjInput.value.replace(/\D/g,'') : '',
           responsavel: document.getElementById('f-responsavel') ? document.getElementById('f-responsavel').value.trim() : '',
           tags: modalNewClientTags,
-          tipo: document.getElementById('f-tipo-cliente') ? document.getElementById('f-tipo-cliente').value : 'juridica'
+          tipo: (function(){ var r = document.querySelector('input[name="tipo-cli"]:checked'); return r ? r.value : 'juridica'; })()
         });
         if(novoCliente){
           novoCliente.tags = modalNewClientTags.slice();
