@@ -4391,8 +4391,20 @@ document.getElementById('filtro-vendedor').addEventListener('change', async func
 document.getElementById('btn-exportar-dados').addEventListener('click', function(){
   fecharSidebar();
 
-  var overlay = document.getElementById('overlay-confirm');
-  var modal = document.getElementById('modal-confirm');
+  // Criar overlay dedicado para exportação, sem mexer na aba ativa
+  var overlayExport = document.getElementById('overlay-exportar');
+  if(!overlayExport){
+    overlayExport = document.createElement('div');
+    overlayExport.id = 'overlay-exportar';
+    overlayExport.className = 'overlay';
+    overlayExport.innerHTML = '<div class="modal" id="modal-exportar" style="width:420px;"></div>';
+    document.body.appendChild(overlayExport);
+    overlayExport.addEventListener('click', function(e){
+      if(e.target.id === 'overlay-exportar') overlayExport.classList.remove('open');
+    });
+  }
+
+  var modal = document.getElementById('modal-exportar');
 
   modal.innerHTML =
     '<h2>Exportar dados</h2>' +
@@ -4411,10 +4423,10 @@ document.getElementById('btn-exportar-dados').addEventListener('click', function
       '<button class="btn-ghost" id="btn-fechar-export">Fechar</button>' +
     '</div>';
 
-  overlay.classList.add('open');
+  overlayExport.classList.add('open');
 
   document.getElementById('btn-fechar-export').addEventListener('click', function(){
-    overlay.classList.remove('open');
+    overlayExport.classList.remove('open');
   });
 
   document.getElementById('btn-exp-excel').addEventListener('click', exportarExcel);
