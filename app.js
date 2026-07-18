@@ -32,6 +32,8 @@ var filtroVendedorId = '';
 var membrosDaEquipe = {};
 
 var onboardingState = { etapasConcluidas: [], dispensado: false };
+var notificacoes = [];
+var painelNotifAberto = false;
 var ONBOARDING_ETAPAS = [
   {
     id: 'equipe_criada',
@@ -699,6 +701,7 @@ async function renderTarefasView(){
       tarefa.concluida = !tarefa.concluida;
       await atualizarTarefa(tarefa);
       renderTarefasView();
+      carregarNotificacoes();
     });
   });
 
@@ -1572,6 +1575,161 @@ async function verificarProgressoOnboarding(){
   if(resMetas.data && resMetas.data.length > 0) await marcarEtapaOnboarding('meta_definida');
 }
 
+async function carregarNotificacoes(){
+  if(!currentUserId) return;
+  var hoje = todayStr();
+  var novas = [];
+
+  // Buscar follow-ups atrasados e de hoje
+  var queryLeads = sb.from('leads')
+    .select('id, nome, next_follow_up, stage, user_id')
+    .not('next_follow_up', 'is', null)
+    .not('stage', 'in', '("fechado","perdido")')
+    .lte('next_follow_up', hoje);
+
+  if(equipeAtual && papelAtual === 'admin'){
+    queryLeads = queryLeads.eq('equipe_id', equipeAtual.id);
+  } else {
+    queryLeads = queryLeads.eq('user_id', currentUserId);
+  }
+
+  var resLeads = await queryLeads;
+  if(resLeads.data){
+    resLeads.data.forEach(function(l){
+      var atrasado = l.next_follow_up < hoje;
+      novas.push({
+        id: 'lead-' + l.id,
+        tipo: atrasado ? 'atrasado' : 'hoje',
+        categoria: 'followup',
+        titulo: atrasado ? 'Follow-up atrasado' : 'Follow-up hoje',
+        desc: l.nome,
+        data: l.next_follow_up,
+        vendedor: membrosDaEquipe[l.user_id] || null,
+        acao: function(id){ return function(){ openModal(id); fecharNotifPainel(); }; }(l.id)
+      });
+    });
+  }
+
+  // Buscar tarefas atrasadas, de hoje e urgentes
+  var queryTarefas = sb.from('tarefas')
+    .select('id, titulo, data, prioridade, user_id')
+    .eq('concluida', false);
+
+  var condicoes = 'data.lte.' + hoje + ',prioridade.eq.urgente';
+
+  if(equipeAtual && papelAtual === 'admin'){
+    queryTarefas = queryTarefas.eq('equipe_id', equipeAtual.id);
+  } else {
+    queryTarefas = queryTarefas.eq('user_id', currentUserId);
+  }
+
+  var resTarefas = await queryTarefas.or('data.lte.' + hoje + ',prioridade.eq.urgente');
+  if(resTarefas.data){
+    resTarefas.data.forEach(function(t){
+      var atrasada = t.data < hoje;
+      var ehHoje = t.data === hoje;
+      var urgente = t.prioridade === 'urgente';
+      if(!atrasada && !ehHoje && !urgente) return;
+      var tipo = atrasada ? 'atrasado' : (urgente ? 'urgente' : 'hoje');
+      var titulo = atrasada ? 'Tarefa atrasada' : (urgente ? 'Tarefa urgente' : 'Tarefa para hoje');
+      novas.push({
+        id: 'tarefa-' + t.id,
+        tipo: tipo,
+        categoria: 'tarefa',
+        titulo: titulo,
+        desc: t.titulo,
+        data: t.data,
+        vendedor: membrosDaEquipe[t.user_id] || null,
+        acao: function(data){ return function(){
+          var d = new Date(data + 'T00:00:00');
+          calendarioRef = new Date(d.getFullYear(), d.getMonth(), 1);
+          diaSelecionado = data;
+          switchTab('calendario');
+          renderCalendario().then(function(){ renderDetalheDoDia(data); });
+          fecharNotifPainel();
+        }; }(t.data)
+      });
+    });
+  }
+
+  // Ordenar: atrasados primeiro, depois hoje, depois urgentes
+  var ordem = { atrasado: 0, hoje: 1, urgente: 2 };
+  novas.sort(function(a,b){ return (ordem[a.tipo]||9) - (ordem[b.tipo]||9); });
+
+  notificacoes = novas;
+  atualizarBadgeNotificacoes();
+}
+
+function atualizarBadgeNotificacoes(){
+  var badge = document.getElementById('badge-notificacoes');
+  if(!badge) return;
+  var count = notificacoes.length;
+  if(count > 0){
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function fecharNotifPainel(){
+  var painel = document.getElementById('notif-painel');
+  if(painel) painel.remove();
+  painelNotifAberto = false;
+}
+
+function abrirNotifPainel(){
+  fecharNotifPainel();
+  painelNotifAberto = true;
+
+  var painel = document.createElement('div');
+  painel.id = 'notif-painel';
+  painel.className = 'notif-painel';
+
+  var icones = { atrasado: '⚠', hoje: '📅', urgente: '🔴' };
+  var listaHtml = notificacoes.length > 0
+    ? notificacoes.map(function(n, idx){
+        return '<div class="notif-item" data-notif-idx="' + idx + '">' +
+          '<div class="notif-icone ' + n.tipo + '">' + (icones[n.tipo] || '●') + '</div>' +
+          '<div class="notif-corpo">' +
+            '<p class="notif-titulo">' + n.titulo + '</p>' +
+            '<p class="notif-desc">' + escapeHtml(n.desc) + (n.data ? ' · ' + fmtDateBR(n.data) : '') + '</p>' +
+            (n.vendedor ? '<p class="notif-vendedor">👤 ' + escapeHtml(n.vendedor) + '</p>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('')
+    : '<div class="notif-vazio">✅ Nenhuma notificação pendente</div>';
+
+  painel.innerHTML =
+    '<div class="notif-header">' +
+      '<span>🔔 Notificações' + (notificacoes.length > 0 ? ' (' + notificacoes.length + ')' : '') + '</span>' +
+      '<button class="btn-ghost" style="font-size:12px; padding:4px 8px;" id="btn-fechar-notif">✕</button>' +
+    '</div>' +
+    '<div class="notif-lista">' + listaHtml + '</div>' +
+    (notificacoes.length > 0 ? '<div class="notif-footer"><span style="font-size:11px; color:var(--ink-faint);">Clique em uma notificação para ir direto</span></div>' : '');
+
+  document.body.appendChild(painel);
+
+  document.getElementById('btn-fechar-notif').addEventListener('click', fecharNotifPainel);
+
+  painel.querySelectorAll('.notif-item').forEach(function(el){
+    el.addEventListener('click', function(){
+      var idx = Number(el.getAttribute('data-notif-idx'));
+      if(notificacoes[idx] && notificacoes[idx].acao) notificacoes[idx].acao();
+    });
+  });
+
+  // Fechar ao clicar fora
+  setTimeout(function(){
+    document.addEventListener('click', function fecharFora(e){
+      if(!painel.contains(e.target) && e.target.id !== 'btn-notificacoes'){
+        fecharNotifPainel();
+        document.removeEventListener('click', fecharFora);
+      }
+    });
+  }, 100);
+}
+
 // Converte array de objetos para sheet do SheetJS
 function dadosParaSheet(dados, colunas){
   var header = colunas.map(function(c){ return c.label; });
@@ -2235,6 +2393,7 @@ function render(){
       btn.disabled = true;
       await concluirFollowUp(leadAlvo);
       render();
+      carregarNotificacoes();
     });
   });
 }
@@ -4233,6 +4392,7 @@ async function renderDetalheDoDia(dataStr){
       await atualizarTarefa(tarefa);
       renderDetalheDoDia(dataStr);
       renderCalendario();
+      carregarNotificacoes();
     });
   });
 
@@ -4442,6 +4602,7 @@ async function renderDetalheDoDia(dataStr){
       await concluirFollowUp(leadAlvo);
       renderCalendario();
       renderDetalheDoDia(dataStr);
+      carregarNotificacoes();
     });
   });
 
@@ -4635,6 +4796,11 @@ document.getElementById('btn-onboarding').addEventListener('click', async functi
   } else {
     toast('O onboarding está disponível apenas para administradores.', 'info');
   }
+});
+
+document.getElementById('btn-notificacoes').addEventListener('click', function(e){
+  e.stopPropagation();
+  if(painelNotifAberto){ fecharNotifPainel(); } else { abrirNotifPainel(); }
 });
 
 function switchTab(tab){
@@ -4979,6 +5145,15 @@ async function iniciarApp(){
     loadConfiguracoes()
   ]);
   render();
+
+  // Carregar notificações ao iniciar
+  if(equipeAtual && Object.keys(membrosDaEquipe).length === 0 && papelAtual === 'admin'){
+    await loadMembrosDaEquipe();
+  }
+  await carregarNotificacoes();
+
+  // Atualizar notificações a cada 30 minutos
+  setInterval(function(){ carregarNotificacoes(); }, 30 * 60 * 1000);
 
   if(papelAtual === 'admin'){
     await loadOnboarding();

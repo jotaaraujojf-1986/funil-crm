@@ -44,6 +44,12 @@
   </div>
   <div style="display:flex; align-items:center; gap:14px;">
     <div class="stats" id="stats"></div>
+    <div style="position:relative; display:inline-flex;">
+      <button id="btn-notificacoes" class="theme-btn" title="Notificações">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <span id="badge-notificacoes" style="display:none; position:absolute; top:-4px; right:-4px; background:var(--red); color:#fff; font-size:10px; font-weight:700; border-radius:999px; min-width:18px; height:18px; display:none; align-items:center; justify-content:center; padding:0 4px; font-family:'Inter',sans-serif;">0</span>
+    </div>
     <button class="theme-btn" id="btn-theme" title="Alternar modo claro/escuro">🌙</button>
     <button class="theme-btn" id="btn-minha-conta" title="Minha conta">👤</button>
     <button class="theme-btn" id="btn-config" title="Configurações">⚙️</button>
