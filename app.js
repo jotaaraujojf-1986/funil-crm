@@ -1498,6 +1498,7 @@ async function carregarDadosParaExportacao(){
       return {
         'Código': r.codigo || '',
         'Nome': r.nome || '',
+        'Vendedor responsável': membrosDaEquipe[r.user_id] || r.user_id || '',
         'Tipo': r.tipo === 'fisica' ? 'Pessoa Física' : 'Pessoa Jurídica',
         'CNPJ': r.cnpj || '',
         'Telefone': r.contato || '',
@@ -1554,7 +1555,19 @@ async function exportarExcel(){
     });
 
     var dataHoje = todayStr();
-    XLSX.writeFile(wb, 'tractar-exportacao-' + dataHoje + '.xlsx');
+    var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    var blob = new Blob([wbout], { type: 'application/octet-stream' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'tractar-exportacao-' + dataHoje + '.xlsx';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 200);
     toast('Excel gerado com sucesso!', 'sucesso');
   }catch(err){
     toast('Erro ao gerar Excel: ' + err.message, 'erro');
