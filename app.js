@@ -1423,6 +1423,164 @@ async function renderEquipeView(){
   });
 }
 
+// Converte array de objetos para sheet do SheetJS
+function dadosParaSheet(dados, colunas){
+  var header = colunas.map(function(c){ return c.label; });
+  var rows = dados.map(function(d){
+    return colunas.map(function(c){ return d[c.key] !== undefined && d[c.key] !== null ? d[c.key] : ''; });
+  });
+  return [header].concat(rows);
+}
+
+// Gera e baixa um CSV a partir de um array 2D
+function baixarCSV(dados2d, nomeArquivo){
+  var csv = dados2d.map(function(row){
+    return row.map(function(cel){
+      var s = String(cel).replace(/"/g, '""');
+      return s.indexOf(',') !== -1 || s.indexOf('"') !== -1 || s.indexOf('\n') !== -1 ? '"' + s + '"' : s;
+    }).join(',');
+  }).join('\n');
+  var bom = '\uFEFF'; // BOM para Excel reconhecer UTF-8
+  var blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = nomeArquivo; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function carregarDadosParaExportacao(){
+  var query1 = sb.from('leads').select('*, clientes(nome)');
+  var query2 = sb.from('clientes').select('*');
+  var query3 = sb.from('tarefas').select('*');
+  var query4 = sb.from('lancamentos_diarios').select('*');
+
+  if(equipeAtual){
+    query1 = query1.eq('equipe_id', equipeAtual.id);
+    query2 = query2.eq('equipe_id', equipeAtual.id);
+    query3 = query3.eq('equipe_id', equipeAtual.id);
+    query4 = query4.eq('equipe_id', equipeAtual.id);
+  } else {
+    query1 = query1.eq('user_id', currentUserId);
+    query2 = query2.eq('user_id', currentUserId);
+    query3 = query3.eq('user_id', currentUserId);
+    query4 = query4.eq('user_id', currentUserId);
+  }
+
+  var results = await Promise.all([
+    query1.order('created_at', {ascending:false}),
+    query2.order('nome', {ascending:true}),
+    query3.order('data', {ascending:false}),
+    query4.order('data', {ascending:false})
+  ]);
+
+  return {
+    negocios: (results[0].data || []).map(function(r){
+      return {
+        'Nome': r.nome || '',
+        'Cliente': r.clientes ? r.clientes.nome : '',
+        'Etapa': r.stage || '',
+        'Valor (R$)': Number(r.valor) || 0,
+        'Canal': r.canal || '',
+        'Próximo follow-up': r.next_follow_up || '',
+        'Notas': r.notas || '',
+        'Criado em': r.criado || ''
+      };
+    }),
+    clientes: (results[1].data || []).map(function(r){
+      return {
+        'Código': r.codigo || '',
+        'Nome': r.nome || '',
+        'Tipo': r.tipo === 'fisica' ? 'Pessoa Física' : 'Pessoa Jurídica',
+        'CNPJ': r.cnpj || '',
+        'Telefone': r.contato || '',
+        'Canal': r.canal || '',
+        'Responsável': r.responsavel || '',
+        'Tags': Array.isArray(r.tags) ? r.tags.join(', ') : '',
+        'Criado em': r.criado || ''
+      };
+    }),
+    tarefas: (results[2].data || []).map(function(r){
+      return {
+        'Título': r.titulo || '',
+        'Categoria': r.categoria || '',
+        'Prioridade': r.prioridade || '',
+        'Data': r.data || '',
+        'Status': r.concluida ? 'Concluída' : 'Pendente',
+        'Descrição': r.descricao || ''
+      };
+    }),
+    lancamentos: (results[3].data || []).map(function(r){
+      return {
+        'Data': r.data || '',
+        'Valor (R$)': Number(r.valor) || 0,
+        'Descrição': r.descricao || ''
+      };
+    })
+  };
+}
+
+async function exportarExcel(){
+  var btn = document.getElementById('btn-exp-excel');
+  if(btn){ btn.disabled = true; btn.textContent = 'Gerando...'; }
+
+  try{
+    var dados = await carregarDadosParaExportacao();
+    var wb = XLSX.utils.book_new();
+
+    var sheets = [
+      { dados: dados.negocios, nome: 'Negócios' },
+      { dados: dados.clientes, nome: 'Clientes' },
+      { dados: dados.tarefas, nome: 'Tarefas' },
+      { dados: dados.lancamentos, nome: 'Lançamentos de Metas' }
+    ];
+
+    sheets.forEach(function(s){
+      var ws = XLSX.utils.json_to_sheet(s.dados.length > 0 ? s.dados : [{}]);
+      XLSX.utils.book_append_sheet(wb, ws, s.nome);
+    });
+
+    var dataHoje = todayStr();
+    XLSX.writeFile(wb, 'tractar-exportacao-' + dataHoje + '.xlsx');
+    toast('Excel gerado com sucesso!', 'sucesso');
+  }catch(err){
+    toast('Erro ao gerar Excel: ' + err.message, 'erro');
+  }
+
+  if(btn){ btn.disabled = false; btn.textContent = 'Baixar Excel (.xlsx)'; }
+}
+
+async function exportarCSV(){
+  var btn = document.getElementById('btn-exp-csv');
+  if(btn){ btn.disabled = true; btn.textContent = 'Gerando...'; }
+
+  try{
+    var dados = await carregarDadosParaExportacao();
+    var dataHoje = todayStr();
+
+    var arquivos = [
+      { dados: dados.negocios, nome: 'tractar-negocios-' + dataHoje + '.csv' },
+      { dados: dados.clientes, nome: 'tractar-clientes-' + dataHoje + '.csv' },
+      { dados: dados.tarefas, nome: 'tractar-tarefas-' + dataHoje + '.csv' },
+      { dados: dados.lancamentos, nome: 'tractar-lancamentos-' + dataHoje + '.csv' }
+    ];
+
+    arquivos.forEach(function(a, i){
+      setTimeout(function(){
+        if(a.dados.length === 0){ baixarCSV([[]], a.nome); return; }
+        var header = Object.keys(a.dados[0]);
+        var rows = a.dados.map(function(d){ return header.map(function(k){ return d[k]; }); });
+        baixarCSV([header].concat(rows), a.nome);
+      }, i * 400);
+    });
+
+    toast('Arquivos CSV sendo baixados...', 'sucesso');
+  }catch(err){
+    toast('Erro ao gerar CSV: ' + err.message, 'erro');
+  }
+
+  if(btn){ btn.disabled = false; btn.textContent = 'Baixar CSV (4 arquivos)'; }
+}
+
 async function atualizarFiltroVendedores(){
   if(papelAtual !== 'admin' || !equipeAtual) return;
   var res = await sb.from('membros_equipe')
@@ -4197,6 +4355,39 @@ document.getElementById('filtro-vendedor').addEventListener('change', async func
   else if(tabId === 'metas'){ renderMetasView(); }
   else if(tabId === 'tarefas'){ renderTarefasView(); }
   else { render(); }
+});
+
+document.getElementById('btn-exportar-dados').addEventListener('click', function(){
+  fecharSidebar();
+
+  var overlay = document.getElementById('overlay-confirm');
+  var modal = document.getElementById('modal-confirm');
+
+  modal.innerHTML =
+    '<h2>Exportar dados</h2>' +
+    '<p style="font-size:13px; color:var(--ink-soft); margin:0 0 18px;">Exporte seus negócios, clientes, tarefas e lançamentos de metas.</p>' +
+    '<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">' +
+      '<button class="btn-primary" id="btn-exp-excel" style="display:flex; align-items:center; gap:10px; justify-content:center;">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' +
+        'Baixar Excel (.xlsx) — 1 arquivo com 4 abas' +
+      '</button>' +
+      '<button class="btn-ghost" id="btn-exp-csv" style="display:flex; align-items:center; gap:10px; justify-content:center;">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+        'Baixar CSV (4 arquivos separados)' +
+      '</button>' +
+    '</div>' +
+    '<div style="text-align:right;">' +
+      '<button class="btn-ghost" id="btn-fechar-export">Fechar</button>' +
+    '</div>';
+
+  overlay.classList.add('open');
+
+  document.getElementById('btn-fechar-export').addEventListener('click', function(){
+    overlay.classList.remove('open');
+  });
+
+  document.getElementById('btn-exp-excel').addEventListener('click', exportarExcel);
+  document.getElementById('btn-exp-csv').addEventListener('click', exportarCSV);
 });
 
 function switchTab(tab){
