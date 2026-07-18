@@ -939,6 +939,32 @@ async function transferirTarefa(tarefa, novoUserId, novoNome){
   await atualizarTarefa(tarefa);
 }
 
+async function uploadFotoEquipe(file){
+  if(!file) return null;
+  if(file.size > 2 * 1024 * 1024){
+    toast('A foto deve ter no máximo 2MB.', 'erro');
+    return null;
+  }
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)){
+    toast('Use uma imagem JPG, PNG ou WebP.', 'erro');
+    return null;
+  }
+  var caminho = 'equipes/' + equipeAtual.id + '/perfil.' + file.name.split('.').pop();
+  var res = await sb.storage.from('fotos-equipe').upload(caminho, file, { upsert: true });
+  if(res.error){
+    toast('Erro ao enviar a foto: ' + res.error.message, 'erro');
+    return null;
+  }
+  var publicUrl = sb.storage.from('fotos-equipe').getPublicUrl(caminho).data.publicUrl;
+  var resUpdate = await sb.from('equipes').update({ foto_url: publicUrl }).eq('id', equipeAtual.id);
+  if(resUpdate.error){
+    toast('Foto enviada mas erro ao salvar o link.', 'erro');
+    return null;
+  }
+  equipeAtual.foto_url = publicUrl;
+  return publicUrl;
+}
+
 async function excluirTarefa(id){
   var res = await sb.from('tarefas').delete().eq('id', id).eq('user_id', currentUserId);
   if(res.error){ console.error('Erro ao excluir tarefa', res.error); showSyncError(); }
@@ -1087,7 +1113,22 @@ async function renderEquipeView(){
   html += '<div style="margin-bottom:16px;">';
   html += '<div class="metas-section" style="border-left:4px solid var(--amber);">';
   html += '<div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">';
-  html += '<div class="membro-avatar" style="width:48px; height:48px; font-size:20px; background:var(--amber); color:var(--steel-dark);">' + (equipeAtual.nome || 'E').slice(0,2).toUpperCase() + '</div>';
+  var fotoHtml = '';
+  if(equipeAtual.foto_url){
+    fotoHtml = '<div style="position:relative; width:64px; height:64px; flex:0 0 64px;">' +
+      '<img src="' + equipeAtual.foto_url + '?t=' + Date.now() + '" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid var(--amber);">' +
+      (papelAtual === 'admin' ? '<label for="input-foto-equipe" style="position:absolute; bottom:0; right:0; background:var(--amber); color:var(--steel-dark); border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;" title="Alterar foto">✏️</label>' : '') +
+    '</div>';
+  } else {
+    fotoHtml = '<div style="position:relative; width:64px; height:64px; flex:0 0 64px;">' +
+      '<div class="membro-avatar" style="width:64px; height:64px; font-size:24px; background:var(--amber); color:var(--steel-dark);">' + (equipeAtual.nome || 'E').slice(0,2).toUpperCase() + '</div>' +
+      (papelAtual === 'admin' ? '<label for="input-foto-equipe" style="position:absolute; bottom:0; right:0; background:var(--panel); border:1px solid var(--line); color:var(--ink-soft); border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;" title="Adicionar foto">📷</label>' : '') +
+    '</div>';
+  }
+  html += fotoHtml;
+  if(papelAtual === 'admin'){
+    html += '<input type="file" id="input-foto-equipe" accept="image/jpeg,image/png,image/webp" style="display:none;">';
+  }
   html += '<div style="flex:1; min-width:0;">';
   html += '<div id="equipe-nome-display" style="display:flex; align-items:center; gap:10px;">';
   html += '<h3 style="margin:0; font-family:\'Barlow Condensed\',sans-serif; font-size:22px; font-weight:800;">' + escapeHtml(equipeAtual.nome) + '</h3>';
@@ -1147,6 +1188,20 @@ async function renderEquipeView(){
   html += '</div>'; // fecha metas-grid
 
   container.innerHTML = html;
+
+  var inputFoto = document.getElementById('input-foto-equipe');
+  if(inputFoto){
+    inputFoto.addEventListener('change', async function(){
+      if(!inputFoto.files[0]) return;
+      var label = document.querySelector('label[for="input-foto-equipe"]');
+      if(label) label.textContent = '⏳';
+      var url = await uploadFotoEquipe(inputFoto.files[0]);
+      if(url){
+        toast('Foto da equipe atualizada!', 'sucesso');
+        renderEquipeView();
+      }
+    });
+  }
 
   var btnEditarNome = document.getElementById('btn-editar-nome-equipe');
   var formNome = document.getElementById('equipe-nome-form');
