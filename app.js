@@ -1440,12 +1440,19 @@ function baixarCSV(dados2d, nomeArquivo){
       return s.indexOf(',') !== -1 || s.indexOf('"') !== -1 || s.indexOf('\n') !== -1 ? '"' + s + '"' : s;
     }).join(',');
   }).join('\n');
-  var bom = '\uFEFF'; // BOM para Excel reconhecer UTF-8
+  var bom = '\uFEFF';
   var blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
-  a.href = url; a.download = nomeArquivo; a.click();
-  URL.revokeObjectURL(url);
+  a.href = url;
+  a.download = nomeArquivo;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 200);
 }
 
 async function carregarDadosParaExportacao(){
@@ -1478,6 +1485,7 @@ async function carregarDadosParaExportacao(){
       return {
         'Nome': r.nome || '',
         'Cliente': r.clientes ? r.clientes.nome : '',
+        'Vendedor': membrosDaEquipe[r.user_id] || r.user_id || '',
         'Etapa': r.stage || '',
         'Valor (R$)': Number(r.valor) || 0,
         'Canal': r.canal || '',
@@ -1502,6 +1510,7 @@ async function carregarDadosParaExportacao(){
     tarefas: (results[2].data || []).map(function(r){
       return {
         'Título': r.titulo || '',
+        'Responsável': membrosDaEquipe[r.user_id] || r.user_id || '',
         'Categoria': r.categoria || '',
         'Prioridade': r.prioridade || '',
         'Data': r.data || '',
@@ -1522,6 +1531,10 @@ async function carregarDadosParaExportacao(){
 async function exportarExcel(){
   var btn = document.getElementById('btn-exp-excel');
   if(btn){ btn.disabled = true; btn.textContent = 'Gerando...'; }
+
+  if(equipeAtual && Object.keys(membrosDaEquipe).length === 0){
+    await loadMembrosDaEquipe();
+  }
 
   try{
     var dados = await carregarDadosParaExportacao();
@@ -1552,6 +1565,10 @@ async function exportarExcel(){
 async function exportarCSV(){
   var btn = document.getElementById('btn-exp-csv');
   if(btn){ btn.disabled = true; btn.textContent = 'Gerando...'; }
+
+  if(equipeAtual && Object.keys(membrosDaEquipe).length === 0){
+    await loadMembrosDaEquipe();
+  }
 
   try{
     var dados = await carregarDadosParaExportacao();
