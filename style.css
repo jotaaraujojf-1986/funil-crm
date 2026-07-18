@@ -1308,6 +1308,8 @@ html[data-theme="dark"] .badge-vendedor{ background:rgba(43,108,163,0.25); }
   transition:background .15s ease;
 }
 .onboarding-etapa.concluida{ background:rgba(46,125,79,0.06); border-color:rgba(46,125,79,0.2); }
+.onboarding-etapa.concluida[data-onb-acao]{ cursor:pointer; }
+.onboarding-etapa.concluida[data-onb-acao]:hover{ background:rgba(46,125,79,0.12); }
 .onboarding-etapa.pendente:hover{ background:var(--line); }
 .onboarding-etapa.pendente{ cursor:pointer; }
 .onboarding-check{

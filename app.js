@@ -1501,14 +1501,15 @@ function abrirOnboarding(){
 
   var etapasHtml = ONBOARDING_ETAPAS.map(function(etapa){
     var feita = concluidas.indexOf(etapa.id) !== -1;
+    var clicavel = etapa.acao;
     return '<div class="onboarding-etapa ' + (feita ? 'concluida' : 'pendente') + '"' +
-      (!feita && etapa.acao ? ' data-onb-acao="' + etapa.acao + '" data-onb-id="' + etapa.id + '"' : '') + '>' +
+      (clicavel ? ' data-onb-acao="' + etapa.acao + '" data-onb-id="' + etapa.id + '" style="cursor:pointer;"' : '') + '>' +
       '<div class="onboarding-check">' + (feita ? '✓' : '○') + '</div>' +
       '<div class="onboarding-etapa-info">' +
         '<p class="onboarding-etapa-titulo">' + etapa.titulo + '</p>' +
         '<p class="onboarding-etapa-desc">' + etapa.desc + '</p>' +
       '</div>' +
-      '<span class="onboarding-etapa-acao">' + (feita ? '✓ Concluído' : (etapa.acaoLabel || '')) + '</span>' +
+      (clicavel ? '<span class="onboarding-etapa-acao">' + (feita ? '↗ Acessar novamente' : (etapa.acaoLabel || '')) + '</span>' : '<span class="onboarding-etapa-acao" style="color:var(--green);">✓ Concluído</span>') +
     '</div>';
   }).join('');
 
