@@ -4351,6 +4351,7 @@ document.getElementById('sidebar-backdrop').addEventListener('click', fecharSide
 document.querySelectorAll('.sidebar-item').forEach(function(item){
   item.addEventListener('click', function(){
     var tab = item.getAttribute('data-tab');
+    if(!tab) return;
     fecharSidebar();
     switchTab(tab);
   });
