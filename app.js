@@ -31,6 +31,44 @@ var papelAtual = null;
 var filtroVendedorId = '';
 var membrosDaEquipe = {};
 
+var onboardingState = { etapasConcluidas: [], dispensado: false };
+var ONBOARDING_ETAPAS = [
+  {
+    id: 'equipe_criada',
+    titulo: 'Equipe criada',
+    desc: 'Sua equipe já está configurada e pronta.',
+    acao: null
+  },
+  {
+    id: 'membro_adicionado',
+    titulo: 'Adicione um vendedor',
+    desc: 'Crie o acesso para o primeiro membro da sua equipe.',
+    acao: 'equipe',
+    acaoLabel: '→ Ir para Equipe'
+  },
+  {
+    id: 'negocio_criado',
+    titulo: 'Crie seu primeiro negócio',
+    desc: 'Adicione um negócio no funil de vendas.',
+    acao: 'funil',
+    acaoLabel: '→ Ir para Funil'
+  },
+  {
+    id: 'meta_definida',
+    titulo: 'Defina a meta do mês',
+    desc: 'Configure quanto quer vender este mês.',
+    acao: 'metas',
+    acaoLabel: '→ Ir para Metas'
+  },
+  {
+    id: 'dados_exportados',
+    titulo: 'Exporte seus dados',
+    desc: 'Veja como exportar seus negócios e clientes.',
+    acao: 'exportar',
+    acaoLabel: '→ Exportar dados'
+  }
+];
+
 var TITULOS_SECAO = {
   funil: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Funil',
   dash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dashboard',
@@ -1423,6 +1461,116 @@ async function renderEquipeView(){
   });
 }
 
+async function loadOnboarding(){
+  if(!equipeAtual) return;
+  var res = await sb.from('onboarding').select('*').eq('equipe_id', equipeAtual.id).maybeSingle();
+  if(res.data){
+    onboardingState.etapasConcluidas = res.data.etapas_concluidas || [];
+    onboardingState.dispensado = res.data.dispensado || false;
+  }
+}
+
+async function salvarOnboarding(){
+  if(!equipeAtual) return;
+  await sb.from('onboarding').upsert({
+    equipe_id: equipeAtual.id,
+    etapas_concluidas: onboardingState.etapasConcluidas,
+    dispensado: onboardingState.dispensado
+  }, { onConflict: 'equipe_id' });
+}
+
+async function marcarEtapaOnboarding(etapaId){
+  if(onboardingState.etapasConcluidas.indexOf(etapaId) === -1){
+    onboardingState.etapasConcluidas.push(etapaId);
+    await salvarOnboarding();
+  }
+}
+
+function abrirOnboarding(){
+  var existente = document.getElementById('onboarding-overlay');
+  if(existente) existente.remove();
+
+  var concluidas = onboardingState.etapasConcluidas;
+  var total = ONBOARDING_ETAPAS.length;
+  var qtdConcluidas = ONBOARDING_ETAPAS.filter(function(e){ return concluidas.indexOf(e.id) !== -1; }).length;
+  var pct = Math.round((qtdConcluidas / total) * 100);
+
+  var overlay = document.createElement('div');
+  overlay.id = 'onboarding-overlay';
+  overlay.className = 'onboarding-overlay';
+
+  var etapasHtml = ONBOARDING_ETAPAS.map(function(etapa){
+    var feita = concluidas.indexOf(etapa.id) !== -1;
+    return '<div class="onboarding-etapa ' + (feita ? 'concluida' : 'pendente') + '"' +
+      (!feita && etapa.acao ? ' data-onb-acao="' + etapa.acao + '" data-onb-id="' + etapa.id + '"' : '') + '>' +
+      '<div class="onboarding-check">' + (feita ? '✓' : '○') + '</div>' +
+      '<div class="onboarding-etapa-info">' +
+        '<p class="onboarding-etapa-titulo">' + etapa.titulo + '</p>' +
+        '<p class="onboarding-etapa-desc">' + etapa.desc + '</p>' +
+      '</div>' +
+      '<span class="onboarding-etapa-acao">' + (feita ? '✓ Concluído' : (etapa.acaoLabel || '')) + '</span>' +
+    '</div>';
+  }).join('');
+
+  overlay.innerHTML =
+    '<div class="onboarding-box">' +
+      '<div class="onboarding-header">' +
+        '<h2 class="onboarding-titulo">🚀 Primeiros passos</h2>' +
+        '<button class="btn-ghost" id="btn-fechar-onboarding" style="font-size:13px;">✕ Fechar</button>' +
+      '</div>' +
+      '<p class="onboarding-sub">' + qtdConcluidas + ' de ' + total + ' etapas concluídas</p>' +
+      '<div class="onboarding-progresso-barra"><div class="onboarding-progresso-fill" style="width:' + pct + '%;"></div></div>' +
+      etapasHtml +
+      '<div class="onboarding-footer">' +
+        '<button class="btn-ghost" style="font-size:12px; color:var(--ink-faint);" id="btn-dispensar-onboarding">Não mostrar novamente</button>' +
+        (qtdConcluidas === total ? '<span style="font-size:13px; font-weight:700; color:var(--green);">🎉 Tudo pronto!</span>' : '<span style="font-size:12px; color:var(--ink-faint);">Clique em uma etapa para ir direto</span>') +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  document.getElementById('btn-fechar-onboarding').addEventListener('click', function(){
+    overlay.remove();
+  });
+
+  document.getElementById('btn-dispensar-onboarding').addEventListener('click', async function(){
+    onboardingState.dispensado = true;
+    await salvarOnboarding();
+    overlay.remove();
+  });
+
+  overlay.querySelectorAll('[data-onb-acao]').forEach(function(el){
+    el.addEventListener('click', async function(){
+      var acao = el.getAttribute('data-onb-acao');
+      var etapaId = el.getAttribute('data-onb-id');
+      overlay.remove();
+      if(acao === 'exportar'){
+        document.getElementById('btn-exportar-dados').click();
+        await marcarEtapaOnboarding(etapaId);
+      } else {
+        switchTab(acao);
+        await marcarEtapaOnboarding(etapaId);
+      }
+    });
+  });
+}
+
+async function verificarProgressoOnboarding(){
+  if(!equipeAtual || papelAtual !== 'admin') return;
+
+  // Verificar etapas automaticamente pelo estado atual do sistema
+  if(equipeAtual) await marcarEtapaOnboarding('equipe_criada');
+
+  var resMembros = await sb.from('membros_equipe').select('id').eq('equipe_id', equipeAtual.id).eq('ativo', true);
+  if(resMembros.data && resMembros.data.length > 1) await marcarEtapaOnboarding('membro_adicionado');
+
+  var resLeads = await sb.from('leads').select('id').eq('equipe_id', equipeAtual.id).limit(1);
+  if(resLeads.data && resLeads.data.length > 0) await marcarEtapaOnboarding('negocio_criado');
+
+  var resMetas = await sb.from('metas_mensais').select('id').eq('equipe_id', equipeAtual.id).limit(1);
+  if(resMetas.data && resMetas.data.length > 0) await marcarEtapaOnboarding('meta_definida');
+}
+
 // Converte array de objetos para sheet do SheetJS
 function dadosParaSheet(dados, colunas){
   var header = colunas.map(function(c){ return c.label; });
@@ -1569,6 +1717,7 @@ async function exportarExcel(){
       URL.revokeObjectURL(url);
     }, 200);
     toast('Excel gerado com sucesso!', 'sucesso');
+    marcarEtapaOnboarding('dados_exportados');
   }catch(err){
     toast('Erro ao gerar Excel: ' + err.message, 'erro');
   }
@@ -1605,6 +1754,7 @@ async function exportarCSV(){
     });
 
     toast('Arquivos CSV sendo baixados...', 'sucesso');
+    marcarEtapaOnboarding('dados_exportados');
   }catch(err){
     toast('Erro ao gerar CSV: ' + err.message, 'erro');
   }
@@ -2475,6 +2625,7 @@ function openModal(id){
     }
 
     toast('Negócio salvo com sucesso!', 'sucesso');
+    if(isNew) marcarEtapaOnboarding('negocio_criado');
     render();
     renderClientesView();
     closeModal();
@@ -3760,6 +3911,7 @@ async function renderMetasView(){
 
     if(erros === 0){
       toast('Planejamento de metas salvo!', 'sucesso');
+      marcarEtapaOnboarding('meta_definida');
     } else {
       toast('Algumas metas não foram salvas. Verifique sua conexão.', 'erro');
     }
@@ -4434,6 +4586,16 @@ document.getElementById('btn-exportar-dados').addEventListener('click', function
   document.getElementById('btn-exp-csv').addEventListener('click', exportarCSV);
 });
 
+document.getElementById('btn-onboarding').addEventListener('click', async function(){
+  fecharSidebar();
+  if(papelAtual === 'admin'){
+    await verificarProgressoOnboarding();
+    abrirOnboarding();
+  } else {
+    toast('O onboarding está disponível apenas para administradores.', 'info');
+  }
+});
+
 function switchTab(tab){
   // Atualizar item ativo na sidebar
   document.querySelectorAll('.sidebar-item').forEach(function(item){
@@ -4776,6 +4938,17 @@ async function iniciarApp(){
     loadConfiguracoes()
   ]);
   render();
+
+  if(papelAtual === 'admin'){
+    await loadOnboarding();
+    await verificarProgressoOnboarding();
+    if(!onboardingState.dispensado){
+      var todasConcluidas = ONBOARDING_ETAPAS.every(function(e){
+        return onboardingState.etapasConcluidas.indexOf(e.id) !== -1;
+      });
+      if(!todasConcluidas) abrirOnboarding();
+    }
+  }
 }
 
 function abrirModalMinhaConta(){

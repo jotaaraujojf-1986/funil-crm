@@ -1275,3 +1275,60 @@ html[data-theme="dark"] .badge-vendedor{ background:rgba(43,108,163,0.25); }
   background:var(--amber); border-color:var(--amber); color:var(--steel-dark);
 }
 
+.onboarding-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,0.5);
+  z-index:80; display:flex; align-items:center; justify-content:center;
+}
+.onboarding-box{
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:28px 32px; width:480px; max-width:92vw;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.onboarding-header{
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;
+}
+.onboarding-titulo{
+  font-family:'Barlow Condensed',sans-serif; font-weight:800;
+  font-size:22px; margin:0;
+}
+.onboarding-sub{
+  font-size:13px; color:var(--ink-soft); margin:0 0 20px;
+}
+.onboarding-progresso-barra{
+  height:5px; background:var(--line); border-radius:999px; margin-bottom:20px; overflow:hidden;
+}
+.onboarding-progresso-fill{
+  height:100%; background:var(--amber); border-radius:999px;
+  transition:width .4s ease;
+}
+.onboarding-etapa{
+  display:flex; align-items:center; gap:14px;
+  padding:12px 14px; border-radius:10px; margin-bottom:8px;
+  border:1px solid var(--line); cursor:default;
+  transition:background .15s ease;
+}
+.onboarding-etapa.concluida{ background:rgba(46,125,79,0.06); border-color:rgba(46,125,79,0.2); }
+.onboarding-etapa.pendente:hover{ background:var(--line); }
+.onboarding-etapa.pendente{ cursor:pointer; }
+.onboarding-check{
+  width:28px; height:28px; border-radius:50%; border:2px solid var(--line);
+  display:flex; align-items:center; justify-content:center;
+  flex:0 0 28px; font-size:14px; font-weight:700;
+}
+.onboarding-etapa.concluida .onboarding-check{
+  background:var(--green); border-color:var(--green); color:#fff;
+}
+.onboarding-etapa.pendente .onboarding-check{ color:var(--ink-faint); }
+.onboarding-etapa-info{ flex:1; min-width:0; }
+.onboarding-etapa-titulo{ font-weight:600; font-size:14px; margin:0 0 2px; }
+.onboarding-etapa-desc{ font-size:12px; color:var(--ink-soft); margin:0; }
+.onboarding-etapa-acao{
+  font-size:12px; font-weight:600; color:var(--amber);
+  white-space:nowrap;
+}
+.onboarding-etapa.concluida .onboarding-etapa-acao{ color:var(--green); }
+.onboarding-footer{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-top:20px; padding-top:16px; border-top:1px solid var(--line);
+}
+
