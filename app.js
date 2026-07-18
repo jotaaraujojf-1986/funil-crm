@@ -4226,7 +4226,10 @@ function switchTab(tab){
   var periodoEl = document.querySelector('.periodo-filtro');
   if(periodoEl) periodoEl.style.display = (tab === 'funil' || tab === 'dash') ? 'flex' : 'none';
   var filtroVendEl = document.getElementById('filtro-vendedor');
-  if(filtroVendEl) filtroVendEl.style.display = (papelAtual === 'admin') ? '' : 'none';
+  if(filtroVendEl){
+    var abasMostrarFiltro = ['funil', 'dash'];
+    filtroVendEl.style.display = (papelAtual === 'admin' && abasMostrarFiltro.indexOf(tab) !== -1) ? '' : 'none';
+  }
 
   // Renderizar a seção ativa
   if(tab === 'dash') renderDashboard();
