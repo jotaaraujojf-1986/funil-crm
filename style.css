@@ -1375,3 +1375,6 @@ html[data-theme="dark"] .badge-vendedor{ background:rgba(43,108,163,0.25); }
 .notif-vazio{ padding:24px 16px; text-align:center; color:var(--ink-faint); font-size:13px; }
 .notif-footer{ padding:10px 16px; border-top:1px solid var(--line); text-align:center; }
 
+#notificacoes-view{ max-width:900px; margin:0 auto; padding:18px 28px 60px; display:none; }
+#notificacoes-view.open{ display:block; }
+

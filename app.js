@@ -34,6 +34,53 @@ var membrosDaEquipe = {};
 var onboardingState = { etapasConcluidas: [], dispensado: false };
 var notificacoes = [];
 var painelNotifAberto = false;
+
+// Web Audio API — gera sons sem arquivos externos
+function criarContextoAudio(){
+  try{ return new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return null; }
+}
+
+function tocarSomNotificacao(tipo){
+  var ctx = criarContextoAudio();
+  if(!ctx) return;
+
+  var configs = {
+    atrasado: [
+      { freq: 880, duracao: 0.12, delay: 0 },
+      { freq: 660, duracao: 0.12, delay: 0.14 },
+      { freq: 440, duracao: 0.2,  delay: 0.28 }
+    ],
+    urgente: [
+      { freq: 1046, duracao: 0.1, delay: 0 },
+      { freq: 1046, duracao: 0.1, delay: 0.15 },
+      { freq: 1318, duracao: 0.25, delay: 0.3 }
+    ],
+    hoje: [
+      { freq: 660, duracao: 0.15, delay: 0 },
+      { freq: 880, duracao: 0.2,  delay: 0.18 }
+    ],
+    nova: [
+      { freq: 523, duracao: 0.12, delay: 0 },
+      { freq: 784, duracao: 0.18, delay: 0.14 }
+    ]
+  };
+
+  var notas = configs[tipo] || configs.nova;
+  notas.forEach(function(nota){
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(nota.freq, ctx.currentTime + nota.delay);
+    gain.gain.setValueAtTime(0, ctx.currentTime + nota.delay);
+    gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + nota.delay + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + nota.delay + nota.duracao);
+    osc.start(ctx.currentTime + nota.delay);
+    osc.stop(ctx.currentTime + nota.delay + nota.duracao + 0.05);
+  });
+}
+
 var ONBOARDING_ETAPAS = [
   {
     id: 'equipe_criada',
@@ -78,7 +125,8 @@ var TITULOS_SECAO = {
   calendario: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Calendário',
   metas: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg> Metas',
   tarefas: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Tarefas',
-  equipe: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Equipe'
+  equipe: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Equipe',
+  notificacoes: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notificações'
 };
 
 function abrirSidebar(){
@@ -1656,20 +1704,88 @@ async function carregarNotificacoes(){
   var ordem = { atrasado: 0, hoje: 1, urgente: 2 };
   novas.sort(function(a,b){ return (ordem[a.tipo]||9) - (ordem[b.tipo]||9); });
 
+  // Tocar som se houver notificações novas
+  var totalAnterior = notificacoes.length;
   notificacoes = novas;
   atualizarBadgeNotificacoes();
+
+  // Verificar se há notificações novas em relação à última verificação
+  if(novas.length > totalAnterior){
+    var temUrgente = novas.some(function(n){ return n.tipo === 'urgente'; });
+    var temAtrasado = novas.some(function(n){ return n.tipo === 'atrasado'; });
+    if(temUrgente){
+      tocarSomNotificacao('urgente');
+    } else if(temAtrasado){
+      tocarSomNotificacao('atrasado');
+    } else {
+      tocarSomNotificacao('hoje');
+    }
+  }
 }
 
 function atualizarBadgeNotificacoes(){
   var badge = document.getElementById('badge-notificacoes');
-  if(!badge) return;
+  var badgeSidebar = document.getElementById('badge-notif-sidebar');
   var count = notificacoes.length;
   if(count > 0){
-    badge.textContent = count > 99 ? '99+' : count;
-    badge.style.display = 'inline-flex';
+    if(badge){ badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'inline-flex'; }
+    if(badgeSidebar){ badgeSidebar.textContent = count > 99 ? '99+' : count; badgeSidebar.style.display = 'inline-flex'; }
   } else {
-    badge.style.display = 'none';
+    if(badge) badge.style.display = 'none';
+    if(badgeSidebar) badgeSidebar.style.display = 'none';
   }
+}
+
+async function renderNotificacoesView(){
+  var container = document.getElementById('notificacoes-container');
+  container.innerHTML = '<p class="anexo-vazio">Atualizando notificações...</p>';
+  await carregarNotificacoes();
+
+  if(notificacoes.length === 0){
+    container.innerHTML =
+      '<div style="text-align:center; padding:48px 0;">' +
+        '<div style="font-size:48px; margin-bottom:12px;">✅</div>' +
+        '<p style="font-size:16px; font-weight:600; color:var(--ink);">Tudo em dia!</p>' +
+        '<p style="font-size:13px; color:var(--ink-soft);">Nenhum follow-up ou tarefa pendente.</p>' +
+      '</div>';
+    return;
+  }
+
+  var icones = { atrasado: '⚠', hoje: '📅', urgente: '🔴' };
+  var grupos = [
+    { tipo: 'atrasado', label: 'Atrasados', cor: 'var(--red)' },
+    { tipo: 'urgente',  label: 'Urgentes',  cor: 'var(--red)' },
+    { tipo: 'hoje',     label: 'Hoje',      cor: 'var(--amber-dark)' }
+  ];
+
+  var html = '';
+  grupos.forEach(function(g){
+    var itens = notificacoes.filter(function(n){ return n.tipo === g.tipo; });
+    if(!itens.length) return;
+    html += '<div class="metas-section">';
+    html += '<h3 style="color:' + g.cor + ';">' + icones[g.tipo] + ' ' + g.label + ' <span class="badge-count">' + itens.length + '</span></h3>';
+    html += itens.map(function(n, idx){
+      return '<div class="notif-item" style="border-radius:8px; margin-bottom:6px;" data-notif-idx="' + notificacoes.indexOf(n) + '">' +
+        '<div class="notif-icone ' + n.tipo + '">' + icones[n.tipo] + '</div>' +
+        '<div class="notif-corpo">' +
+          '<p class="notif-titulo">' + n.titulo + '</p>' +
+          '<p class="notif-desc">' + escapeHtml(n.desc) + (n.data ? ' · ' + fmtDateBR(n.data) : '') + '</p>' +
+          (n.vendedor ? '<p class="notif-vendedor">👤 ' + escapeHtml(n.vendedor) + '</p>' : '') +
+        '</div>' +
+        '<span style="font-size:12px; color:var(--amber); font-weight:600; white-space:nowrap;">Ver →</span>' +
+      '</div>';
+    }).join('');
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('.notif-item').forEach(function(el){
+    el.addEventListener('click', function(){
+      var idx = Number(el.getAttribute('data-notif-idx'));
+      if(notificacoes[idx] && notificacoes[idx].acao) notificacoes[idx].acao();
+    });
+  });
 }
 
 function fecharNotifPainel(){
@@ -1680,6 +1796,7 @@ function fecharNotifPainel(){
 
 function abrirNotifPainel(){
   fecharNotifPainel();
+  if(notificacoes.length > 0) tocarSomNotificacao('nova');
   painelNotifAberto = true;
 
   var painel = document.createElement('div');
@@ -4823,6 +4940,7 @@ function switchTab(tab){
   document.getElementById('metas-view').classList.toggle('open', tab === 'metas');
   document.getElementById('tarefas-view').classList.toggle('open', tab === 'tarefas');
   document.getElementById('equipe-view').classList.toggle('open', tab === 'equipe');
+  document.getElementById('notificacoes-view').classList.toggle('open', tab === 'notificacoes');
 
   // Filtros: mostrar só no Funil e Dashboard
   var filtersEl = document.querySelector('.filters');
@@ -4841,6 +4959,7 @@ function switchTab(tab){
   if(tab === 'metas') renderMetasView();
   if(tab === 'tarefas') renderTarefasView();
   if(tab === 'equipe') renderEquipeView();
+  if(tab === 'notificacoes') renderNotificacoesView();
 }
 
 function showLogin(){
