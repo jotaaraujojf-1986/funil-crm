@@ -1521,6 +1521,7 @@ async function carregarDadosParaExportacao(){
     lancamentos: (results[3].data || []).map(function(r){
       return {
         'Data': r.data || '',
+        'Vendedor': membrosDaEquipe[r.user_id] || r.user_id || '',
         'Valor (R$)': Number(r.valor) || 0,
         'Descrição': r.descricao || ''
       };
