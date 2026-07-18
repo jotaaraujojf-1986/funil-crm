@@ -3565,7 +3565,24 @@ async function renderMetasView(){
     var found = metasMensaisAno.find(function(x){ return x.mes === m; });
     return found ? found.valor : 0;
   }
-  metaMensal = getMetaMes(mes);
+  // Admin vendo todos: soma as metas de todos os membros da equipe
+  if(papelAtual === 'admin' && equipeAtual && !filtroVendedorId){
+    var todasMetasMes = await Promise.all(
+      Object.keys(membrosDaEquipe).map(function(uid){
+        return sb.from('metas_mensais').select('valor')
+          .eq('equipe_id', equipeAtual.id)
+          .eq('user_id', uid)
+          .eq('ano', anoAtual)
+          .eq('mes', mes)
+          .maybeSingle();
+      })
+    );
+    metaMensal = todasMetasMes.reduce(function(soma, res){
+      return soma + (res.data ? Number(res.data.valor) || 0 : 0);
+    }, 0);
+  } else {
+    metaMensal = getMetaMes(mes);
+  }
   var metaDia = totalDiasUteis > 0 ? metaMensal / totalDiasUteis : 0;
   var totalLancado = lancamentos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
   var totalLancadoAntesDehoje = lancamentos.filter(function(l){ return String(l.data).slice(0,10) < hojeStr; }).reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
@@ -3657,7 +3674,7 @@ async function renderMetasView(){
   // Card direito: sábados + lançamento
   html += '<div>';
 
-  if(sabadosDoMes.length > 0){
+  if(sabadosDoMes.length > 0 && !(papelAtual === 'admin' && equipeAtual && !filtroVendedorId)){
     html += '<div class="metas-section">';
     html += '<h3>Sábados que vou trabalhar</h3>';
     html += '<div class="sabados-grid">';
@@ -3708,19 +3725,39 @@ async function renderMetasView(){
   // Card: Planejador de metas mensais escaláveis
   html += '<div class="metas-section">';
   html += '<h3>Planejamento de metas por mês — ' + anoAtual + '</h3>';
-  html += '<p class="meta-dia-label" style="margin-bottom:12px;">Defina uma meta diferente para cada mês. Deixe em branco para usar a meta padrão (R$ ' + fmtMoney(metaMensal) + ').</p>';
-  html += '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;" id="planejador-metas-grid">';
-  for(var pm = 0; pm < 12; pm++){
-    var metaPmFound = metasMensaisAno.find(function(x){ return x.mes === pm; });
-    var metaPmVal = metaPmFound ? metaPmFound.valor : 0;
-    html += '<div class="field" style="margin:0;">';
-    html += '<label>' + MESES_PT[pm].charAt(0).toUpperCase() + MESES_PT[pm].slice(1) + '</label>';
-    html += '<input type="text" inputmode="numeric" class="meta-mes-input" data-mes="' + pm + '" value="' + (metaPmVal > 0 ? formatValorParaInput(metaPmVal) : '') + '" placeholder="Sem meta">';
-    html += '</div>';
+  if(papelAtual === 'admin' && equipeAtual && !filtroVendedorId){
+    html += '<p class="aviso-info">📋 Você está vendo a visão agregada da equipe. Para definir metas individuais, selecione um vendedor no filtro.</p>';
+  } else {
+    html += '<p class="meta-dia-label" style="margin-bottom:12px;">Defina uma meta diferente para cada mês. Deixe em branco para usar a meta padrão (R$ ' + fmtMoney(metaMensal) + ').</p>';
   }
-  html += '</div>';
-  html += '<button class="btn-primary" style="margin-top:14px;" id="btn-salvar-metas-mensais">Salvar planejamento</button>';
-  html += '</div>';
+
+  if(papelAtual === 'admin' && equipeAtual && !filtroVendedorId){
+    // Modo agregado: mostrar só os totais por mês, sem campos de edição
+    html += '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;">';
+    for(var pm2 = 0; pm2 < 12; pm2++){
+      var prefMes = anoAtual + '-' + String(pm2+1).padStart(2,'0');
+      var totalMes2 = lancamentosAno.filter(function(l){ return l.data.startsWith(prefMes); }).reduce(function(s,l){ return s + l.valor; }, 0);
+      html += '<div class="field" style="margin:0;">';
+      html += '<label>' + MESES_PT[pm2].charAt(0).toUpperCase() + MESES_PT[pm2].slice(1) + '</label>';
+      html += '<div style="padding:8px 12px; background:var(--bg); border:1px solid var(--line); border-radius:8px; font-size:13px; color:var(--ink-soft);">' + fmtMoney(totalMes2) + '</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+    html += '</div>'; // fecha metas-section do planejador
+  } else {
+    html += '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;" id="planejador-metas-grid">';
+    for(var pm = 0; pm < 12; pm++){
+      var metaPmFound = metasMensaisAno.find(function(x){ return x.mes === pm; });
+      var metaPmVal = metaPmFound ? metaPmFound.valor : 0;
+      html += '<div class="field" style="margin:0;">';
+      html += '<label>' + MESES_PT[pm].charAt(0).toUpperCase() + MESES_PT[pm].slice(1) + '</label>';
+      html += '<input type="text" inputmode="numeric" class="meta-mes-input" data-mes="' + pm + '" value="' + (metaPmVal > 0 ? formatValorParaInput(metaPmVal) : '') + '" placeholder="Sem meta">';
+      html += '</div>';
+    }
+    html += '</div>';
+    html += '<button class="btn-primary" style="margin-top:14px;" id="btn-salvar-metas-mensais">Salvar planejamento</button>';
+    html += '</div>';
+  } // fecha else do modo individual
 
   // Card: Dashboard de evolução — gráficos
   html += '<div class="metas-section">';
@@ -3885,42 +3922,45 @@ async function renderMetasView(){
     });
   });
 
-  document.getElementById('btn-salvar-metas-mensais').addEventListener('click', async function(){
-    var btn = this;
-    btn.disabled = true;
-    btn.textContent = 'Salvando...';
+  var btnSalvarMetas = document.getElementById('btn-salvar-metas-mensais');
+  if(btnSalvarMetas){
+    btnSalvarMetas.addEventListener('click', async function(){
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Salvando...';
 
-    var inputs = document.querySelectorAll('.meta-mes-input');
-    var erros = 0;
+      var inputs = document.querySelectorAll('.meta-mes-input');
+      var erros = 0;
 
-    for(var i = 0; i < inputs.length; i++){
-      var inp = inputs[i];
-      var m = Number(inp.getAttribute('data-mes'));
-      var valorDigitado = inp.value.replace(/\D/g, '');
-      var v = valorDigitado ? parseValorMascarado(inp.value) : 0;
-      if(v > 0){
-        var ok = await salvarMetaMensal(anoAtual, m, v);
-        if(!ok) erros++;
-      } else {
-        // campo vazio ou zero: apaga do banco pra não ficar lixo
-        await sb.from('metas_mensais').delete()
-          .eq('user_id', currentUserId)
-          .eq('ano', Number(anoAtual))
-          .eq('mes', Number(m));
+      for(var i = 0; i < inputs.length; i++){
+        var inp = inputs[i];
+        var m = Number(inp.getAttribute('data-mes'));
+        var valorDigitado = inp.value.replace(/\D/g, '');
+        var v = valorDigitado ? parseValorMascarado(inp.value) : 0;
+        if(v > 0){
+          var ok = await salvarMetaMensal(anoAtual, m, v);
+          if(!ok) erros++;
+        } else {
+          // campo vazio ou zero: apaga do banco pra não ficar lixo
+          await sb.from('metas_mensais').delete()
+            .eq('user_id', currentUserId)
+            .eq('ano', Number(anoAtual))
+            .eq('mes', Number(m));
+        }
       }
-    }
 
-    if(erros === 0){
-      toast('Planejamento de metas salvo!', 'sucesso');
-      marcarEtapaOnboarding('meta_definida');
-    } else {
-      toast('Algumas metas não foram salvas. Verifique sua conexão.', 'erro');
-    }
+      if(erros === 0){
+        toast('Planejamento de metas salvo!', 'sucesso');
+        marcarEtapaOnboarding('meta_definida');
+      } else {
+        toast('Algumas metas não foram salvas. Verifique sua conexão.', 'erro');
+      }
 
-    btn.disabled = false;
-    btn.textContent = 'Salvar planejamento';
-    renderMetasView();
-  });
+      btn.disabled = false;
+      btn.textContent = 'Salvar planejamento';
+      renderMetasView();
+    });
+  }
 
   renderGraficosEvolucao();
 
