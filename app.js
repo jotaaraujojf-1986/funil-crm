@@ -1,7 +1,6 @@
 (function(){
 
 var STAGES = [
-  {id:'lead', label:'Lead', color:'#8A8F94'},
   {id:'contato', label:'Em contato', color:'#2B6CA3'},
   {id:'proposta', label:'Proposta', color:'#E8A317'},
   {id:'negociacao', label:'Negociação', color:'#C0392B'},
