@@ -94,6 +94,7 @@ body{
 .stat .lbl{ font-size:11px; color:#C9CDD1; text-transform:uppercase; letter-spacing:0.4px; }
 .stat.danger .num{ color:#FF9E8F; }
 .stat.warn .num{ color:var(--amber); }
+.stat.success .num { color: var(--green); }
 
 .toolbar{
   max-width:1320px;

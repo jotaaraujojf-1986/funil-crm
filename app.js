@@ -2284,15 +2284,22 @@ function buildWaLink(lead){
 }
 
 function renderStats(){
-  var ativos = leads.filter(function(l){ return l.stage !== 'fechado'; });
-  var totalAberto = ativos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+  var emAberto = leads.filter(function(l){
+    return l.stage === 'lead' || l.stage === 'contato' || l.stage === 'proposta' || l.stage === 'negociacao';
+  });
+  var fechados = leads.filter(function(l){ return l.stage === 'fechado'; });
+  var perdidos = leads.filter(function(l){ return l.stage === 'perdido'; });
+  var totalAberto = emAberto.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+  var totalFechado = fechados.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
   var hoje = leads.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) === 0; }).length;
-  var atrasados = leads.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) < 0 && l.stage !== 'fechado'; }).length;
+  var atrasados = leads.filter(function(l){ return l.nextFollowUp && diffDays(l.nextFollowUp) < 0 && l.stage !== 'fechado' && l.stage !== 'perdido'; }).length;
 
   var html = '';
   html += statHtml('Em aberto', fmtMoney(totalAberto), '');
-  html += statHtml('Follow-up hoje', hoje, hoje>0 ? 'warn' : '');
-  html += statHtml('Atrasados', atrasados, atrasados>0 ? 'danger' : '');
+  html += statHtml('Fechado', fmtMoney(totalFechado), 'success');
+  html += statHtml('Perdido', perdidos.length, perdidos.length > 0 ? 'danger' : '');
+  html += statHtml('Follow-up hoje', hoje, hoje > 0 ? 'warn' : '');
+  html += statHtml('Atrasados', atrasados, atrasados > 0 ? 'danger' : '');
   document.getElementById('stats').innerHTML = html;
 }
 
