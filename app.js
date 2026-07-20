@@ -2588,13 +2588,11 @@ function buildCard(lead, stageColor){
 
   card.innerHTML =
     // Cabeçalho: nome + canal + valor
-    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
-      '<div style="min-width:0;flex:1;">' +
-        '<p class="name" style="margin:0 0 2px;">' + escapeHtml(lead.nome) + '</p>' +
-        '<p class="meta" style="margin:0;">' + escapeHtml(canalLabel) + '<span class="dot"></span><span class="value">' + fmtMoney(lead.valor) + '</span></p>' +
-      '</div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">' +
+      '<p class="name" style="margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(lead.nome) + '</p>' +
       waBtnHtml +
     '</div>' +
+    '<p class="meta" style="margin:0 0 8px;">' + escapeHtml(canalLabel) + '<span class="dot"></span><span class="value">' + fmtMoney(lead.valor) + '</span></p>' +
 
     // Barra de progresso do tempo na etapa
     (lead.stage !== 'fechado' && lead.stage !== 'perdido' ?
@@ -2604,10 +2602,10 @@ function buildCard(lead, stageColor){
     : '') +
 
     // Informações em grade
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:8px;">' +
-      (tempoTexto ? '<div style="font-size:11px;color:var(--ink-faint);">Tempo</div><div style="font-size:11px;color:var(--ink-soft);text-align:right;font-weight:500;">' + tempoTexto + '</div>' : '') +
-      (followUpTexto ? '<div style="font-size:11px;color:var(--ink-faint);">Follow-up</div><div style="font-size:11px;color:' + followUpCor + ';text-align:right;font-weight:500;">' + followUpTexto + '</div>' : '') +
-      (atividadeTexto ? '<div style="font-size:11px;color:var(--ink-faint);">Atividade</div><div style="font-size:11px;color:var(--ink-soft);text-align:right;">' + escapeHtml(atividadeTexto.slice(0,25)) + '</div>' : '') +
+    '<div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin-bottom:8px;">' +
+      (tempoTexto ? '<div style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">Tempo na etapa</div><div style="font-size:11px;color:var(--ink-soft);font-weight:500;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (dias + (dias === 1 ? ' dia' : ' dias')) + '</div>' : '') +
+      (followUpTexto ? '<div style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">Próxima ação</div><div style="font-size:11px;color:' + followUpCor + ';font-weight:500;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + followUpTexto + '</div>' : '') +
+      (atividadeTexto ? '<div style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">Atividade</div><div style="font-size:11px;color:var(--ink-soft);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(lead.atividadeTipo || '') + '</div>' : '') +
     '</div>' +
 
     // Rodapé: avatar + nome do vendedor + botão follow-up
