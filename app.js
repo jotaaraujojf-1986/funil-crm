@@ -5342,16 +5342,11 @@ document.getElementById('overlay-minha-conta').addEventListener('click', functio
 
 iniciarApp();
 
-// Registrar Service Worker para PWA
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/service-worker.js')
-      .then(function(reg){
-        console.log('Service Worker registrado:', reg.scope);
-      })
-      .catch(function(err){
-        console.log('Erro ao registrar Service Worker:', err);
-      });
+      .then(function(reg){ console.log('SW registrado:', reg.scope); })
+      .catch(function(err){ console.log('Erro SW:', err); });
   });
 }
 })();
