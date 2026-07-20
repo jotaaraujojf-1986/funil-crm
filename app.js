@@ -5360,8 +5360,18 @@ iniciarApp();
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/service-worker.js')
-      .then(function(reg){ console.log('SW:', reg.scope); })
+      .then(function(reg){
+        console.log('SW registrado:', reg.scope);
+        // Verificar atualizações imediatamente
+        reg.update();
+        // Verificar atualizações a cada 60 segundos enquanto o app está aberto
+        setInterval(function(){ reg.update(); }, 60000);
+      })
       .catch(function(err){ console.log('Erro SW:', err); });
+  });
+  // Quando uma nova versão do SW estiver pronta, recarregar automaticamente
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    window.location.reload();
   });
 }
 })();
