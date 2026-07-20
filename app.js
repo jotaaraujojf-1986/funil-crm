@@ -5136,13 +5136,17 @@ function initTheme(){
 }
 
 document.getElementById('btn-theme').addEventListener('click', function(){
+  fecharSidebar();
   var atual = document.documentElement.getAttribute('data-theme');
   applyTheme(atual === 'dark' ? 'light' : 'dark');
 });
 
 initTheme();
 
-document.getElementById('btn-config').addEventListener('click', abrirModalConfig);
+document.getElementById('btn-config').addEventListener('click', function(){
+  fecharSidebar();
+  abrirModalConfig();
+});
 
 function abrirModalConfig(){
   var etapasConfiguraveis = ['lead','contato','proposta','negociacao'];
@@ -5191,6 +5195,7 @@ document.getElementById('overlay-config').addEventListener('click', function(e){
 });
 
 document.getElementById('btn-logout').addEventListener('click', async function(){
+  fecharSidebar();
   await sb.auth.signOut();
   currentUserId = null;
   showLogin();
@@ -5340,7 +5345,10 @@ function abrirModalMinhaConta(){
   });
 }
 
-document.getElementById('btn-minha-conta').addEventListener('click', abrirModalMinhaConta);
+document.getElementById('btn-minha-conta').addEventListener('click', function(){
+  fecharSidebar();
+  abrirModalMinhaConta();
+});
 
 document.getElementById('overlay-minha-conta').addEventListener('click', function(e){
   if(e.target.id === 'overlay-minha-conta')
