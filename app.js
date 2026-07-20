@@ -2530,31 +2530,92 @@ function buildCard(lead, stageColor){
 
   var canalLabel = CANAIS[lead.canal] || lead.canal;
   var waLink = buildWaLink(lead);
-  var waButtonHtml = waLink
-    ? '<a class="wa-btn" href="' + waLink + '" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">' +
-        '<svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.9-.9-.3-.1-.4-.1-.6.1-.2.2-.7.9-.9 1.1-.2.2-.3.2-.6.1-.9-.4-1.8-1-2.6-1.8-.7-.7-1.4-1.6-1.8-2.5-.1-.3 0-.4.1-.6.2-.2.8-.7 1-1 .1-.2.1-.4 0-.6-.1-.2-.6-1.5-.8-1.9-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.1 1.6 2.5 4 3.6 2 .9 2.4.8 2.8.7.4-.1 1.6-.6 1.8-1.2.2-.6.2-1.1.2-1.2 0-.1-.1-.2-.3-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.5C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18c-1.7 0-3.3-.5-4.7-1.3l-.3-.2-3 .9.9-2.9-.2-.3C3.9 14.9 3.4 13.5 3.4 12c0-4.7 3.9-8.6 8.6-8.6s8.6 3.9 8.6 8.6-3.9 8.6-8.6 8.6z"/></svg>' +
-        'WhatsApp</a>'
-    : '<span style="font-size:11px; color:var(--ink-faint);">sem número válido</span>';
+  var dias = diasNaEtapa(lead);
+  var limites = limitesEtapa[lead.stage] || {alerta:7, critico:14};
 
-  var tempoEtapa = tempoEtapaBadge(lead);
-  var atividade = atividadeBadge(lead);
+  // Barra de progresso do tempo na etapa (0% = novo, 100% = crítico)
+  var pct = 0;
+  var barColor = 'var(--steel)';
+  if(lead.stage !== 'fechado' && lead.stage !== 'perdido'){
+    pct = Math.min(100, Math.round((dias / limites.critico) * 100));
+    if(dias >= limites.critico) barColor = 'var(--red)';
+    else if(dias >= limites.alerta) barColor = 'var(--amber)';
+    else barColor = 'var(--green)';
+  }
 
-  var followUpGroupHtml = '<div style="display:inline-flex; align-items:center; gap:5px;">' + followUpBadge(lead);
+  // Texto do tempo na etapa
+  var tempoTexto = '';
+  if(lead.stage !== 'fechado' && lead.stage !== 'perdido'){
+    tempoTexto = dias === 0 ? 'Hoje nesta etapa' : (dias + (dias === 1 ? ' dia' : ' dias') + ' nesta etapa');
+  }
+
+  // Follow-up
+  var followUpTexto = '';
+  var followUpCor = 'var(--ink-soft)';
   if(lead.nextFollowUp){
-    followUpGroupHtml += '<button class="btn-concluir-followup" data-lead-id="' + lead.id + '" title="Marcar como concluído">✓</button>';
+    var diff = diffDays(lead.nextFollowUp);
+    if(diff < 0){ followUpTexto = 'Atrasado ' + Math.abs(diff) + 'd'; followUpCor = 'var(--red)'; }
+    else if(diff === 0){ followUpTexto = 'Follow-up hoje'; followUpCor = 'var(--amber-dark)'; }
+    else if(diff === 1){ followUpTexto = 'Follow-up amanhã'; }
+    else { followUpTexto = 'Follow-up ' + fmtDateBR(lead.nextFollowUp); }
   }
-  followUpGroupHtml += '</div>';
 
-  var vendedorBadge = '';
+  // Próxima atividade
+  var atividadeTexto = lead.atividadeTipo ? lead.atividadeTipo + (lead.atividadeDesc ? ': ' + lead.atividadeDesc.slice(0,30) : '') : '';
+
+  // Vendedor (só admin vendo todos)
+  var vendedorNome = '';
   if(papelAtual === 'admin' && !filtroVendedorId && lead.userId && membrosDaEquipe[lead.userId]){
-    vendedorBadge = '<span class="badge-vendedor">👤 ' + escapeHtml(membrosDaEquipe[lead.userId]) + '</span>';
+    vendedorNome = membrosDaEquipe[lead.userId];
   }
+
+  // Botão WhatsApp (ícone apenas)
+  var waBtnHtml = waLink
+    ? '<a class="wa-btn-icon" href="' + waLink + '" target="_blank" rel="noopener" title="Abrir no WhatsApp" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink-soft);text-decoration:none;flex:0 0 28px;">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.9-.9-.3-.1-.4-.1-.6.1-.2.2-.7.9-.9 1.1-.2.2-.3.2-.6.1-.9-.4-1.8-1-2.6-1.8-.7-.7-1.4-1.6-1.8-2.5-.1-.3 0-.4.1-.6.2-.2.8-.7 1-1 .1-.2.1-.4 0-.6-.1-.2-.6-1.5-.8-1.9-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.1 1.6 2.5 4 3.6 2 .9 2.4.8 2.8.7.4-.1 1.6-.6 1.8-1.2.2-.6.2-1.1.2-1.2 0-.1-.1-.2-.3-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.5C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18c-1.7 0-3.3-.5-4.7-1.3l-.3-.2-3 .9.9-2.9-.2-.3C3.9 14.9 3.4 13.5 3.4 12c0-4.7 3.9-8.6 8.6-8.6s8.6 3.9 8.6 8.6-3.9 8.6-8.6 8.6z"/></svg>' +
+      '</a>'
+    : '';
+
+  // Botão concluir follow-up
+  var btnFollowUp = lead.nextFollowUp
+    ? '<button class="btn-concluir-followup" data-lead-id="' + lead.id + '" title="Marcar follow-up como concluído" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink-soft);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">✓</button>'
+    : '';
+
+  // Avatar com iniciais do vendedor
+  var avatarHtml = vendedorNome
+    ? '<div style="width:22px;height:22px;border-radius:50%;background:var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--ink-soft);flex:0 0 22px;">' + vendedorNome.slice(0,2).toUpperCase() + '</div>'
+    : '';
 
   card.innerHTML =
-    '<p class="name">' + escapeHtml(lead.nome) + '</p>' +
-    '<p class="meta">' + escapeHtml(canalLabel) + '<span class="dot"></span><span class="value">' + fmtMoney(lead.valor) + '</span></p>' +
-    (tempoEtapa || atividade || vendedorBadge ? '<p class="card-extra">' + tempoEtapa + atividade + vendedorBadge + '</p>' : '') +
-    '<div class="card-bottom">' + followUpGroupHtml + waButtonHtml + '</div>';
+    // Cabeçalho: nome + canal + valor
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+      '<div style="min-width:0;flex:1;">' +
+        '<p class="name" style="margin:0 0 2px;">' + escapeHtml(lead.nome) + '</p>' +
+        '<p class="meta" style="margin:0;">' + escapeHtml(canalLabel) + '<span class="dot"></span><span class="value">' + fmtMoney(lead.valor) + '</span></p>' +
+      '</div>' +
+      waBtnHtml +
+    '</div>' +
+
+    // Barra de progresso do tempo na etapa
+    (lead.stage !== 'fechado' && lead.stage !== 'perdido' ?
+      '<div style="height:3px;background:var(--line);border-radius:2px;margin-bottom:8px;overflow:hidden;">' +
+        '<div style="width:' + pct + '%;height:100%;background:' + barColor + ';border-radius:2px;transition:width .3s;"></div>' +
+      '</div>'
+    : '') +
+
+    // Informações em grade
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:8px;">' +
+      (tempoTexto ? '<div style="font-size:11px;color:var(--ink-faint);">Tempo</div><div style="font-size:11px;color:var(--ink-soft);text-align:right;font-weight:500;">' + tempoTexto + '</div>' : '') +
+      (followUpTexto ? '<div style="font-size:11px;color:var(--ink-faint);">Follow-up</div><div style="font-size:11px;color:' + followUpCor + ';text-align:right;font-weight:500;">' + followUpTexto + '</div>' : '') +
+      (atividadeTexto ? '<div style="font-size:11px;color:var(--ink-faint);">Atividade</div><div style="font-size:11px;color:var(--ink-soft);text-align:right;">' + escapeHtml(atividadeTexto.slice(0,25)) + '</div>' : '') +
+    '</div>' +
+
+    // Rodapé: avatar + nome do vendedor + botão follow-up
+    '<div style="display:flex;align-items:center;gap:6px;border-top:1px solid var(--line);padding-top:7px;">' +
+      avatarHtml +
+      (vendedorNome ? '<span style="font-size:11px;font-weight:600;color:var(--ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(vendedorNome) + '</span>' : '<span style="flex:1;"></span>') +
+      btnFollowUp +
+    '</div>';
 
   card.querySelectorAll('a').forEach(function(a){
     a.addEventListener('click', function(e){ e.stopPropagation(); });
@@ -2562,7 +2623,7 @@ function buildCard(lead, stageColor){
 
   card.addEventListener('dragstart', function(e){
     e.dataTransfer.setData('text/plain', lead.id);
-    card.classList.add('dragging');
+    setTimeout(function(){ card.classList.add('dragging'); }, 0);
   });
   card.addEventListener('dragend', function(){
     card.classList.remove('dragging');
