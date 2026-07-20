@@ -5345,7 +5345,7 @@ iniciarApp();
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/service-worker.js')
-      .then(function(reg){ console.log('SW registrado:', reg.scope); })
+      .then(function(reg){ console.log('SW:', reg.scope); })
       .catch(function(err){ console.log('Erro SW:', err); });
   });
 }
