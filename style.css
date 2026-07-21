@@ -152,22 +152,18 @@ body{
 .btn-primary:hover{ background:var(--amber-dark); }
 .btn-primary:active{ transform:scale(0.97); }
 
-.board{
-  max-width:1320px;
-  margin:0 auto;
-  padding:18px 28px 60px;
-  display:grid;
-  grid-template-columns: repeat(5, minmax(280px, 1fr));
-  gap:14px;
-}
-@media (max-width: 1080px){
-  .board{
-    grid-template-columns: repeat(5, minmax(280px,1fr));
-    overflow-x: auto;
-  }
+.board {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px 24px;
+  align-items: flex-start;
+  overflow-x: hidden;
 }
 
-.column{
+.column {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
   background:rgba(0,0,0,0.02);
   border-radius:var(--radius);
   padding:10px;
@@ -813,13 +809,15 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
   background: var(--bg);
 }
 
-.board-headers{
-  display:grid;
-  grid-template-columns: repeat(5, minmax(280px, 1fr));
-  gap:14px;
-  max-width:1320px;
-  margin:0 auto;
-  padding:14px 28px 10px;
+.board-headers {
+  display: flex;
+  gap: 10px;
+  padding: 0 16px;
+}
+.board-headers > *,
+.col-head-cell {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .board-headers .col-head-cell{
   border-bottom:3px solid var(--cell-color, var(--steel));
