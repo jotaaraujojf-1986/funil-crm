@@ -105,6 +105,9 @@ body{
   align-items:center;
   flex-wrap:wrap;
   gap:12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+  margin-bottom: 4px;
 }
 .toolbar .filters{ display:flex; gap:8px; flex-wrap:wrap; }
 .periodo-filtro{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
@@ -812,6 +815,7 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
   grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   padding: 0 16px;
+  padding-top: 12px;
 }
 .board-headers .col-head-cell{
   border-bottom:3px solid var(--cell-color, var(--steel));
