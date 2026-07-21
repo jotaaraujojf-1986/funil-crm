@@ -153,17 +153,15 @@ body{
 .btn-primary:active{ transform:scale(0.97); }
 
 .board {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   padding: 12px 16px 24px;
   align-items: flex-start;
-  overflow-x: hidden;
+  min-height: 200px;
 }
 
 .column {
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 100%;
   background:rgba(0,0,0,0.02);
   border-radius:var(--radius);
   padding:10px;
@@ -810,14 +808,10 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
 }
 
 .board-headers {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   padding: 0 16px;
-}
-.board-headers > *,
-.col-head-cell {
-  flex: 1 1 0;
-  min-width: 0;
 }
 .board-headers .col-head-cell{
   border-bottom:3px solid var(--cell-color, var(--steel));
