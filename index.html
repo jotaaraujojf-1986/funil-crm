@@ -19,21 +19,57 @@
 <body>
 
 <div class="login-screen" id="login-screen">
-  <div class="login-box">
-    <div class="mark">Tr</div>
-    <h1>Tractar</h1>
-    <p class="sub">Entre com seu e-mail e senha para acessar seus clientes.</p>
-    <div class="login-error" id="login-error"></div>
-    <div class="field">
-      <label id="login-email-label">Usuário ou e-mail</label>
-      <input id="login-email" type="text" placeholder="joao.silva ou seu@email.com" autocomplete="username">
+  <div class="login-esquerda">
+    <div class="login-logo">
+      <div class="mark">Tr</div>
+      <span class="login-logo-nome">Tractar</span>
     </div>
-    <div class="field">
-      <label>Senha</label>
-      <input id="login-senha" type="password" placeholder="••••••••">
+    <div class="login-hero">
+      <div class="login-badge">● CRM DE VENDAS</div>
+      <h1 class="login-headline">O funil certo<br>para suas <span class="login-destaque">vendas</span></h1>
+      <p class="login-sub">Gerencie clientes, follow-ups e equipes com total controle — de qualquer lugar.</p>
     </div>
-    <button class="btn-primary" id="btn-login" style="width:100%; justify-content:center; margin-top:8px;">Entrar</button>
-    <p class="sub" style="margin-top:14px; margin-bottom:0;">Primeiro acesso? <a href="#" id="link-cadastro" style="color:var(--amber-dark); font-weight:600;">Criar minha conta</a></p>
+    <div class="login-metricas">
+      <div class="login-metrica">
+        <strong>100%</strong>
+        <span>Visibilidade</span>
+      </div>
+      <div class="login-metrica-sep"></div>
+      <div class="login-metrica">
+        <strong>360°</strong>
+        <span>Visão da equipe</span>
+      </div>
+      <div class="login-metrica-sep"></div>
+      <div class="login-metrica">
+        <strong>0</strong>
+        <span>Follow-ups perdidos</span>
+      </div>
+    </div>
+  </div>
+  <div class="login-direita">
+    <div class="login-box">
+      <h2>Bem-vindo de volta</h2>
+      <p class="login-direita-sub">Acesse sua conta para continuar</p>
+      <div class="login-error" id="login-error"></div>
+      <div class="field">
+        <label id="login-email-label">Usuário ou e-mail</label>
+        <input id="login-email" type="text" placeholder="joao.silva ou seu@email.com" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input id="login-senha" type="password" placeholder="••••••••">
+      </div>
+      <button class="btn-primary" id="btn-login" style="width:100%; justify-content:center; margin-top:8px;">Entrar</button>
+      <div class="login-divisor"><span>Novo por aqui?</span></div>
+      <button class="btn-ghost" id="link-cadastro" style="width:100%; justify-content:center; display:flex; align-items:center; gap:8px;">
+        Criar minha conta
+        <span style="background:var(--amber); color:var(--steel-dark); font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px;">14 DIAS GRÁTIS</span>
+      </button>
+      <p style="font-size:11px; color:rgba(255,255,255,0.3); text-align:center; margin-top:16px;">
+        Ao entrar, você concorda com os<br>
+        <a href="#" style="color:rgba(255,255,255,0.5);">Termos de Uso</a> e <a href="#" style="color:rgba(255,255,255,0.5);">Política de Privacidade</a>
+      </p>
+    </div>
   </div>
 </div>
 
