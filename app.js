@@ -1793,7 +1793,8 @@ function fecharNotifPainel(){
   painelNotifAberto = false;
 }
 
-function abrirNotifPainel(){
+async function abrirNotifPainel(){
+  await carregarNotificacoes();
   fecharNotifPainel();
   if(notificacoes.length > 0) tocarSomNotificacao('nova');
   painelNotifAberto = true;
@@ -2969,6 +2970,7 @@ function openModal(id){
     toast('Negócio salvo com sucesso!', 'sucesso');
     if(isNew) marcarEtapaOnboarding('negocio_criado');
     render();
+    carregarNotificacoes();
     renderClientesView();
     closeModal();
   };
@@ -4980,9 +4982,9 @@ document.getElementById('btn-onboarding').addEventListener('click', async functi
   }
 });
 
-document.getElementById('btn-notificacoes').addEventListener('click', function(e){
+document.getElementById('btn-notificacoes').addEventListener('click', async function(e){
   e.stopPropagation();
-  if(painelNotifAberto){ fecharNotifPainel(); } else { abrirNotifPainel(); }
+  if(painelNotifAberto){ fecharNotifPainel(); } else { await carregarNotificacoes(); abrirNotifPainel(); }
 });
 
 function switchTab(tab){
