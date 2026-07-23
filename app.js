@@ -5145,6 +5145,14 @@ document.getElementById('link-cadastro').addEventListener('click', function(e){
   setLoginError(null);
 });
 
+document.getElementById('login-senha').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') document.getElementById('btn-login').click();
+});
+
+document.getElementById('login-email').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') document.getElementById('btn-login').click();
+});
+
 document.getElementById('btn-login').addEventListener('click', async function(){
   var emailOuUsername = document.getElementById('login-email').value.trim().toLowerCase();
   var email = emailOuUsername.includes('@') ? emailOuUsername : emailOuUsername + '@tractar.app';
