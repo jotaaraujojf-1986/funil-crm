@@ -1,364 +1,288 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Planos - Tractar</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0D1420;
-      --panel: #161F30;
-      --panel-border: rgba(255,255,255,0.08);
-      --ink: #FFFFFF;
-      --ink-soft: rgba(255,255,255,0.7);
-      --ink-faint: rgba(255,255,255,0.45);
-      --amber: #E8A317;
-      --amber-dark: #B9800D;
-      --steel-dark: #0A0F18;
-      --radius: 16px;
-      --shadow: 0 24px 64px rgba(0,0,0,0.4);
-    }
-    
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    
-    body {
-      background: linear-gradient(135deg, #0D1420 0%, #1A2436 50%, #0F1A2E 100%);
-      color: var(--ink);
-      font-family: 'Inter', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
-      position: relative;
-      overflow-x: hidden;
-    }
-    
-    body::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
-      background-size: 28px 28px;
-      pointer-events: none;
-      z-index: 0;
-    }
-    
-    .container {
-      max-width: 900px;
-      width: 100%;
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 40px;
-    }
-    
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    
-    .logo .mark {
-      width: 44px;
-      height: 44px;
-      border-radius: 10px;
-      background: var(--amber);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Outfit', sans-serif;
-      font-weight: 800;
-      font-size: 20px;
-      color: var(--steel-dark);
-    }
-    
-    .logo-name {
-      font-family: 'Outfit', sans-serif;
-      font-weight: 800;
-      font-size: 22px;
-      color: #fff;
-    }
-    
-    .header-text {
-      text-align: center;
-      max-width: 500px;
-    }
-    
-    .header-text h1 {
-      font-family: 'Outfit', sans-serif;
-      font-weight: 800;
-      font-size: 40px;
-      color: #fff;
-      line-height: 1.2;
-      margin-bottom: 12px;
-    }
-    
-    .header-text h1 span {
-      color: var(--amber);
-    }
-    
-    .header-text p {
-      font-size: 15px;
-      color: var(--ink-soft);
-      line-height: 1.6;
-    }
-    
-    .planos-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 28px;
-      width: 100%;
-      align-items: stretch;
-    }
-    
-    .plan-card {
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      border-radius: var(--radius);
-      padding: 40px 36px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      position: relative;
-      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-      box-shadow: var(--shadow);
-    }
-    
-    .plan-card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(232, 163, 23, 0.3);
-      box-shadow: 0 28px 72px rgba(0,0,0,0.5);
-    }
-    
-    .plan-card.highlight {
-      border: 2px solid var(--amber);
-      background: linear-gradient(180deg, #1B263C 0%, #161F30 100%);
-    }
-    
-    .plan-badge {
-      position: absolute;
-      top: -14px;
-      left: 36px;
-      background: var(--amber);
-      color: var(--steel-dark);
-      font-size: 11px;
-      font-weight: 800;
-      padding: 4px 14px;
-      border-radius: 999px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-    }
-    
-    .plan-header h2 {
-      font-family: 'Outfit', sans-serif;
-      font-weight: 800;
-      font-size: 24px;
-      color: #fff;
-      margin-bottom: 8px;
-    }
-    
-    .plan-desc {
-      font-size: 13.5px;
-      color: var(--ink-faint);
-      line-height: 1.5;
-      margin-bottom: 24px;
-      min-height: 40px;
-    }
-    
-    .plan-price {
-      margin-bottom: 32px;
-      display: flex;
-      align-items: baseline;
-      gap: 4px;
-    }
-    
-    .plan-price .currency {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--ink-soft);
-    }
-    
-    .plan-price .amount {
-      font-family: 'Outfit', sans-serif;
-      font-weight: 800;
-      font-size: 48px;
-      color: #fff;
-      line-height: 1;
-    }
-    
-    .plan-price .period {
-      font-size: 13.5px;
-      color: var(--ink-faint);
-    }
-    
-    .btn-plan {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #fff;
-      font-family: 'Inter', sans-serif;
-      font-size: 14.5px;
-      font-weight: 700;
-      padding: 14px 20px;
-      border-radius: 10px;
-      cursor: pointer;
-      width: 100%;
-      transition: background 0.15s, transform 0.1s;
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    
-    .btn-plan:hover {
-      background: rgba(255,255,255,0.1);
-    }
-    
-    .btn-plan:active {
-      transform: scale(0.98);
-    }
-    
-    .plan-card.highlight .btn-plan {
-      background: var(--amber);
-      color: var(--steel-dark);
-      border: none;
-    }
-    
-    .plan-card.highlight .btn-plan:hover {
-      background: #f7b733;
-      opacity: 0.95;
-    }
-    
-    .features-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      border-top: 1px solid var(--panel-border);
-      padding-top: 24px;
-    }
-    
-    .features-list li {
-      font-size: 13.5px;
-      color: var(--ink-soft);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .features-list li::before {
-      content: '✓';
-      color: var(--amber);
-      font-weight: 700;
-    }
-    
-    .footer {
-      font-size: 12px;
-      color: var(--ink-faint);
-      text-align: center;
-      margin-top: 20px;
-    }
-    
-    .footer a {
-      color: var(--ink-soft);
-      text-decoration: none;
-    }
-    
-    .footer a:hover {
-      text-decoration: underline;
-    }
-    
-    @media (max-width: 768px) {
-      .planos-grid {
-        grid-template-columns: 1fr;
-        gap: 32px;
-      }
-      .plan-card {
-        padding: 36px 28px;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tractar — Escolha seu plano</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --amber:#E8A317;--amber-dark:#B9800D;
+  --steel:#2C3540;--steel-dark:#1A2029;
+  --green:#2E7D4F;--red:#C0392B;--blue:#2B6CA3;
+  --line:rgba(255,255,255,0.08);
+  --ink:rgba(255,255,255,0.9);--ink-soft:rgba(255,255,255,0.5);--ink-faint:rgba(255,255,255,0.3);
+}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,#0D1420 0%,#1A2436 50%,#0F1A2E 100%);
+  min-height:100vh;color:var(--ink);
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,0.03) 1px,transparent 0);
+  background-size:28px 28px;pointer-events:none;z-index:0;
+}
+.header{
+  position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 48px;border-bottom:1px solid var(--line);
+}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo .mark{
+  width:40px;height:40px;border-radius:10px;
+  background:var(--amber);display:flex;align-items:center;justify-content:center;
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:18px;color:#1A2029;
+}
+.logo-nome{font-family:'Outfit',sans-serif;font-weight:800;font-size:20px;color:#fff;}
+.btn-voltar{
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.7);font-size:13px;font-weight:600;padding:8px 18px;
+  border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+}
+.btn-voltar:hover{background:rgba(255,255,255,0.1);}
+.hero{
+  position:relative;z-index:1;
+  text-align:center;padding:52px 24px 40px;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(232,163,23,0.12);border:1px solid rgba(232,163,23,0.25);
+  color:var(--amber);font-size:11px;font-weight:700;letter-spacing:0.8px;
+  padding:5px 14px;border-radius:999px;margin-bottom:20px;
+}
+.hero h1{font-family:'Outfit',sans-serif;font-weight:800;font-size:44px;color:#fff;line-height:1.15;margin-bottom:14px;}
+.hero h1 span{color:var(--amber);}
+.hero p{font-size:16px;color:var(--ink-soft);max-width:520px;margin:0 auto 32px;line-height:1.6;}
+.toggle-wrap{
+  display:inline-flex;align-items:center;gap:14px;
+  background:rgba(255,255,255,0.05);border:1px solid var(--line);
+  border-radius:12px;padding:6px 8px;margin-bottom:48px;
+}
+.toggle-wrap:has(.toggle-btn.active#btn-anual) {
+  /* optional hook if we want layout changes */
+}
+.toggle-btn{
+  font-size:13px;font-weight:600;padding:8px 20px;border-radius:8px;
+  border:none;cursor:pointer;font-family:'Inter',sans-serif;
+  background:transparent;color:var(--ink-soft);transition:all .2s;
+}
+.toggle-btn.active{background:var(--amber);color:#1A2029;}
+.toggle-desconto{
+  font-size:11px;font-weight:700;background:rgba(46,125,79,0.2);
+  color:#6FCF97;padding:3px 8px;border-radius:6px;
+}
+.planos-grid{
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:16px;max-width:1200px;margin:0 auto;padding:0 24px 60px;
+}
+@media(max-width:1000px){.planos-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.planos-grid{grid-template-columns:1fr;}}
+.plano-card{
+  background:rgba(255,255,255,0.04);border:1px solid var(--line);
+  border-radius:16px;padding:28px 24px;
+  display:flex;flex-direction:column;
+  transition:border-color .2s,transform .2s,background .2s;
+  position:relative;overflow:hidden;
+}
+.plano-card:hover{border-color:rgba(232,163,23,0.3);background:rgba(255,255,255,0.06);transform:translateY(-4px);}
+.plano-card.destaque{border-color:var(--amber);background:rgba(232,163,23,0.06);}
+.plano-card.destaque:hover{background:rgba(232,163,23,0.09);}
+.plano-badge-popular{
+  position:absolute;top:16px;right:16px;
+  background:var(--amber);color:#1A2029;
+  font-size:10px;font-weight:800;letter-spacing:0.5px;
+  padding:3px 10px;border-radius:999px;
+}
+.plano-nome{font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-soft);margin-bottom:8px;}
+.plano-preco{font-family:'Outfit',sans-serif;font-weight:800;font-size:36px;color:#fff;line-height:1;margin-bottom:4px;}
+.plano-preco span{font-size:15px;font-weight:600;color:var(--ink-soft);}
+.plano-preco-anual{font-size:12px;color:var(--ink-faint);margin-bottom:6px;min-height:18px;}
+.plano-desc{font-size:13px;color:var(--ink-soft);margin-bottom:20px;line-height:1.5;padding-bottom:20px;border-bottom:1px solid var(--line);}
+.plano-features{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;flex:1;}
+.plano-feature{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--ink-soft);}
+.plano-feature .check{width:18px;height:18px;border-radius:50%;background:rgba(46,125,79,0.2);color:#6FCF97;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex:0 0 18px;margin-top:1px;}
+.plano-feature .check.amber{background:rgba(232,163,23,0.15);color:var(--amber);}
+.plano-feature .dash{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.05);color:var(--ink-faint);display:flex;align-items:center;justify-content:center;font-size:12px;flex:0 0 18px;margin-top:1px;}
+.btn-plano{width:100%;padding:13px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;border:none;transition:opacity .15s,transform .1s;}
+.btn-plano:hover{opacity:.85;}
+.btn-plano:active{transform:scale(0.98);}
+.btn-plano.primario{background:var(--amber);color:#1A2029;}
+.btn-plano.secundario{background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.15);}
+.btn-plano.outline{background:transparent;color:var(--amber);border:1px solid var(--amber);}
+.faq{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:0 24px 80px;}
+.faq h2{font-family:'Outfit',sans-serif;font-weight:800;font-size:28px;text-align:center;color:#fff;margin-bottom:32px;}
+.faq-item{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+.faq-pergunta{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;cursor:pointer;font-size:14px;font-weight:600;color:#fff;background:rgba(255,255,255,0.03);}
+.faq-pergunta:hover{background:rgba(255,255,255,0.06);}
+.faq-pergunta .icone{font-size:18px;color:var(--amber);transition:transform .2s;}
+.faq-resposta{display:none;padding:0 20px 16px;font-size:13px;color:var(--ink-soft);line-height:1.7;}
+.faq-item.aberto .faq-resposta{display:block;}
+.faq-item.aberto .icone{transform:rotate(45deg);}
+.footer{position:relative;z-index:1;text-align:center;padding:24px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-faint);}
+.footer a{color:var(--ink-soft);text-decoration:none;}
+.footer a:hover{color:#fff;}
+</style>
 </head>
 <body>
 
-<div class="container">
+<div class="header">
   <div class="logo">
     <div class="mark">Tr</div>
-    <span class="logo-name">Tractar</span>
+    <span class="logo-nome">Tractar</span>
   </div>
-  
-  <div class="header-text">
-    <h1>Escolha o <span>plano ideal</span></h1>
-    <p>Leve a gestão das suas vendas para o próximo nível com controle total e visibilidade em tempo real.</p>
+  <a href="index.html" class="btn-voltar">← Já tenho conta</a>
+</div>
+
+<div class="hero">
+  <div class="hero-badge">● ESCOLHA SEU PLANO</div>
+  <h1>Simples, transparente<br>e <span>sem surpresas</span></h1>
+  <p>Comece gratuitamente e evolua conforme sua equipe cresce. Cancele quando quiser.</p>
+  <div class="toggle-wrap">
+    <button class="toggle-btn active" id="btn-mensal" onclick="setFaturamento('mensal')">Mensal</button>
+    <button class="toggle-btn" id="btn-anual" onclick="setFaturamento('anual')">Anual <span class="toggle-desconto">20% off</span></button>
   </div>
-  
+
   <div class="planos-grid">
-    <!-- PLANO SOLO -->
-    <div class="plan-card">
-      <div class="plan-header">
-        <h2>Solo</h2>
-        <p class="plan-desc">Perfeito para corretores e vendedores autônomos organizarem seus leads.</p>
-        <div class="plan-price">
-          <span class="currency">R$</span>
-          <span class="amount">49</span>
-          <span class="period">/mês</span>
-        </div>
+    <div class="plano-card">
+      <div class="plano-nome">Gratuito</div>
+      <div class="plano-preco">R$ 0<span>/mês</span></div>
+      <div class="plano-preco-anual">&nbsp;</div>
+      <div class="plano-desc">Para conhecer o Tractar antes de comprar. Sem cartão de crédito.</div>
+      <div class="plano-features">
+        <div class="plano-feature"><div class="check">✓</div>1 usuário</div>
+        <div class="plano-feature"><div class="check">✓</div>Até 30 negócios no funil</div>
+        <div class="plano-feature"><div class="check">✓</div>Funil, Clientes e Calendário</div>
+        <div class="plano-feature"><div class="check">✓</div>Tarefas com checklist</div>
+        <div class="plano-feature"><div class="dash">—</div>Metas e Dashboard</div>
+        <div class="plano-feature"><div class="dash">—</div>Exportação de dados</div>
+        <div class="plano-feature"><div class="dash">—</div>Equipe de vendas</div>
+        <div class="plano-feature"><div class="dash">—</div>Suporte via WhatsApp</div>
       </div>
-      <button class="btn-plan" onclick="iniciarCadastro('solo')">Falar com especialista</button>
-      <ul class="features-list">
-        <li>1 Usuário</li>
-        <li>Até 100 Negócios ativos</li>
-        <li>Histórico de contatos completo</li>
-        <li>Integração básica com WhatsApp</li>
-        <li>Suporte via e-mail</li>
-      </ul>
+      <button class="btn-plano secundario" onclick="window.location.href='index.html'">Começar grátis</button>
     </div>
-    
-    <!-- PLANO EQUIPE -->
-    <div class="plan-card highlight">
-      <div class="plan-badge">Mais Popular</div>
-      <div class="plan-header">
-        <h2>Equipe</h2>
-        <p class="plan-desc">Ideal para times de vendas estruturarem processos e colaborarem.</p>
-        <div class="plan-price">
-          <span class="currency">R$</span>
-          <span class="amount">39</span>
-          <span class="period">/usuário/mês</span>
-        </div>
+
+    <div class="plano-card">
+      <div class="plano-nome">Solo</div>
+      <div class="plano-preco" id="preco-solo">R$ 49<span>/mês</span></div>
+      <div class="plano-preco-anual" id="anual-solo">&nbsp;</div>
+      <div class="plano-desc">Para autônomos e representantes que querem controle total das suas vendas.</div>
+      <div class="plano-features">
+        <div class="plano-feature"><div class="check">✓</div>1 usuário</div>
+        <div class="plano-feature"><div class="check">✓</div>Negócios ilimitados</div>
+        <div class="plano-feature"><div class="check">✓</div>Funil, Clientes e Calendário</div>
+        <div class="plano-feature"><div class="check">✓</div>Metas com gráficos</div>
+        <div class="plano-feature"><div class="check">✓</div>Dashboard completo</div>
+        <div class="plano-feature"><div class="check">✓</div>Exportação Excel e CSV</div>
+        <div class="plano-feature"><div class="dash">—</div>Equipe de vendas</div>
+        <div class="plano-feature"><div class="check">✓</div>Suporte via WhatsApp</div>
       </div>
-      <button class="btn-plan" onclick="iniciarCadastro('equipe')">Falar com especialista</button>
-      <ul class="features-list">
-        <li>Múltiplos usuários</li>
-        <li>Negócios ilimitados</li>
-        <li>Dashboard de equipe em tempo real</li>
-        <li>Gestão de permissões de acesso</li>
-        <li>Suporte priorizado via WhatsApp</li>
-      </ul>
+      <button class="btn-plano secundario" onclick="iniciarCadastro('solo')">Falar com especialista</button>
     </div>
-  </div>
-  
-  <div class="footer">
-    Dúvidas? <a href="https://wa.me/5562982134790" target="_blank">Fale conosco pelo WhatsApp</a>
+
+    <div class="plano-card destaque">
+      <div class="plano-badge-popular">Mais popular</div>
+      <div class="plano-nome">Equipe</div>
+      <div class="plano-preco" id="preco-equipe">R$ 39<span>/usuário/mês</span></div>
+      <div class="plano-preco-anual" id="anual-equipe">&nbsp;</div>
+      <div class="plano-desc">Para equipes de vendas que precisam de visibilidade e controle por vendedor.</div>
+      <div class="plano-features">
+        <div class="plano-feature"><div class="check amber">✓</div>A partir de 2 usuários</div>
+        <div class="plano-feature"><div class="check amber">✓</div>Negócios ilimitados</div>
+        <div class="plano-feature"><div class="check amber">✓</div>Tudo do plano Solo</div>
+        <div class="plano-feature"><div class="check amber">✓</div>Equipe com admin e vendedores</div>
+        <div class="plano-feature"><div class="check amber">✓</div>Dashboard comparativo</div>
+        <div class="plano-feature"><div class="check amber">✓</div>Filtro e metas por vendedor</div>
+        <div class="plano-feature"><div class="check amber">✓</div>Transferência de tarefas</div>
+        <div class="plano-feature"><div class="check amber">✓</div>Onboarding assistido (Meet)</div>
+      </div>
+      <button class="btn-plano primario" onclick="iniciarCadastro('equipe')">Falar com especialista</button>
+    </div>
+
+    <div class="plano-card">
+      <div class="plano-nome">Business</div>
+      <div class="plano-preco">Sob<span> consulta</span></div>
+      <div class="plano-preco-anual">A partir de R$ 299/mês</div>
+      <div class="plano-desc">Para empresas com necessidades específicas, SLA garantido e suporte prioritário.</div>
+      <div class="plano-features">
+        <div class="plano-feature"><div class="check">✓</div>Usuários ilimitados</div>
+        <div class="plano-feature"><div class="check">✓</div>Tudo do plano Equipe</div>
+        <div class="plano-feature"><div class="check">✓</div>SLA com tempo de resposta</div>
+        <div class="plano-feature"><div class="check">✓</div>Onboarding completo</div>
+        <div class="plano-feature"><div class="check">✓</div>Personalização de fluxo</div>
+        <div class="plano-feature"><div class="check">✓</div>Nota fiscal mensal</div>
+        <div class="plano-feature"><div class="check">✓</div>Gerente de conta dedicado</div>
+        <div class="plano-feature"><div class="check">✓</div>Suporte prioritário</div>
+      </div>
+      <button class="btn-plano outline" onclick="window.open('https://wa.me/5562982134790?text=Ol%C3%A1%21+Tenho+interesse+no+plano+Business+do+Tractar.','_blank')">Falar com especialista</button>
+    </div>
   </div>
 </div>
 
+<div class="faq">
+  <h2>Perguntas frequentes</h2>
+  <div class="faq-item">
+    <div class="faq-pergunta" onclick="toggleFaq(this)">Posso mudar de plano depois?<span class="icone">+</span></div>
+    <div class="faq-resposta">Sim, você pode fazer upgrade ou downgrade a qualquer momento. Basta entrar em contato via WhatsApp.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-pergunta" onclick="toggleFaq(this)">O plano gratuito tem limite de tempo?<span class="icone">+</span></div>
+    <div class="faq-resposta">Não. O plano gratuito é permanente, sem prazo de expiração. A limitação é de funcionalidades e volume (até 30 negócios).</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-pergunta" onclick="toggleFaq(this)">Como funciona a cobrança do plano Equipe?<span class="icone">+</span></div>
+    <div class="faq-resposta">O plano Equipe é cobrado por usuário ativo. Se você tem 3 vendedores, paga R$39 × 3 = R$117/mês. O mínimo é 2 usuários (admin + 1 vendedor).</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-pergunta" onclick="toggleFaq(this)">Posso cancelar quando quiser?<span class="icone">+</span></div>
+    <div class="faq-resposta">Sim. Não há fidelidade. No plano anual, o cancelamento encerra o acesso ao final do período já pago.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-pergunta" onclick="toggleFaq(this)">Meus dados ficam seguros?<span class="icone">+</span></div>
+    <div class="faq-resposta">Sim. O Tractar usa criptografia em repouso e em trânsito, autenticação segura e isolamento total entre equipes. Estamos em conformidade com a LGPD.</div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>© 2026 Tractar · <a href="#">Termos de Uso</a> · <a href="#">Política de Privacidade</a> · <a href="https://wa.me/5562982134790">Suporte</a></p>
+</div>
+
 <script>
+var faturamento='mensal';
+var precos={solo:{mensal:49,anual:39},equipe:{mensal:39,anual:31}};
+function setFaturamento(tipo){
+  faturamento=tipo;
+  document.getElementById('btn-mensal').classList.toggle('active',tipo==='mensal');
+  document.getElementById('btn-anual').classList.toggle('active',tipo==='anual');
+  atualizarPrecos();
+}
+function atualizarPrecos(){
+  var solo=precos.solo[faturamento];
+  var equipe=precos.equipe[faturamento];
+  document.getElementById('preco-solo').innerHTML='R$ '+solo+'<span>/mês</span>';
+  document.getElementById('preco-equipe').innerHTML='R$ '+equipe+'<span>/usuário/mês</span>';
+  if(faturamento==='anual'){
+    document.getElementById('anual-solo').textContent='R$ '+(solo*12)+'/ano — economize R$ '+((precos.solo.mensal-solo)*12);
+    document.getElementById('anual-equipe').textContent='R$ '+(equipe*12)+'/usuário/ano — 2 meses grátis';
+  }else{
+    document.getElementById('anual-solo').innerHTML='&nbsp;';
+    document.getElementById('anual-equipe').innerHTML='&nbsp;';
+  }
+}
 function iniciarCadastro(plano){
-  var msgs = {
-    solo: 'Ol%C3%A1%21+Tenho+interesse+no+plano+Solo+do+Tractar+%28R%24+49%2Fm%C3%AAs%29.+Poderia+me+ajudar+com+o+acesso%3F',
-    equipe: 'Ol%C3%A1%21+Tenho+interesse+no+plano+Equipe+do+Tractar+%28R%24+39%2Fusu%C3%A1rio%2Fm%C3%AAs%29.+Poderia+me+ajudar+com+o+acesso%3F'
+  var msgs={
+    solo:'Ol%C3%A1%21+Tenho+interesse+no+plano+Solo+do+Tractar+%28R%24+49%2Fm%C3%AAs%29.+Poderia+me+ajudar+com+o+acesso%3F',
+    equipe:'Ol%C3%A1%21+Tenho+interesse+no+plano+Equipe+do+Tractar+%28R%24+39%2Fusu%C3%A1rio%2Fm%C3%AAs%29.+Poderia+me+ajudar+com+o+acesso%3F'
   };
-  window.open('https://wa.me/5562982134790?text=' + msgs[plano], '_blank');
+  window.open('https://wa.me/5562982134790?text='+msgs[plano],'_blank');
+}
+function toggleFaq(el){
+  el.parentElement.classList.toggle('aberto');
 }
 </script>
-
 </body>
 </html>

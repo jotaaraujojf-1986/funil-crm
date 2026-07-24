@@ -5141,10 +5141,7 @@ var modoCadastro = false;
 
 document.getElementById('link-cadastro').addEventListener('click', function(e){
   e.preventDefault();
-  modoCadastro = !modoCadastro;
-  document.getElementById('btn-login').textContent = modoCadastro ? 'Criar conta' : 'Entrar';
-  e.target.textContent = modoCadastro ? 'Já tenho conta, fazer login' : 'Criar minha conta';
-  setLoginError(null);
+  window.location.href = 'planos.html';
 });
 
 document.getElementById('login-senha').addEventListener('keydown', function(e){
