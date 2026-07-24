@@ -5118,6 +5118,18 @@ function showApp(){
     sidebarItemEquipe.style.display = papelAtual === 'admin' ? '' : 'none';
   }
 
+  var sidebarPlano = document.getElementById('sidebar-plano');
+  var sidebarPlanoNome = document.getElementById('sidebar-plano-nome');
+  if(sidebarPlano){
+    if(papelAtual === 'admin' && equipeAtual){
+      var PLANO_LABEL = {piloto:'Piloto',solo:'Solo',equipe:'Equipe',business:'Business'};
+      sidebarPlano.style.display = 'block';
+      sidebarPlanoNome.textContent = PLANO_LABEL[equipeAtual.plano || 'piloto'] || equipeAtual.plano;
+    } else {
+      sidebarPlano.style.display = 'none';
+    }
+  }
+
   var selFiltroVendedor = document.getElementById('filtro-vendedor');
   if(selFiltroVendedor){
     if(papelAtual === 'admin'){
@@ -5211,6 +5223,11 @@ initTheme();
 document.getElementById('btn-config').addEventListener('click', function(){
   fecharSidebar();
   abrirModalConfig();
+});
+
+document.getElementById('btn-mudar-plano').addEventListener('click', function(){
+  fecharSidebar();
+  window.location.href = 'planos.html';
 });
 
 function abrirModalConfig(){
