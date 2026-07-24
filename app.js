@@ -5231,7 +5231,7 @@ document.getElementById('btn-mudar-plano').addEventListener('click', function(){
 });
 
 function abrirModalConfig(){
-  var etapasConfiguraveis = ['lead','contato','proposta','negociacao'];
+  var etapasConfiguraveis = ['contato','proposta','negociacao'];
   var modal = document.getElementById('modal-config');
 
   modal.innerHTML = '<h2>Configurações</h2>' +
