@@ -1604,9 +1604,9 @@ html[data-theme="dark"] #sidebar-nav{
 }
 
 .meta-kpis-row{
-  display:flex;
-  gap:20px;
-  flex-wrap:wrap;
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(90px, 1fr));
+  gap:10px;
 }
 .meta-kpi-item{
   display:flex;
@@ -1617,12 +1617,12 @@ html[data-theme="dark"] #sidebar-nav{
 .meta-kpi-item .meta-num{
   font-family:'Outfit', sans-serif;
   font-weight:800;
-  font-size:22px;
+  font-size:16px;
   color:var(--ink);
   line-height:1;
 }
 .meta-kpi-item .meta-lbl{
-  font-size:10px;
+  font-size:9px;
   font-weight:600;
   color:var(--ink-faint);
   text-transform:uppercase;
