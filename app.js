@@ -1221,7 +1221,7 @@ async function abrirPainelLancamentos(dataStr){
     modal.querySelectorAll('[data-excluir-lanc]').forEach(function(btn){
       btn.addEventListener('click', async function(){
         var id = btn.getAttribute('data-excluir-lanc');
-        var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir este lançamento?');
+        var ok = confirm('Excluir este lançamento? Essa ação não pode ser desfeita.');
         if(!ok) return;
         var r = await sb.from('lancamentos_diarios').delete().eq('id', id);
         if(r.error){ toast('Erro ao excluir.', 'erro'); return; }
