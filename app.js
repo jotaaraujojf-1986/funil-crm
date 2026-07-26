@@ -4465,28 +4465,123 @@ async function renderMetasView(){
     // GRÁFICO 1: Vendas dia a dia no mês atual
     var diasDoMes = new Date(ano, mes+1, 0).getDate();
     var labelsDiario = [];
-    var vendidoDiario = [];
-    var metaDiaria = [];
     for(var d = 1; d <= diasDoMes; d++){
-      var dStr = ano + '-' + String(mes+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
       labelsDiario.push(String(d));
-      var v = lancamentos.filter(function(l){ return String(l.data).slice(0,10) === dStr; }).reduce(function(s,l){ return s + l.valor; }, 0);
-      vendidoDiario.push(v);
-      metaDiaria.push(Math.round(metaHojeRecalc * 100) / 100);
     }
-    try{
+
+    // Preparar datasets das 3 metas diárias
+    var metaDiariaMinima = [];
+    var metaDiariaEsperada = [];
+    var metaDiariaDesafio = [];
+    var diasUteisAcumulados = 0;
+    var diasUteisTotal = getDiasUteisDoMes(ano, mes, sabadosUteis);
+
+    for(var d2 = 1; d2 <= diasDoMes; d2++){
+      var dStr2 = ano + '-' + String(mes+1).padStart(2,'0') + '-' + String(d2).padStart(2,'0');
+      var dObj2 = new Date(dStr2 + 'T00:00:00');
+      var ehDomingo2 = dObj2.getDay() === 0;
+      var ehSab2 = dObj2.getDay() === 6;
+      var ehSabUtil2 = sabadosUteis.indexOf(dStr2) !== -1;
+      var util2 = !ehDomingo2 && (!ehSab2 || ehSabUtil2);
+      if(util2) diasUteisAcumulados++;
+
+      // Meta proporcional ao dia: meta × (dias úteis até hoje / total dias úteis)
+      var proporcao = diasUteisTotal > 0 ? diasUteisAcumulados / diasUteisTotal : 0;
+      metaDiariaMinima.push(metaMensal > 0 ? Math.round(metaMensal * proporcao) : null);
+      metaDiariaEsperada.push(metaEsperada > 0 ? Math.round(metaEsperada * proporcao) : null);
+      metaDiariaDesafio.push(metaDesafio > 0 ? Math.round(metaDesafio * proporcao) : null);
+    }
+
+    // Calcular acumulado diário vendido
+    var vendidoAcumulado = [];
+    var acum = 0;
+    for(var d3 = 1; d3 <= diasDoMes; d3++){
+      var dStr3 = ano + '-' + String(mes+1).padStart(2,'0') + '-' + String(d3).padStart(2,'0');
+      var lancDia3 = lancamentos.filter(function(l){ return String(l.data).slice(0,10) === dStr3; });
+      acum += lancDia3.reduce(function(s,l){ return s+(Number(l.valor)||0); }, 0);
+      vendidoAcumulado.push(acum);
+    }
+
+    var datasetsDiario = [{
+      label: 'Vendido (acumulado)',
+      data: vendidoAcumulado,
+      backgroundColor: 'rgba(46,125,79,0.15)',
+      borderColor: '#2E7D4F',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.3,
+      pointRadius: 2,
+      type: 'line'
+    }];
+
+    if(metaMensal > 0) datasetsDiario.push({
+      label: '🥉 Meta Mínima',
+      data: metaDiariaMinima,
+      borderColor: '#9CA3AB',
+      borderWidth: 1.5,
+      borderDash: [4,4],
+      fill: false,
+      tension: 0,
+      pointRadius: 0,
+      type: 'line'
+    });
+    if(metaEsperada > 0) datasetsDiario.push({
+      label: '🥈 Meta Esperada',
+      data: metaDiariaEsperada,
+      borderColor: '#2B6CA3',
+      borderWidth: 1.5,
+      borderDash: [4,4],
+      fill: false,
+      tension: 0,
+      pointRadius: 0,
+      type: 'line'
+    });
+    if(metaDesafio > 0) datasetsDiario.push({
+      label: '🥇 Meta Desafio',
+      data: metaDiariaDesafio,
+      borderColor: '#E8A317',
+      borderWidth: 1.5,
+      borderDash: [4,4],
+      fill: false,
+      tension: 0,
+      pointRadius: 0,
+      type: 'line'
+    });
+
+    try {
       new Chart(document.getElementById('chart-evo-diario'), {
         type: 'bar',
         data: {
           labels: labelsDiario,
-          datasets: [
-            { label:'Vendido', data: vendidoDiario, backgroundColor:'rgba(232,163,23,0.8)', borderRadius:4 },
-            { label:'Meta do dia', data: metaDiaria, type:'line', borderColor:'#C0392B', borderWidth:2, pointRadius:0, fill:false }
-          ]
+          datasets: datasetsDiario
         },
-        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$' + v.toLocaleString('pt-BR'); } } } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: true, labels: { color: '#9CA3AB', font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx){
+                  return ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#636B74', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: {
+              ticks: {
+                color: '#636B74', font: { size: 10 },
+                callback: function(v){ return 'R$ ' + (v/1000).toFixed(0) + 'k'; }
+              },
+              grid: { color: 'rgba(255,255,255,0.04)' }
+            }
+          }
+        }
       });
-    }catch(e){ console.error('Erro gráfico diário', e); }
+    } catch(e) { console.error('Erro gráfico diário', e); }
 
     // GRÁFICO 2: Total vendido por mês vs. meta
     var labelsMensal = MESES_PT.map(function(m){ return m.slice(0,3).charAt(0).toUpperCase() + m.slice(1,3); });
@@ -4512,48 +4607,106 @@ async function renderMetasView(){
       });
     }catch(e){ console.error('Erro gráfico mensal', e); }
 
-    // GRÁFICO 3: Acumulado anual + projeção
-    var labelsAnual = MESES_PT.map(function(m){ return m.slice(0,3).charAt(0).toUpperCase() + m.slice(1,3); });
-    var acumuladoReal = [];
-    var acumuladoMeta = [];
-    var acumuladoProjecao = [];
-    var somaReal = 0;
-    var somaMeta = 0;
-    var mesAtualIdx = new Date().getMonth();
-    var totalVendidoAte = 0;
-    var mesesComDados = 0;
-    for(var m3 = 0; m3 < 12; m3++){
-      var pref = anoAtual + '-' + String(m3+1).padStart(2,'0');
-      var tv = lancamentosAno.filter(function(l){ return l.data.startsWith(pref); }).reduce(function(s,l){ return s + l.valor; }, 0);
-      somaReal += tv;
-      somaMeta += getMetaMes(m3);
-      acumuladoMeta.push(somaMeta);
-      if(m3 <= mesAtualIdx){
-        acumuladoReal.push(somaReal);
-        if(tv > 0) mesesComDados++;
-        totalVendidoAte = somaReal;
-        acumuladoProjecao.push(null);
-      } else {
-        acumuladoReal.push(null);
-        var mediasMeses = mesAtualIdx + 1;
-        var mediaMensalVal = mediasMeses > 0 ? totalVendidoAte / mediasMeses : 0;
-        acumuladoProjecao.push(totalVendidoAte + mediaMensalVal * (m3 - mesAtualIdx));
-      }
+    // GRÁFICO 3: Desempenho mensal vs 3 metas
+    var mesesLabels = MESES_PT.map(function(m){ return m.slice(0,3).charAt(0).toUpperCase() + m.slice(1,3); });
+    var vendidoMensal = [];
+    var metaMinimaAnual = [];
+    var metaEsperadaAnual = [];
+    var metaDesafioAnual = [];
+
+    for(var mi = 0; mi < 12; mi++){
+      var prefMesAnual = ano + '-' + String(mi+1).padStart(2,'0');
+      var totalMesAnual = lancamentosAno.filter(function(l){
+        return String(l.data).slice(0,7) === prefMesAnual;
+      }).reduce(function(s,l){ return s+(Number(l.valor)||0); }, 0);
+      vendidoMensal.push(totalMesAnual);
+
+      var metaMesAnual = metasMensaisAno.find(function(m){ return m.mes === (mi+1); });
+      metaMinimaAnual.push(metaMesAnual ? (metaMesAnual.valor || 0) : 0);
+      metaEsperadaAnual.push(metaMesAnual ? (metaMesAnual.valorEsperada || 0) : 0);
+      metaDesafioAnual.push(metaMesAnual ? (metaMesAnual.valorDesafio || 0) : 0);
     }
-    try{
+
+    var datasetsAnual = [{
+      label: 'Total lançado',
+      data: vendidoMensal,
+      backgroundColor: vendidoMensal.map(function(v, i){
+        var min = metaMinimaAnual[i];
+        if(!min || min === 0) return 'rgba(91,155,213,0.5)';
+        return v >= min ? 'rgba(46,125,79,0.7)' : 'rgba(192,57,43,0.5)';
+      }),
+      borderRadius: 6,
+      order: 1
+    }];
+
+    if(metaMinimaAnual.some(function(v){ return v > 0; })) datasetsAnual.push({
+      label: '🥉 Meta Mínima',
+      data: metaMinimaAnual,
+      borderColor: '#9CA3AB',
+      borderWidth: 2,
+      borderDash: [5,5],
+      fill: false,
+      tension: 0,
+      pointRadius: 3,
+      type: 'line',
+      order: 0
+    });
+    if(metaEsperadaAnual.some(function(v){ return v > 0; })) datasetsAnual.push({
+      label: '🥈 Meta Esperada',
+      data: metaEsperadaAnual,
+      borderColor: '#2B6CA3',
+      borderWidth: 2,
+      borderDash: [5,5],
+      fill: false,
+      tension: 0,
+      pointRadius: 3,
+      type: 'line',
+      order: 0
+    });
+    if(metaDesafioAnual.some(function(v){ return v > 0; })) datasetsAnual.push({
+      label: '🥇 Meta Desafio',
+      data: metaDesafioAnual,
+      borderColor: '#E8A317',
+      borderWidth: 2,
+      borderDash: [5,5],
+      fill: false,
+      tension: 0,
+      pointRadius: 3,
+      type: 'line',
+      order: 0
+    });
+
+    try {
       new Chart(document.getElementById('chart-evo-anual'), {
-        type: 'line',
-        data: {
-          labels: labelsAnual,
-          datasets: [
-            { label:'Acumulado real', data: acumuladoReal, borderColor:'#2E7D4F', backgroundColor:'rgba(46,125,79,0.1)', fill:true, tension:0.3, pointBackgroundColor:'#2E7D4F' },
-            { label:'Meta acumulada', data: acumuladoMeta, borderColor:'#E8A317', borderDash:[6,3], borderWidth:2, pointRadius:0, fill:false },
-            { label:'Projeção', data: acumuladoProjecao, borderColor:'#2B6CA3', borderDash:[4,4], borderWidth:2, pointRadius:3, fill:false }
-          ]
-        },
-        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true, ticks:{ callback:function(v){ return 'R$' + v.toLocaleString('pt-BR'); } } } } }
+        type: 'bar',
+        data: { labels: mesesLabels, datasets: datasetsAnual },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: true, labels: { color: '#9CA3AB', font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx){
+                  return ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#636B74', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: {
+              ticks: {
+                color: '#636B74', font: { size: 10 },
+                callback: function(v){ return 'R$ ' + (v/1000).toFixed(0) + 'k'; }
+              },
+              grid: { color: 'rgba(255,255,255,0.04)' }
+            }
+          }
+        }
       });
-    }catch(e){ console.error('Erro gráfico anual', e); }
+    } catch(e) { console.error('Erro gráfico anual', e); }
   }
 }
 
