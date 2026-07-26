@@ -1145,8 +1145,20 @@ async function abrirPainelLancamentos(dataStr){
 
   if(res.error || !res.data || !res.data.length) return;
 
-  var modal = document.getElementById('modal-confirm');
-  var overlay = document.getElementById('overlay-confirm');
+  // Usar overlay dedicado para não conflitar com customConfirm
+  var overlayLanc = document.getElementById('overlay-lancamentos');
+  if(!overlayLanc){
+    overlayLanc = document.createElement('div');
+    overlayLanc.id = 'overlay-lancamentos';
+    overlayLanc.className = 'overlay';
+    overlayLanc.innerHTML = '<div class="modal" id="modal-lancamentos" style="width:480px;"></div>';
+    document.body.appendChild(overlayLanc);
+    overlayLanc.addEventListener('click', function(e){
+      if(e.target.id === 'overlay-lancamentos') overlayLanc.classList.remove('open');
+    });
+  }
+  var modal = document.getElementById('modal-lancamentos');
+  var overlay = overlayLanc;
 
   function renderLista(){
     modal.innerHTML =
@@ -1221,8 +1233,9 @@ async function abrirPainelLancamentos(dataStr){
     modal.querySelectorAll('[data-excluir-lanc]').forEach(function(btn){
       btn.addEventListener('click', async function(){
         var id = btn.getAttribute('data-excluir-lanc');
-        var ok = confirm('Excluir este lançamento? Essa ação não pode ser desfeita.');
-        if(!ok) return;
+        overlay.classList.remove('open');
+        var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir este lançamento?');
+        if(!ok){ overlay.classList.add('open'); renderLista(); return; }
         var r = await sb.from('lancamentos_diarios').delete().eq('id', id);
         if(r.error){ toast('Erro ao excluir.', 'erro'); return; }
         toast('Lançamento excluído.', 'sucesso');
