@@ -4015,22 +4015,39 @@ async function renderMetasView(){
   } else {
     niveis.forEach(function(nivel){
       var d = nivel.dados;
-      var corDiff = d.diff >= 0 ? 'var(--green)' : 'var(--red)';
-      var pct = d.pct;
-      var barColor = pct >= 100 ? 'var(--green)' : (pct >= 70 ? 'var(--amber)' : 'var(--steel)');
+      var atingido = d.pct >= 100;
 
-      html += '<div class="meta-dia-card" style="margin-bottom:14px;">';
+      html += '<div class="meta-dia-card" style="margin-bottom:14px;' + (atingido ? 'opacity:0.6;' : '') + '">';
       html += '<div class="meta-dia-label" style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">' + nivel.nome + '</div>';
-      html += '<div class="meta-kpis-row">';
-      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(d.metaDia) + '</div><div class="meta-lbl">Meta de hoje (recalculada)</div></div>';
-      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(vendidoHoje) + '</div><div class="meta-lbl">Vendido hoje</div></div>';
-      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:' + corDiff + ';">' + (d.diff >= 0 ? '' : '') + fmtMoney(d.diff) + '</div><div class="meta-lbl">Diferença</div></div>';
-      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--blue);">' + fmtMoney(d.metaProxDias) + '</div><div class="meta-lbl">Meta recalculada próx. dias</div></div>';
-      html += '</div>';
-      html += '<div class="meta-progress-bar" style="height:6px;background:var(--line);border-radius:999px;overflow:hidden;margin:10px 0 6px;">';
-      html += '<div style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:999px;transition:width .4s;"></div>';
-      html += '</div>';
-      html += '<p class="meta-dia-label">' + pct + '% da meta de hoje · faltam ' + fmtMoney(Math.max(0, d.metaDia - vendidoHoje)) + ' para fechar o dia · ' + diasUteisRestantes + ' dia(s) útil(eis) restantes no mês</p>';
+
+      if(atingido){
+        // Card zerado com mensagem de parabéns
+        html += '<div class="meta-kpis-row">';
+        html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">R$ 0,00</div><div class="meta-lbl">Meta de hoje (recalculada)</div></div>';
+        html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(vendidoHoje) + '</div><div class="meta-lbl">Vendido hoje</div></div>';
+        html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">+ ' + fmtMoney(d.diff) + '</div><div class="meta-lbl">Superado em</div></div>';
+        html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">R$ 0,00</div><div class="meta-lbl">Meta recalculada próx. dias</div></div>';
+        html += '</div>';
+        html += '<div style="height:6px;background:var(--green);border-radius:999px;margin:10px 0 6px;"></div>';
+        html += '<p class="meta-dia-label" style="color:var(--green);font-weight:700;">🎉 Parabéns, meta ' + nivel.nome.split(' ')[1] + ' alcançada!</p>';
+      } else {
+        // Card normal
+        var corDiff = d.diff >= 0 ? 'var(--green)' : 'var(--red)';
+        var pctReal = d.metaDia > 0 ? Math.min(100, (vendidoHoje / d.metaDia) * 100) : 0;
+        var barColorReal = pctReal >= 100 ? 'var(--green)' : (pctReal >= 70 ? 'var(--amber)' : 'var(--steel)');
+
+        html += '<div class="meta-kpis-row">';
+        html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(d.metaDia) + '</div><div class="meta-lbl">Meta de hoje (recalculada)</div></div>';
+        html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(vendidoHoje) + '</div><div class="meta-lbl">Vendido hoje</div></div>';
+        html += '<div class="meta-kpi-item"><div class="meta-num" style="color:' + corDiff + ';">' + fmtMoney(d.diff) + '</div><div class="meta-lbl">Diferença</div></div>';
+        html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--blue);">' + fmtMoney(d.metaProxDias) + '</div><div class="meta-lbl">Meta recalculada próx. dias</div></div>';
+        html += '</div>';
+        html += '<div style="height:6px;background:var(--line);border-radius:999px;overflow:hidden;margin:10px 0 6px;">';
+        html += '<div style="height:100%;width:' + pctReal.toFixed(1) + '%;background:' + barColorReal + ';border-radius:999px;transition:width .4s;"></div>';
+        html += '</div>';
+        html += '<p class="meta-dia-label">' + pctReal.toFixed(0) + '% da meta de hoje · faltam ' + fmtMoney(Math.max(0, d.metaDia - vendidoHoje)) + ' para fechar o dia · ' + diasUteisRestantes + ' dia(s) útil(eis) restantes no mês</p>';
+      }
+
       html += '</div>';
 
       if(niveis.indexOf(nivel) < niveis.length - 1){
