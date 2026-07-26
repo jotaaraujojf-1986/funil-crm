@@ -4123,8 +4123,9 @@ async function renderMetasView(){
   html += '<div class="metas-grid metas-grid-full" style="display:block;">';
   html += '<div>';
 
+  html += '<div class="metas-section">';
+
   if(sabadosDoMes.length > 0 && !(papelAtual === 'admin' && equipeAtual && !filtroVendedorId)){
-    html += '<div class="metas-section">';
     html += '<h3>Sábados que vou trabalhar</h3>';
     html += '<div class="sabados-grid">';
     sabadosDoMes.forEach(function(dataStr){
@@ -4134,10 +4135,9 @@ async function renderMetasView(){
       html += '<div class="sabado-chip' + (ativo?' ativo':'') + '" data-sabado="' + dataStr + '">' + label + '</div>';
     });
     html += '</div>';
-    html += '</div>';
+    html += '<div style="border-top:1px solid var(--line); margin:14px 0;"></div>';
   }
 
-  html += '<div class="metas-section">';
   html += '<h3>Lançar vendas do dia</h3>';
   html += '<div class="row2">';
   html += '<div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + hojeStr + '"></div>';
@@ -4145,31 +4145,75 @@ async function renderMetasView(){
   html += '</div>';
   html += '<div class="field"><label>Descrição (opcional)</label><input type="text" id="lanc-desc" placeholder="Ex: Venda balcão, pedido recorrente..."></div>';
   html += '<button class="btn-primary" id="btn-lancar-venda">Registrar lançamento</button>';
-  html += '</div>';
+  html += '</div>'; // fecha metas-section
+  html += '</div>'; // fecha div wrapper
+  html += '</div>'; // fecha metas-grid-full
 
-  html += '</div>';
-  html += '</div>';
-
-  // Linha 3: histórico (largura total)
-  html += '<div class="metas-section">';
+  html += '<div class="metas-section metas-grid-full">';
   html += '<h3>Lançamentos do mês</h3>';
-  if(lancamentos.length === 0){
-    html += '<p class="anexo-vazio">Nenhum lançamento registrado ainda este mês.</p>';
-  } else {
-    html += lancamentos.map(function(l){
-      var d = new Date(l.data + 'T00:00:00');
-      var dataFmt = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
-      return '<div class="lancamento-row">' +
-        '<div><span class="ldata">' + dataFmt + '</span>' + (l.descricao ? ' — <span class="ldesc">' + escapeHtml(l.descricao) + '</span>' : '') + '</div>' +
-        '<div style="display:flex; align-items:center; gap:10px;">' +
-          '<span class="lvalor">' + fmtMoney(l.valor) + '</span>' +
-          '<button class="btn-ghost" style="font-size:12px; padding:5px 10px;" data-lanc-edit-id="' + l.id + '" data-lanc-data="' + l.data + '" data-lanc-valor="' + l.valor + '" data-lanc-desc="' + escapeHtml(l.descricao) + '" title="Editar">✏️</button>' +
-          '<button class="lancamento-del" data-lanc-id="' + l.id + '" title="Excluir">✕</button>' +
-        '</div>' +
-      '</div>';
-    }).join('');
+
+  // Montar mapa de lançamentos por data
+  var lancMapDia = {};
+  lancamentos.forEach(function(l){
+    if(!lancMapDia[l.data]) lancMapDia[l.data] = { total:0, desc:[] };
+    lancMapDia[l.data].total += Number(l.valor) || 0;
+    if(l.descricao) lancMapDia[l.data].desc.push(l.descricao);
+  });
+
+  // Gerar calendário do mês
+  var primeiroDia = new Date(anoAtual, mes, 1);
+  var ultimoDia = new Date(anoAtual, mes + 1, 0);
+  var diaSemanaInicio = primeiroDia.getDay(); // 0=dom
+  var totalDias = ultimoDia.getDate();
+  var diasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  html += '<div class="cal-lancamentos">';
+
+  // Cabeçalho dos dias da semana
+  html += '<div class="cal-lanc-grid">';
+  diasSemana.forEach(function(d){
+    html += '<div class="cal-lanc-header">' + d + '</div>';
+  });
+
+  // Células vazias antes do primeiro dia
+  for(var v = 0; v < diaSemanaInicio; v++){
+    html += '<div class="cal-lanc-cell vazio"></div>';
   }
+
+  // Dias do mês
+  for(var dia = 1; dia <= totalDias; dia++){
+    var dataStr = anoAtual + '-' + String(mes + 1).padStart(2,'0') + '-' + String(dia).padStart(2,'0');
+    var lancDia = lancMapDia[dataStr];
+    var ehHoje = dataStr === todayStr();
+    var ehSabado = new Date(dataStr + 'T00:00:00').getDay() === 6;
+    var ehDomingo = new Date(dataStr + 'T00:00:00').getDay() === 0;
+    var ehSabadoUtil = sabadosUteis.indexOf(dataStr) !== -1;
+    var diaUtil = !ehDomingo && (!ehSabado || ehSabadoUtil);
+
+    var classeDia = 'cal-lanc-cell';
+    if(ehHoje) classeDia += ' hoje';
+    if(!diaUtil) classeDia += ' nao-util';
+    if(lancDia) classeDia += ' tem-lancamento';
+
+    html += '<div class="' + classeDia + '" data-data="' + dataStr + '">';
+    html += '<div class="cal-lanc-num">' + dia + '</div>';
+    if(lancDia){
+      html += '<div class="cal-lanc-valor">' + fmtMoney(lancDia.total) + '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '</div>'; // fecha cal-lanc-grid
+
+  // Total do mês
+  var totalMes = lancamentos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);">';
+  html += '<span style="font-size:12px;color:var(--ink-soft);">' + lancamentos.length + ' lançamento(s) no mês</span>';
+  html += '<span style="font-size:14px;font-weight:700;color:var(--ink);">Total: ' + fmtMoney(totalMes) + '</span>';
   html += '</div>';
+
+  html += '</div>'; // fecha cal-lancamentos
+  html += '</div>'; // fecha metas-section
 
   // Card: Planejador de metas mensais escaláveis
   html += '<div class="metas-section">';
