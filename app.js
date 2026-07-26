@@ -1463,10 +1463,12 @@ async function renderEquipeView(){
 
   container.querySelectorAll('[data-remover-id]').forEach(function(btn){
     btn.addEventListener('click', async function(){
-      var ok = await customConfirm('O membro perderá o acesso imediatamente.', 'Remover este membro da equipe?');
+      var id = btn.getAttribute('data-remover-id');
+      var ok = await customConfirm('O membro perderá o acesso imediatamente.', 'Remover este membro?');
       if(!ok) return;
-      await sb.from('membros_equipe').update({ ativo: false }).eq('id', btn.getAttribute('data-remover-id'));
+      await sb.from('membros_equipe').delete().eq('id', id);
       toast('Membro removido.', 'sucesso');
+      atualizarFiltroVendedores();
       renderEquipeView();
     });
   });
