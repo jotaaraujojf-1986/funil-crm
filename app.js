@@ -4609,108 +4609,66 @@ async function renderMetasView(){
     }catch(e){ console.error('Erro gráfico mensal', e); }
 
     // GRÁFICO 3: Desempenho mensal vs 3 metas
-    var mesesLabels = MESES_PT.map(function(m){ return m.slice(0,3).charAt(0).toUpperCase() + m.slice(1,3); });
-    var vendidoMensal = [];
-    var metaMinimaAnual = [];
-    var metaEsperadaAnual = [];
-    var metaDesafioAnual = [];
-
-    for(var mi = 0; mi < 12; mi++){
-      var mesNumAnual = mi + 1; // 1=Jan, 2=Fev, ..., 7=Jul
-      var prefMesAnual = String(ano) + '-' + String(mesNumAnual).padStart(2,'0');
-
-      // Filtrar lançamentos do mês usando prefixo YYYY-MM
-      var totalMesAnual = lancamentosAno.filter(function(l){
-        var dataLanc = String(l.data).slice(0,7); // pega YYYY-MM
-        return dataLanc === prefMesAnual;
-      }).reduce(function(s,l){ return s+(Number(l.valor)||0); }, 0);
-      vendidoMensal.push(totalMesAnual);
-
-      // Buscar meta do mês pelo número do mês (1-12)
-      var metaMesAnual = metasMensaisAno.find(function(m){
-        return Number(m.mes) === mesNumAnual;
-      });
-      metaMinimaAnual.push(metaMesAnual ? (Number(metaMesAnual.valor) || 0) : 0);
-      metaEsperadaAnual.push(metaMesAnual ? (Number(metaMesAnual.valorEsperada) || 0) : 0);
-      metaDesafioAnual.push(metaMesAnual ? (Number(metaMesAnual.valorDesafio) || 0) : 0);
-    }
-
-    var datasetsAnual = [{
-      label: 'Total lançado',
-      data: vendidoMensal,
-      backgroundColor: vendidoMensal.map(function(v, i){
-        var min = metaMinimaAnual[i];
-        if(!min || min === 0) return 'rgba(91,155,213,0.5)';
-        return v >= min ? 'rgba(46,125,79,0.7)' : 'rgba(192,57,43,0.5)';
-      }),
-      borderRadius: 6,
-      order: 1
-    }];
-
-    if(metaMinimaAnual.some(function(v){ return v > 0; })) datasetsAnual.push({
-      label: '🥉 Meta Mínima',
-      data: metaMinimaAnual,
-      borderColor: '#9CA3AB',
-      borderWidth: 2,
-      borderDash: [5,5],
-      fill: false,
-      tension: 0,
-      pointRadius: 3,
-      type: 'line',
-      order: 0
-    });
-    if(metaEsperadaAnual.some(function(v){ return v > 0; })) datasetsAnual.push({
-      label: '🥈 Meta Esperada',
-      data: metaEsperadaAnual,
-      borderColor: '#2B6CA3',
-      borderWidth: 2,
-      borderDash: [5,5],
-      fill: false,
-      tension: 0,
-      pointRadius: 3,
-      type: 'line',
-      order: 0
-    });
-    if(metaDesafioAnual.some(function(v){ return v > 0; })) datasetsAnual.push({
-      label: '🥇 Meta Desafio',
-      data: metaDesafioAnual,
-      borderColor: '#E8A317',
-      borderWidth: 2,
-      borderDash: [5,5],
-      fill: false,
-      tension: 0,
-      pointRadius: 3,
-      type: 'line',
-      order: 0
-    });
-
     try {
-      new Chart(document.getElementById('chart-evo-anual'), {
+      // Destruir gráfico anterior se existir
+      var elAnual = document.getElementById('chart-evo-anual');
+      if(elAnual){ var exAnual = Chart.getChart(elAnual); if(exAnual) exAnual.destroy(); }
+
+      // Montar dados mensais com índice correto (1=Jan, 7=Jul)
+      var mesesLabelsAnual = MESES_PT.map(function(m){ return m.slice(0,1).toUpperCase() + m.slice(1,3); });
+      var vendidoMensalAnual = [];
+      var metaMinimaAnual = [];
+      var metaEsperadaAnual = [];
+      var metaDesafioAnual = [];
+
+      for(var mi = 0; mi < 12; mi++){
+        var mesNum = mi + 1;
+        var pref = String(anoAtual) + '-' + String(mesNum).padStart(2,'0');
+        var totalMes = lancamentosAno.filter(function(l){ return String(l.data).slice(0,7) === pref; }).reduce(function(s,l){ return s+(Number(l.valor)||0); }, 0);
+        vendidoMensalAnual.push(totalMes);
+        var metaMes = metasMensaisAno.find(function(m){ return Number(m.mes) === mesNum; });
+        metaMinimaAnual.push(metaMes ? (Number(metaMes.valor)||0) : 0);
+        metaEsperadaAnual.push(metaMes ? (Number(metaMes.valorEsperada)||0) : 0);
+        metaDesafioAnual.push(metaMes ? (Number(metaMes.valorDesafio)||0) : 0);
+      }
+
+      var datasetsAnual = [{
+        label: 'Vendido',
+        data: vendidoMensalAnual,
+        backgroundColor: vendidoMensalAnual.map(function(v,i){
+          var min = metaMinimaAnual[i];
+          if(!min || min === 0) return 'rgba(91,155,213,0.6)';
+          return v >= min ? 'rgba(46,125,79,0.7)' : 'rgba(192,57,43,0.5)';
+        }),
+        borderRadius: 6,
+        order: 1,
+        type: 'bar'
+      }];
+
+      if(metaMinimaAnual.some(function(v){ return v > 0; })){
+        datasetsAnual.push({ label:'Meta Minima', data: metaMinimaAnual, borderColor:'#9CA3AB', borderWidth:2, borderDash:[5,5], fill:false, tension:0, pointRadius:3, type:'line', order:0 });
+      }
+      if(metaEsperadaAnual.some(function(v){ return v > 0; })){
+        datasetsAnual.push({ label:'Meta Esperada', data: metaEsperadaAnual, borderColor:'#2B6CA3', borderWidth:2, borderDash:[5,5], fill:false, tension:0, pointRadius:3, type:'line', order:0 });
+      }
+      if(metaDesafioAnual.some(function(v){ return v > 0; })){
+        datasetsAnual.push({ label:'Meta Desafio', data: metaDesafioAnual, borderColor:'#E8A317', borderWidth:2, borderDash:[5,5], fill:false, tension:0, pointRadius:3, type:'line', order:0 });
+      }
+
+      new Chart(elAnual, {
         type: 'bar',
-        data: { labels: mesesLabels, datasets: datasetsAnual },
+        data: { labels: mesesLabelsAnual, datasets: datasetsAnual },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
+          interaction: { mode:'index', intersect:false },
           plugins: {
-            legend: { display: true, labels: { color: '#9CA3AB', font: { size: 11 } } },
-            tooltip: {
-              callbacks: {
-                label: function(ctx){
-                  return ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-                }
-              }
-            }
+            legend: { display:true, labels:{ color:'#9CA3AB', font:{ size:11 } } },
+            tooltip: { callbacks: { label: function(ctx){ return ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y||0).toLocaleString('pt-BR',{minimumFractionDigits:2}); } } }
           },
           scales: {
-            x: { ticks: { color: '#636B74', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-            y: {
-              ticks: {
-                color: '#636B74', font: { size: 10 },
-                callback: function(v){ return 'R$ ' + (v/1000).toFixed(0) + 'k'; }
-              },
-              grid: { color: 'rgba(255,255,255,0.04)' }
-            }
+            x: { ticks:{ color:'#636B74', font:{ size:11 } }, grid:{ color:'rgba(255,255,255,0.04)' } },
+            y: { ticks:{ color:'#636B74', font:{ size:10 }, callback:function(v){ return 'R$' + (v/1000).toFixed(0) + 'k'; } }, grid:{ color:'rgba(255,255,255,0.04)' } }
           }
         }
       });
