@@ -4615,16 +4615,23 @@ async function renderMetasView(){
     var metaDesafioAnual = [];
 
     for(var mi = 0; mi < 12; mi++){
-      var prefMesAnual = ano + '-' + String(mi+1).padStart(2,'0');
+      var mesNumAnual = mi + 1; // 1=Jan, 2=Fev, ..., 7=Jul
+      var prefMesAnual = String(ano) + '-' + String(mesNumAnual).padStart(2,'0');
+
+      // Filtrar lançamentos do mês usando prefixo YYYY-MM
       var totalMesAnual = lancamentosAno.filter(function(l){
-        return String(l.data).slice(0,7) === prefMesAnual;
+        var dataLanc = String(l.data).slice(0,7); // pega YYYY-MM
+        return dataLanc === prefMesAnual;
       }).reduce(function(s,l){ return s+(Number(l.valor)||0); }, 0);
       vendidoMensal.push(totalMesAnual);
 
-      var metaMesAnual = metasMensaisAno.find(function(m){ return m.mes === (mi+1); });
-      metaMinimaAnual.push(metaMesAnual ? (metaMesAnual.valor || 0) : 0);
-      metaEsperadaAnual.push(metaMesAnual ? (metaMesAnual.valorEsperada || 0) : 0);
-      metaDesafioAnual.push(metaMesAnual ? (metaMesAnual.valorDesafio || 0) : 0);
+      // Buscar meta do mês pelo número do mês (1-12)
+      var metaMesAnual = metasMensaisAno.find(function(m){
+        return Number(m.mes) === mesNumAnual;
+      });
+      metaMinimaAnual.push(metaMesAnual ? (Number(metaMesAnual.valor) || 0) : 0);
+      metaEsperadaAnual.push(metaMesAnual ? (Number(metaMesAnual.valorEsperada) || 0) : 0);
+      metaDesafioAnual.push(metaMesAnual ? (Number(metaMesAnual.valorDesafio) || 0) : 0);
     }
 
     var datasetsAnual = [{
