@@ -4123,7 +4123,7 @@ async function renderMetasView(){
 
   html += '</div>'; // fecha metas-duo-grid
 
-  html += '<div style="display:grid; grid-template-columns:1.6fr 1fr; gap:16px; align-items:start; margin-bottom:16px;">';
+  html += '<div style="display:grid; grid-template-columns:2.2fr 0.8fr; gap:16px; align-items:start; margin-bottom:16px;">';
 
   // COLUNA ESQUERDA: Calendário de lançamentos
   html += '<div class="metas-section" style="margin-bottom:0;">';
