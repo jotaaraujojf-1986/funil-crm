@@ -4193,7 +4193,7 @@ async function renderMetasView(){
   html += '<div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + hojeStr + '"></div>';
   html += '<div class="field"><label>Valor vendido (R$)</label><input type="text" id="lanc-valor" inputmode="numeric" placeholder="0,00"></div>';
   html += '<div class="field"><label>Descrição (opcional)</label><input type="text" id="lanc-desc" placeholder="Ex: Venda balcão, pedido recorrente..."></div>';
-  html += '<button class="btn-primary" id="btn-lancar-venda" style="width:100%;">Registrar lançamento</button>';
+  html += '<button class="btn-primary" id="btn-lancar-venda" style="width:100%; text-align:center; justify-content:center; display:flex; align-items:center;">Registrar lançamento</button>';
   html += '</div>';
 
   html += '</div>'; // fecha coluna direita
