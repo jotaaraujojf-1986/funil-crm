@@ -1125,7 +1125,7 @@ html[data-theme="dark"] .modal-trello-col-atividade{ background: rgba(255,255,25
 .metas-grid{ display:grid; grid-template-columns:1.8fr 1fr; gap:16px; margin-bottom:16px; }
 .metas-grid-full{ grid-column: 1 / -1; }
 @media (max-width: 880px){ .metas-grid{ grid-template-columns:1fr; } }
-.metas-section{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; margin-bottom:16px; box-shadow:var(--shadow); }
+.metas-section{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; margin-bottom:16px; box-shadow:var(--shadow); min-width:0; }
 .metas-section h3{ font-family:'Outfit', sans-serif; font-weight:700; font-size:16px; text-transform:uppercase; letter-spacing:0.3px; margin:0 0 14px; }
 .meta-dia-num{ font-family:'Outfit', sans-serif; font-weight:800; font-size:28px; color:var(--ink); }
 .meta-dia-label{ font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.3px; margin-top:2px; }
@@ -1627,4 +1627,16 @@ html[data-theme="dark"] #sidebar-nav{
   color:var(--ink-faint);
   text-transform:uppercase;
   letter-spacing:0.4px;
+}
+
+.metas-duo-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-bottom:16px;
+}
+@media(max-width:900px){
+  .metas-duo-grid{
+    grid-template-columns:1fr;
+  }
 }

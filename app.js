@@ -3977,9 +3977,68 @@ async function renderMetasView(){
 
   var html = '';
 
-  // Linha 1: card de hoje (largura total)
-  html += '<div class="metas-grid metas-grid-full" style="display:block;">';
+  // Linha 1: cards de meta mensal e meta do dia lado a lado
+  html += '<div class="metas-duo-grid">';
 
+  var diasUteisNoMes = totalDiasUteis;
+
+  // Montar níveis do resumo mensal
+  var niveisMes = [];
+  if(metaMensal > 0){
+    var pctM = Math.min(100, Math.round((totalLancado / metaMensal) * 100));
+    niveisMes.push({ nome:'🥉 Mínima', meta:metaMensal, pct:pctM });
+  }
+  if(metaEsperada > 0){
+    var pctE = Math.min(100, Math.round((totalLancado / metaEsperada) * 100));
+    niveisMes.push({ nome:'🥈 Esperada', meta:metaEsperada, pct:pctE });
+  }
+  if(metaDesafio > 0){
+    var pctD = Math.min(100, Math.round((totalLancado / metaDesafio) * 100));
+    niveisMes.push({ nome:'🥇 Desafio', meta:metaDesafio, pct:pctD });
+  }
+
+  // Ordenar: não atingidos primeiro, atingidos no final
+  niveisMes.sort(function(a, b){
+    return (a.pct >= 100 ? 1 : 0) - (b.pct >= 100 ? 1 : 0);
+  });
+
+  html += '<div class="metas-section">';
+  html += '<h3>Meta de ' + MESES_PT[mes] + ' de ' + ano + '</h3>';
+
+  niveisMes.forEach(function(n, idx){
+    var atingido = n.pct >= 100;
+    var metaPorDiaUtil = diasUteisNoMes > 0 ? n.meta / diasUteisNoMes : 0;
+    var corPct = atingido ? 'var(--green)' : (n.pct >= 70 ? 'var(--amber)' : 'var(--ink-soft)');
+
+    html += '<div style="margin-bottom:12px;padding:14px 16px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;' + (atingido ? 'opacity:0.6;' : '') + '">';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">' + n.nome + '</div>';
+
+    if(atingido){
+      html += '<div class="meta-kpis-row">';
+      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">' + fmtMoney(n.meta) + '</div><div class="meta-lbl">Meta do mês</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">' + fmtMoney(totalLancado) + '</div><div class="meta-lbl">Total lançado</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">+' + fmtMoney(totalLancado - n.meta) + '</div><div class="meta-lbl">Superado em</div></div>';
+      html += '</div>';
+      html += '<div style="height:5px;background:var(--green);border-radius:999px;margin-top:10px;"></div>';
+      html += '<p style="font-size:11px;font-weight:700;color:var(--green);margin-top:6px;">🎉 Parabéns, meta ' + n.nome.split(' ')[1] + ' alcançada!</p>';
+    } else {
+      html += '<div class="meta-kpis-row">';
+      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(n.meta) + '</div><div class="meta-lbl">Meta do mês</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(metaPorDiaUtil) + '</div><div class="meta-lbl">Meta por dia útil</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(totalLancado) + '</div><div class="meta-lbl">Total lançado</div></div>';
+      html += '</div>';
+      html += '<div style="height:5px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:10px;">';
+      html += '<div style="height:100%;width:' + n.pct + '%;background:' + corPct + ';border-radius:999px;transition:width .4s;"></div>';
+      html += '</div>';
+      html += '<p style="font-size:11px;color:var(--ink-faint);margin-top:6px;">' + n.pct + '% da meta · faltam ' + fmtMoney(n.meta - totalLancado) + '</p>';
+    }
+
+    html += '</div>';
+  });
+
+  html += '</div>'; // fecha metas-section (resumo mensal)
+
+  // Meta de hoje
   var diaTituloFmt = (function(){ var d = new Date(); return d.getDate() + ' de ' + MESES_PT[d.getMonth()]; })();
   var totalLancadoAntesDia = totalLancadoAntesDehoje;
   var diasUteisRestantes = diasRestantes;
@@ -4056,71 +4115,12 @@ async function renderMetasView(){
     });
   }
 
-  html += '</div>';
-  html += '</div>';
+  html += '</div>'; // fecha metas-section (meta de hoje)
 
-  // Linha 2: dois cards lado a lado (resumo do mês + sábados/lançamento)
-  html += '<div class="metas-grid">';
-
-  var diasUteisNoMes = totalDiasUteis;
-
-  // Montar níveis do resumo mensal
-  var niveisMes = [];
-  if(metaMensal > 0){
-    var pctM = Math.min(100, Math.round((totalLancado / metaMensal) * 100));
-    niveisMes.push({ nome:'🥉 Mínima', meta:metaMensal, pct:pctM });
-  }
-  if(metaEsperada > 0){
-    var pctE = Math.min(100, Math.round((totalLancado / metaEsperada) * 100));
-    niveisMes.push({ nome:'🥈 Esperada', meta:metaEsperada, pct:pctE });
-  }
-  if(metaDesafio > 0){
-    var pctD = Math.min(100, Math.round((totalLancado / metaDesafio) * 100));
-    niveisMes.push({ nome:'🥇 Desafio', meta:metaDesafio, pct:pctD });
-  }
-
-  // Ordenar: não atingidos primeiro, atingidos no final
-  niveisMes.sort(function(a, b){
-    return (a.pct >= 100 ? 1 : 0) - (b.pct >= 100 ? 1 : 0);
-  });
-
-  html += '<div class="metas-section">';
-  html += '<h3>Meta de ' + MESES_PT[mes] + ' de ' + ano + '</h3>';
-
-  niveisMes.forEach(function(n, idx){
-    var atingido = n.pct >= 100;
-    var metaPorDiaUtil = diasUteisNoMes > 0 ? n.meta / diasUteisNoMes : 0;
-    var corPct = atingido ? 'var(--green)' : (n.pct >= 70 ? 'var(--amber)' : 'var(--ink-soft)');
-
-    html += '<div style="margin-bottom:12px;padding:14px 16px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;' + (atingido ? 'opacity:0.6;' : '') + '">';
-    html += '<div style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">' + n.nome + '</div>';
-
-    if(atingido){
-      html += '<div class="meta-kpis-row">';
-      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">' + fmtMoney(n.meta) + '</div><div class="meta-lbl">Meta do mês</div></div>';
-      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">' + fmtMoney(totalLancado) + '</div><div class="meta-lbl">Total lançado</div></div>';
-      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">+' + fmtMoney(totalLancado - n.meta) + '</div><div class="meta-lbl">Superado em</div></div>';
-      html += '</div>';
-      html += '<div style="height:5px;background:var(--green);border-radius:999px;margin-top:10px;"></div>';
-      html += '<p style="font-size:11px;font-weight:700;color:var(--green);margin-top:6px;">🎉 Parabéns, meta ' + n.nome.split(' ')[1] + ' alcançada!</p>';
-    } else {
-      html += '<div class="meta-kpis-row">';
-      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(n.meta) + '</div><div class="meta-lbl">Meta do mês</div></div>';
-      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(metaPorDiaUtil) + '</div><div class="meta-lbl">Meta por dia útil</div></div>';
-      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(totalLancado) + '</div><div class="meta-lbl">Total lançado</div></div>';
-      html += '</div>';
-      html += '<div style="height:5px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:10px;">';
-      html += '<div style="height:100%;width:' + n.pct + '%;background:' + corPct + ';border-radius:999px;transition:width .4s;"></div>';
-      html += '</div>';
-      html += '<p style="font-size:11px;color:var(--ink-faint);margin-top:6px;">' + n.pct + '% da meta · faltam ' + fmtMoney(n.meta - totalLancado) + '</p>';
-    }
-
-    html += '</div>';
-  });
-
-  html += '</div>';
+  html += '</div>'; // fecha metas-duo-grid
 
   // Card direito: sábados + lançamento
+  html += '<div class="metas-grid metas-grid-full" style="display:block;">';
   html += '<div>';
 
   if(sabadosDoMes.length > 0 && !(papelAtual === 'admin' && equipeAtual && !filtroVendedorId)){
