@@ -4004,6 +4004,12 @@ async function renderMetasView(){
   if(metaEsperada > 0) niveis.push({ nome:'🥈 Esperada', dados: calcMetaDiaValores(metaEsperada) });
   if(metaDesafio > 0) niveis.push({ nome:'🥇 Desafio', dados: calcMetaDiaValores(metaDesafio) });
 
+  niveis.sort(function(a, b){
+    var atingidoA = a.dados.pct >= 100 ? 1 : 0;
+    var atingidoB = b.dados.pct >= 100 ? 1 : 0;
+    return atingidoA - atingidoB;
+  });
+
   if(niveis.length === 0){
     html += '<p class="anexo-vazio">Defina as metas no planejador para ver a meta do dia.</p>';
   } else {
@@ -4052,57 +4058,73 @@ async function renderMetasView(){
   html += '</div>';
   html += '<div class="tres-metas-container">';
 
-  // Meta Mínima
-  var pctMinima = metaMensal > 0 ? Math.min(100, Math.round((totalLancado / metaMensal) * 100)) : 0;
-  var corMinima = pctMinima >= 100 ? 'var(--green)' : (pctMinima >= 70 ? 'var(--amber)' : 'var(--red)');
-  html += '<div class="meta-nivel">';
-  html += '<div class="meta-nivel-header">';
-  html += '<span class="meta-nivel-nome">🥉 Meta Mínima</span>';
-  html += '<span class="meta-nivel-valor">' + fmtMoney(metaMensal) + '</span>';
-  html += '<span class="meta-nivel-pct" style="color:' + corMinima + ';">' + pctMinima + '%</span>';
-  html += '</div>';
-  html += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctMinima + '%;background:' + corMinima + ';"></div></div>';
-  html += '<div class="meta-nivel-status" style="color:' + corMinima + ';">';
-  if(pctMinima >= 100) html += '✓ Meta mínima atingida!';
-  else html += 'Faltam ' + fmtMoney(metaMensal - totalLancado);
-  html += '</div>';
-  html += '</div>';
+  var niveisMensais = [];
+  if(metaMensal > 0){
+    var pctMinima = Math.min(100, Math.round((totalLancado / metaMensal) * 100));
+    var corMinima = pctMinima >= 100 ? 'var(--green)' : (pctMinima >= 70 ? 'var(--amber)' : 'var(--red)');
+    var htmlMinima = '';
+    htmlMinima += '<div class="meta-nivel">';
+    htmlMinima += '<div class="meta-nivel-header">';
+    htmlMinima += '<span class="meta-nivel-nome">🥉 Meta Mínima</span>';
+    htmlMinima += '<span class="meta-nivel-valor">' + fmtMoney(metaMensal) + '</span>';
+    htmlMinima += '<span class="meta-nivel-pct" style="color:' + corMinima + ';">' + pctMinima + '%</span>';
+    htmlMinima += '</div>';
+    htmlMinima += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctMinima + '%;background:' + corMinima + ';"></div></div>';
+    htmlMinima += '<div class="meta-nivel-status" style="color:' + corMinima + ';">';
+    if(pctMinima >= 100) htmlMinima += '✓ Meta mínima atingida!';
+    else htmlMinima += 'Faltam ' + fmtMoney(metaMensal - totalLancado);
+    htmlMinima += '</div>';
+    htmlMinima += '</div>';
+    niveisMensais.push({ nome:'🥉 Mínima', pct: pctMinima, html: htmlMinima });
+  }
 
-  // Meta Esperada
   if(metaEsperada > 0){
     var pctEsperada = Math.min(100, Math.round((totalLancado / metaEsperada) * 100));
     var corEsperada = pctEsperada >= 100 ? 'var(--green)' : (pctEsperada >= 70 ? 'var(--amber)' : 'var(--ink-soft)');
-    html += '<div class="meta-nivel">';
-    html += '<div class="meta-nivel-header">';
-    html += '<span class="meta-nivel-nome">🥈 Meta Esperada</span>';
-    html += '<span class="meta-nivel-valor">' + fmtMoney(metaEsperada) + '</span>';
-    html += '<span class="meta-nivel-pct" style="color:' + corEsperada + ';">' + pctEsperada + '%</span>';
-    html += '</div>';
-    html += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctEsperada + '%;background:' + corEsperada + ';"></div></div>';
-    html += '<div class="meta-nivel-status" style="color:' + corEsperada + ';">';
-    if(pctEsperada >= 100) html += '✓ Meta esperada atingida!';
-    else html += 'Faltam ' + fmtMoney(metaEsperada - totalLancado);
-    html += '</div>';
-    html += '</div>';
+    var htmlEsperada = '';
+    htmlEsperada += '<div class="meta-nivel">';
+    htmlEsperada += '<div class="meta-nivel-header">';
+    htmlEsperada += '<span class="meta-nivel-nome">🥈 Meta Esperada</span>';
+    htmlEsperada += '<span class="meta-nivel-valor">' + fmtMoney(metaEsperada) + '</span>';
+    htmlEsperada += '<span class="meta-nivel-pct" style="color:' + corEsperada + ';">' + pctEsperada + '%</span>';
+    htmlEsperada += '</div>';
+    htmlEsperada += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctEsperada + '%;background:' + corEsperada + ';"></div></div>';
+    htmlEsperada += '<div class="meta-nivel-status" style="color:' + corEsperada + ';">';
+    if(pctEsperada >= 100) htmlEsperada += '✓ Meta esperada atingida!';
+    else htmlEsperada += 'Faltam ' + fmtMoney(metaEsperada - totalLancado);
+    htmlEsperada += '</div>';
+    htmlEsperada += '</div>';
+    niveisMensais.push({ nome:'🥈 Esperada', pct: pctEsperada, html: htmlEsperada });
   }
 
-  // Meta Desafio
   if(metaDesafio > 0){
     var pctDesafio = Math.min(100, Math.round((totalLancado / metaDesafio) * 100));
     var corDesafio = pctDesafio >= 100 ? 'var(--green)' : (pctDesafio >= 70 ? 'var(--amber)' : 'var(--ink-soft)');
-    html += '<div class="meta-nivel">';
-    html += '<div class="meta-nivel-header">';
-    html += '<span class="meta-nivel-nome">🥇 Meta Desafio</span>';
-    html += '<span class="meta-nivel-valor">' + fmtMoney(metaDesafio) + '</span>';
-    html += '<span class="meta-nivel-pct" style="color:' + corDesafio + ';">' + pctDesafio + '%</span>';
-    html += '</div>';
-    html += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctDesafio + '%;background:' + corDesafio + ';"></div></div>';
-    html += '<div class="meta-nivel-status" style="color:' + corDesafio + ';">';
-    if(pctDesafio >= 100) html += '✓ Meta desafio atingida!';
-    else html += 'Faltam ' + fmtMoney(metaDesafio - totalLancado);
-    html += '</div>';
-    html += '</div>';
+    var htmlDesafio = '';
+    htmlDesafio += '<div class="meta-nivel">';
+    htmlDesafio += '<div class="meta-nivel-header">';
+    htmlDesafio += '<span class="meta-nivel-nome">🥇 Meta Desafio</span>';
+    htmlDesafio += '<span class="meta-nivel-valor">' + fmtMoney(metaDesafio) + '</span>';
+    htmlDesafio += '<span class="meta-nivel-pct" style="color:' + corDesafio + ';">' + pctDesafio + '%</span>';
+    htmlDesafio += '</div>';
+    htmlDesafio += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctDesafio + '%;background:' + corDesafio + ';"></div></div>';
+    htmlDesafio += '<div class="meta-nivel-status" style="color:' + corDesafio + ';">';
+    if(pctDesafio >= 100) htmlDesafio += '✓ Meta desafio atingida!';
+    else htmlDesafio += 'Faltam ' + fmtMoney(metaDesafio - totalLancado);
+    htmlDesafio += '</div>';
+    htmlDesafio += '</div>';
+    niveisMensais.push({ nome:'🥇 Desafio', pct: pctDesafio, html: htmlDesafio });
   }
+
+  niveisMensais.sort(function(a, b){
+    var atingidoA = a.pct >= 100 ? 1 : 0;
+    var atingidoB = b.pct >= 100 ? 1 : 0;
+    return atingidoA - atingidoB;
+  });
+
+  niveisMensais.forEach(function(n){
+    html += n.html;
+  });
 
   html += '</div>';
   html += '</div>';
