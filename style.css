@@ -1602,3 +1602,29 @@ html[data-theme="dark"] #sidebar-nav{
   font-size:11px;
   font-weight:600;
 }
+
+.meta-kpis-row{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+}
+.meta-kpi-item{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:140px;
+}
+.meta-kpi-item .meta-num{
+  font-family:'Outfit', sans-serif;
+  font-weight:800;
+  font-size:22px;
+  color:var(--ink);
+  line-height:1;
+}
+.meta-kpi-item .meta-lbl{
+  font-size:10px;
+  font-weight:600;
+  color:var(--ink-faint);
+  text-transform:uppercase;
+  letter-spacing:0.4px;
+}

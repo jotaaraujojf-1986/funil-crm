@@ -3987,49 +3987,50 @@ async function renderMetasView(){
   html += '<div class="metas-section">';
   html += '<h3>Meta de hoje — ' + diaTituloFmt + '</h3>';
 
-  // Calcular meta do dia para cada nível
-  function calcMetaDia(metaMes){
+  function calcMetaDiaValores(metaMes){
     if(!metaMes || metaMes <= 0) return null;
     var saldoRestante = Math.max(0, metaMes - totalLancadoAntesDia);
     var diasRestantes = diasUteisRestantes + 1;
-    return diasRestantes > 0 ? saldoRestante / diasRestantes : 0;
+    var metaDia = diasRestantes > 0 ? saldoRestante / diasRestantes : 0;
+    var diff = vendidoHoje - metaDia;
+    var saldoAposHoje = Math.max(0, metaMes - totalLancado);
+    var metaProxDias = diasUteisRestantes > 0 ? saldoAposHoje / diasUteisRestantes : 0;
+    var pct = metaDia > 0 ? Math.min(100, Math.round((vendidoHoje / metaDia) * 100)) : 0;
+    return { metaDia:metaDia, diff:diff, metaProxDias:metaProxDias, pct:pct };
   }
 
-  var metaDiaMinima = calcMetaDia(metaMensal);
-  var metaDiaEsperada = calcMetaDia(metaEsperada);
-  var metaDiaDesafio = calcMetaDia(metaDesafio);
-
   var niveis = [];
-  if(metaDiaMinima !== null) niveis.push({nome:'🥉 Mínima', meta:metaDiaMinima, cor:'var(--ink-soft)'});
-  if(metaDiaEsperada !== null) niveis.push({nome:'🥈 Esperada', meta:metaDiaEsperada, cor:'var(--blue)'});
-  if(metaDiaDesafio !== null) niveis.push({nome:'🥇 Desafio', meta:metaDiaDesafio, cor:'var(--amber)'});
+  if(metaMensal > 0) niveis.push({ nome:'🥉 Mínima', dados: calcMetaDiaValores(metaMensal) });
+  if(metaEsperada > 0) niveis.push({ nome:'🥈 Esperada', dados: calcMetaDiaValores(metaEsperada) });
+  if(metaDesafio > 0) niveis.push({ nome:'🥇 Desafio', dados: calcMetaDiaValores(metaDesafio) });
 
   if(niveis.length === 0){
     html += '<p class="anexo-vazio">Defina as metas no planejador para ver a meta do dia.</p>';
   } else {
-    html += '<div class="tres-metas-container">';
     niveis.forEach(function(nivel){
-      var diff = vendidoHoje - nivel.meta;
-      var pct = nivel.meta > 0 ? Math.min(100, Math.round((vendidoHoje / nivel.meta) * 100)) : 0;
-      var cor = pct >= 100 ? 'var(--green)' : (diff < 0 ? 'var(--red)' : 'var(--ink-soft)');
-      html += '<div class="meta-nivel">';
-      html += '<div class="meta-nivel-header">';
-      html += '<span class="meta-nivel-nome">' + nivel.nome + '</span>';
-      html += '<span class="meta-nivel-valor">' + fmtMoney(nivel.meta) + ' <span style="font-size:11px;color:var(--ink-faint);">necessário hoje</span></span>';
-      html += '<span class="meta-nivel-pct" style="color:' + cor + ';">' + pct + '%</span>';
+      var d = nivel.dados;
+      var corDiff = d.diff >= 0 ? 'var(--green)' : 'var(--red)';
+      var pct = d.pct;
+      var barColor = pct >= 100 ? 'var(--green)' : (pct >= 70 ? 'var(--amber)' : 'var(--steel)');
+
+      html += '<div class="meta-dia-card" style="margin-bottom:14px;">';
+      html += '<div class="meta-dia-label" style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">' + nivel.nome + '</div>';
+      html += '<div class="meta-kpis-row">';
+      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(d.metaDia) + '</div><div class="meta-lbl">Meta de hoje (recalculada)</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(vendidoHoje) + '</div><div class="meta-lbl">Vendido hoje</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:' + corDiff + ';">' + (d.diff >= 0 ? '' : '') + fmtMoney(d.diff) + '</div><div class="meta-lbl">Diferença</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--blue);">' + fmtMoney(d.metaProxDias) + '</div><div class="meta-lbl">Meta recalculada próx. dias</div></div>';
       html += '</div>';
-      html += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pct + '%;background:' + cor + ';"></div></div>';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
-      html += '<span style="font-size:11px;color:var(--ink-faint);">Vendido hoje: <strong style="color:var(--ink);">' + fmtMoney(vendidoHoje) + '</strong></span>';
-      if(pct >= 100){
-        html += '<span class="meta-nivel-status" style="color:var(--green);">✓ Meta do dia atingida!</span>';
-      } else {
-        html += '<span class="meta-nivel-status" style="color:var(--red);">Faltam ' + fmtMoney(nivel.meta - vendidoHoje) + '</span>';
+      html += '<div class="meta-progress-bar" style="height:6px;background:var(--line);border-radius:999px;overflow:hidden;margin:10px 0 6px;">';
+      html += '<div style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:999px;transition:width .4s;"></div>';
+      html += '</div>';
+      html += '<p class="meta-dia-label">' + pct + '% da meta de hoje · faltam ' + fmtMoney(Math.max(0, d.metaDia - vendidoHoje)) + ' para fechar o dia · ' + diasUteisRestantes + ' dia(s) útil(eis) restantes no mês</p>';
+      html += '</div>';
+
+      if(niveis.indexOf(nivel) < niveis.length - 1){
+        html += '<div style="border-top:1px solid var(--line);margin:4px 0 14px;"></div>';
       }
-      html += '</div>';
-      html += '</div>';
     });
-    html += '</div>';
   }
 
   html += '</div>';
