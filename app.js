@@ -4123,32 +4123,29 @@ async function renderMetasView(){
 
   html += '</div>'; // fecha metas-duo-grid
 
-  html += '<div class="metas-duo-grid" style="margin-bottom:16px;">';
-
-  // Coluna esquerda: Sábados
-  html += '<div class="metas-section" style="margin-bottom:0;">';
-  html += '<h3>Sábados que vou trabalhar</h3>';
-  html += '<div class="sabados-grid">';
-  sabadosDoMes.forEach(function(dataStr){
-    var d = new Date(dataStr + 'T00:00:00');
-    var label = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0');
-    var ativo = sabadosUteis.indexOf(dataStr) !== -1;
-    html += '<div class="sabado-chip' + (ativo?' ativo':'') + '" data-sabado="' + dataStr + '">' + label + '</div>';
-  });
-  html += '</div>';
-  html += '</div>';
-
-  // Coluna direita: Lançar vendas
-  html += '<div class="metas-section" style="margin-bottom:0;">';
+  html += '<div class="metas-section" style="margin-bottom:16px;">';
   html += '<h3>Lançar vendas do dia</h3>';
   html += '<div class="row2">';
   html += '<div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + hojeStr + '"></div>';
   html += '<div class="field"><label>Valor vendido (R$)</label><input type="text" id="lanc-valor" inputmode="numeric" placeholder="0,00"></div>';
   html += '</div>';
   html += '<div class="field"><label>Descrição (opcional)</label><input type="text" id="lanc-desc" placeholder="Ex: Venda balcão, pedido recorrente..."></div>';
-  html += '<button class="btn-primary" id="btn-lancar-venda">Registrar lançamento</button>';
-  html += '</div>';
 
+  if(sabadosDoMes.length > 0){
+    html += '<div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">';
+    html += '<label style="font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.4px; display:block; margin-bottom:8px;">Sábados que vou trabalhar</label>';
+    html += '<div class="sabados-grid">';
+    sabadosDoMes.forEach(function(dataStr){
+      var d = new Date(dataStr + 'T00:00:00');
+      var label = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0');
+      var ativo = sabadosUteis.indexOf(dataStr) !== -1;
+      html += '<div class="sabado-chip' + (ativo?' ativo':'') + '" data-sabado="' + dataStr + '">' + label + '</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+  }
+
+  html += '<button class="btn-primary" style="margin-top:14px;" id="btn-lancar-venda">Registrar lançamento</button>';
   html += '</div>';
 
   html += '<div class="metas-section metas-grid-full">';
