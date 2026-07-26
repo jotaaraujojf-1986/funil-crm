@@ -1130,7 +1130,11 @@ async function salvarMetaMensal(ano, mes, valorMinima, valorEsperada, valorDesaf
     valor_desafio: Number(valorDesafio) || 0,
     equipe_id: equipeAtual ? equipeAtual.id : null
   });
-  if(res.error){ console.error('Erro ao salvar meta', res.error); showSyncError(); return false; }
+  if(res.error){
+    console.error('Erro ao salvar meta mes=' + mes + ' user=' + uidSalvar, res.error.message, res.error.details, res.error.hint);
+    showSyncError();
+    return false;
+  }
   return true;
 }
 
