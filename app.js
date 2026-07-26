@@ -1134,6 +1134,118 @@ async function salvarMetaMensal(ano, mes, valorMinima, valorEsperada, valorDesaf
   return true;
 }
 
+async function abrirPainelLancamentos(dataStr){
+  var d = new Date(dataStr + 'T00:00:00');
+  var titulo = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+
+  var res = await sb.from('lancamentos_diarios').select('*')
+    .eq('user_id', getUserIdParaSalvar())
+    .eq('data', dataStr)
+    .order('created_at', {ascending:true});
+
+  if(res.error || !res.data || !res.data.length) return;
+
+  var modal = document.getElementById('modal-confirm');
+  var overlay = document.getElementById('overlay-confirm');
+
+  function renderLista(){
+    modal.innerHTML =
+      '<h2>Lançamentos — ' + titulo + '</h2>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;margin:16px 0;" id="lista-lanc-modal">' +
+      res.data.map(function(l){
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;" id="lanc-row-' + l.id + '">' +
+          '<div style="flex:1;">' +
+            '<div style="font-weight:700;font-size:14px;">' + fmtMoney(l.valor) + '</div>' +
+            (l.descricao ? '<div style="font-size:12px;color:var(--ink-soft);">' + escapeHtml(l.descricao) + '</div>' : '') +
+          '</div>' +
+          '<button class="btn-ghost" style="font-size:12px;padding:4px 10px;" data-editar-lanc="' + l.id + '" data-lanc-valor="' + l.valor + '" data-lanc-desc="' + escapeHtml(l.descricao||'') + '">✏️ Editar</button>' +
+          '<button class="btn-ghost" style="font-size:12px;padding:4px 10px;color:var(--red);" data-excluir-lanc="' + l.id + '">✕</button>' +
+        '</div>' +
+        '<div id="form-editar-lanc-' + l.id + '" style="display:none;margin-top:4px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;">' +
+          '<div class="row2" style="margin-bottom:8px;">' +
+            '<div class="field" style="margin:0;"><label>Valor (R$)</label><input type="text" id="edit-lanc-valor-' + l.id + '" value="' + fmtMoney(l.valor) + '" inputmode="numeric"></div>' +
+            '<div class="field" style="margin:0;"><label>Descrição</label><input type="text" id="edit-lanc-desc-' + l.id + '" value="' + escapeHtml(l.descricao||'') + '" placeholder="Opcional..."></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;">' +
+            '<button class="btn-primary" style="font-size:13px;" data-salvar-lanc="' + l.id + '">Salvar</button>' +
+            '<button class="btn-ghost" style="font-size:13px;" data-cancelar-lanc="' + l.id + '">Cancelar</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+      '</div>' +
+      '<div style="text-align:right;"><button class="btn-ghost" id="btn-fechar-lanc-modal">Fechar</button></div>';
+
+    overlay.classList.add('open');
+
+    document.getElementById('btn-fechar-lanc-modal').addEventListener('click', function(){
+      overlay.classList.remove('open');
+    });
+
+    // Editar
+    modal.querySelectorAll('[data-editar-lanc]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-editar-lanc');
+        var form = document.getElementById('form-editar-lanc-' + id);
+        form.style.display = form.style.display === 'block' ? 'none' : 'block';
+      });
+    });
+
+    // Cancelar edição
+    modal.querySelectorAll('[data-cancelar-lanc]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-cancelar-lanc');
+        document.getElementById('form-editar-lanc-' + id).style.display = 'none';
+      });
+    });
+
+    // Salvar edição
+    modal.querySelectorAll('[data-salvar-lanc]').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        var id = btn.getAttribute('data-salvar-lanc');
+        var novoValor = parseValorMascarado(document.getElementById('edit-lanc-valor-' + id).value);
+        var novaDesc = document.getElementById('edit-lanc-desc-' + id).value.trim();
+        if(!novoValor || novoValor <= 0){ toast('Informe um valor válido.', 'erro'); return; }
+        btn.disabled = true; btn.textContent = 'Salvando...';
+        var r = await sb.from('lancamentos_diarios').update({ valor: novoValor, descricao: novaDesc || null }).eq('id', id);
+        if(r.error){ toast('Erro ao salvar.', 'erro'); btn.disabled = false; btn.textContent = 'Salvar'; return; }
+        toast('Lançamento atualizado!', 'sucesso');
+        // Atualizar na lista local
+        var lanc = res.data.find(function(l){ return l.id === id; });
+        if(lanc){ lanc.valor = novoValor; lanc.descricao = novaDesc; }
+        overlay.classList.remove('open');
+        renderMetasView();
+      });
+    });
+
+    // Excluir
+    modal.querySelectorAll('[data-excluir-lanc]').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        var id = btn.getAttribute('data-excluir-lanc');
+        var ok = await customConfirm('Essa ação não pode ser desfeita.', 'Excluir este lançamento?');
+        if(!ok) return;
+        var r = await sb.from('lancamentos_diarios').delete().eq('id', id);
+        if(r.error){ toast('Erro ao excluir.', 'erro'); return; }
+        toast('Lançamento excluído.', 'sucesso');
+        res.data = res.data.filter(function(l){ return l.id !== id; });
+        if(res.data.length === 0){ overlay.classList.remove('open'); }
+        else { renderLista(); }
+        renderMetasView();
+      });
+    });
+
+    // Máscara no input de edição
+    modal.querySelectorAll('[id^="edit-lanc-valor-"]').forEach(function(input){
+      input.addEventListener('input', function(){
+        var d = input.value.replace(/\D/g,'');
+        if(!d){ input.value = ''; return; }
+        input.value = (parseInt(d,10)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+      });
+    });
+  }
+
+  renderLista();
+}
+
 async function loadLancamentosDoAno(ano){
   var inicio = ano + '-01-01';
   var fim = ano + '-12-31';
@@ -4155,7 +4267,7 @@ async function renderMetasView(){
     var ehSabUtil = sabadosUteis.indexOf(dataStr) !== -1;
     var util = !ehDom && (!ehSab || ehSabUtil);
     var cls = 'cal-lanc-cell' + (ehHoje?' hoje':'') + (!util?' nao-util':'') + (lancDia?' tem-lancamento':'');
-    html += '<div class="' + cls + '">';
+    html += '<div class="' + cls + '" data-data="' + dataStr + '" ' + (lancDia ? 'style="cursor:pointer;"' : '') + '>';
     html += '<div class="cal-lanc-num">' + dia + '</div>';
     if(lancDia) html += '<div class="cal-lanc-valor">' + fmtMoney(lancDia.total) + '</div>';
     html += '</div>';
@@ -4258,6 +4370,15 @@ async function renderMetasView(){
   html += '</div>';
 
   container.innerHTML = html;
+
+  // Listeners das células do calendário de lançamentos
+  container.querySelectorAll('.cal-lanc-cell.tem-lancamento').forEach(function(cel){
+    cel.addEventListener('click', function(){
+      var dataStr = cel.getAttribute('data-data');
+      if(!dataStr) return;
+      abrirPainelLancamentos(dataStr);
+    });
+  });
 
   // Listeners sábados
   container.querySelectorAll('.sabado-chip').forEach(function(chip){
