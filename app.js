@@ -3979,28 +3979,59 @@ async function renderMetasView(){
 
   // Linha 1: card de hoje (largura total)
   html += '<div class="metas-grid metas-grid-full" style="display:block;">';
-  html += '<div class="metas-section" style="border-left:4px solid var(--amber);">';
-  html += '<h3>Meta de hoje — ' + (function(){ var d = new Date(); return d.getDate() + ' de ' + MESES_PT[d.getMonth()]; })() + '</h3>';
 
-  var metaHojeRecalc = (diasRestantes + 1) > 0 ? faltaParaMetaNoInicioDoDia / (diasRestantes + 1) : metaDia;
-  var diferencaHojeRecalc = vendidoHoje - metaHojeRecalc;
-  var pctHojeRecalc = metaHojeRecalc > 0 ? Math.min(100, Math.round((vendidoHoje / metaHojeRecalc) * 100)) : 0;
-  var faltaHojeRecalc = Math.max(0, metaHojeRecalc - vendidoHoje);
-  var metaProxDias = diasRestantes > 0 ? Math.max(0, faltaParaMeta) / diasRestantes : 0;
+  var diaTituloFmt = (function(){ var d = new Date(); return d.getDate() + ' de ' + MESES_PT[d.getMonth()]; })();
+  var totalLancadoAntesDia = totalLancadoAntesDehoje;
+  var diasUteisRestantes = diasRestantes;
 
-  html += '<div style="display:flex; align-items:baseline; gap:32px; flex-wrap:wrap; margin-bottom:14px;">';
-  html += '<div><div class="meta-dia-num">' + fmtMoney(metaHojeRecalc) + '</div><div class="meta-dia-label">Meta de hoje (recalculada)</div></div>';
-  html += '<div><div class="meta-dia-num">' + fmtMoney(vendidoHoje) + '</div><div class="meta-dia-label">Vendido hoje</div></div>';
-  html += '<div><div class="meta-dia-num" style="color:' + (diferencaHojeRecalc >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (diferencaHojeRecalc >= 0 ? '+' : '') + fmtMoney(diferencaHojeRecalc) + '</div><div class="meta-dia-label">Diferença</div></div>';
-  if(diasRestantes > 0){
-    html += '<div><div class="meta-dia-num" style="color:var(--blue);">' + fmtMoney(metaProxDias) + '</div><div class="meta-dia-label">Meta recalculada próx. dias</div></div>';
+  html += '<div class="metas-section">';
+  html += '<h3>Meta de hoje — ' + diaTituloFmt + '</h3>';
+
+  // Calcular meta do dia para cada nível
+  function calcMetaDia(metaMes){
+    if(!metaMes || metaMes <= 0) return null;
+    var saldoRestante = Math.max(0, metaMes - totalLancadoAntesDia);
+    var diasRestantes = diasUteisRestantes + 1;
+    return diasRestantes > 0 ? saldoRestante / diasRestantes : 0;
   }
-  html += '</div>';
-  html += '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pctHojeRecalc + '%;"></div></div>';
-  html += '<p class="meta-box-sub">' + pctHojeRecalc + '% da meta de hoje · ';
-  html += faltaHojeRecalc > 0 ? 'faltam ' + fmtMoney(faltaHojeRecalc) + ' para fechar o dia' : 'meta do dia atingida! 🎉';
-  if(diasRestantes > 0) html += ' · ' + diasRestantes + ' dia(s) útil(eis) restantes no mês';
-  html += '</p>';
+
+  var metaDiaMinima = calcMetaDia(metaMensal);
+  var metaDiaEsperada = calcMetaDia(metaEsperada);
+  var metaDiaDesafio = calcMetaDia(metaDesafio);
+
+  var niveis = [];
+  if(metaDiaMinima !== null) niveis.push({nome:'🥉 Mínima', meta:metaDiaMinima, cor:'var(--ink-soft)'});
+  if(metaDiaEsperada !== null) niveis.push({nome:'🥈 Esperada', meta:metaDiaEsperada, cor:'var(--blue)'});
+  if(metaDiaDesafio !== null) niveis.push({nome:'🥇 Desafio', meta:metaDiaDesafio, cor:'var(--amber)'});
+
+  if(niveis.length === 0){
+    html += '<p class="anexo-vazio">Defina as metas no planejador para ver a meta do dia.</p>';
+  } else {
+    html += '<div class="tres-metas-container">';
+    niveis.forEach(function(nivel){
+      var diff = vendidoHoje - nivel.meta;
+      var pct = nivel.meta > 0 ? Math.min(100, Math.round((vendidoHoje / nivel.meta) * 100)) : 0;
+      var cor = pct >= 100 ? 'var(--green)' : (diff < 0 ? 'var(--red)' : 'var(--ink-soft)');
+      html += '<div class="meta-nivel">';
+      html += '<div class="meta-nivel-header">';
+      html += '<span class="meta-nivel-nome">' + nivel.nome + '</span>';
+      html += '<span class="meta-nivel-valor">' + fmtMoney(nivel.meta) + ' <span style="font-size:11px;color:var(--ink-faint);">necessário hoje</span></span>';
+      html += '<span class="meta-nivel-pct" style="color:' + cor + ';">' + pct + '%</span>';
+      html += '</div>';
+      html += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pct + '%;background:' + cor + ';"></div></div>';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
+      html += '<span style="font-size:11px;color:var(--ink-faint);">Vendido hoje: <strong style="color:var(--ink);">' + fmtMoney(vendidoHoje) + '</strong></span>';
+      if(pct >= 100){
+        html += '<span class="meta-nivel-status" style="color:var(--green);">✓ Meta do dia atingida!</span>';
+      } else {
+        html += '<span class="meta-nivel-status" style="color:var(--red);">Faltam ' + fmtMoney(nivel.meta - vendidoHoje) + '</span>';
+      }
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
   html += '</div>';
   html += '</div>';
 
