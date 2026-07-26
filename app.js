@@ -4058,7 +4058,7 @@ async function renderMetasView(){
   if(papelAtual === 'admin' && equipeAtual && !filtroVendedorId){
     var todasMetasMes = await Promise.all(
       Object.keys(membrosDaEquipe).map(function(uid){
-        return sb.from('metas_mensais').select('valor')
+        return sb.from('metas_mensais').select('valor, valor_esperada, valor_desafio')
           .eq('equipe_id', equipeAtual.id)
           .eq('user_id', uid)
           .eq('ano', anoAtual)
@@ -4068,6 +4068,12 @@ async function renderMetasView(){
     );
     metaMensal = todasMetasMes.reduce(function(soma, res){
       return soma + (res.data ? Number(res.data.valor) || 0 : 0);
+    }, 0);
+    metaEsperada = todasMetasMes.reduce(function(soma, res){
+      return soma + (res.data ? Number(res.data.valor_esperada) || 0 : 0);
+    }, 0);
+    metaDesafio = todasMetasMes.reduce(function(soma, res){
+      return soma + (res.data ? Number(res.data.valor_desafio) || 0 : 0);
     }, 0);
   } else {
     metaMensal = getMetaMes(mes);
