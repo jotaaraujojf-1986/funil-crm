@@ -1122,7 +1122,7 @@ html[data-theme="dark"] .modal-trello-col-atividade{ background: rgba(255,255,25
 
 .metas-view{ max-width:1320px; margin:0 auto; padding:18px 28px 60px; display:none; }
 .metas-view.open{ display:block; }
-.metas-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.metas-grid{ display:grid; grid-template-columns:1.8fr 1fr; gap:16px; margin-bottom:16px; }
 .metas-grid-full{ grid-column: 1 / -1; }
 @media (max-width: 880px){ .metas-grid{ grid-template-columns:1fr; } }
 .metas-section{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; margin-bottom:16px; box-shadow:var(--shadow); }
