@@ -4123,25 +4123,23 @@ async function renderMetasView(){
 
   html += '</div>'; // fecha metas-duo-grid
 
-  // Card direito: sábados + lançamento
-  html += '<div class="metas-grid metas-grid-full" style="display:block;">';
-  html += '<div>';
+  html += '<div class="metas-duo-grid" style="margin-bottom:16px;">';
 
-  html += '<div class="metas-section">';
+  // Coluna esquerda: Sábados
+  html += '<div class="metas-section" style="margin-bottom:0;">';
+  html += '<h3>Sábados que vou trabalhar</h3>';
+  html += '<div class="sabados-grid">';
+  sabadosDoMes.forEach(function(dataStr){
+    var d = new Date(dataStr + 'T00:00:00');
+    var label = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0');
+    var ativo = sabadosUteis.indexOf(dataStr) !== -1;
+    html += '<div class="sabado-chip' + (ativo?' ativo':'') + '" data-sabado="' + dataStr + '">' + label + '</div>';
+  });
+  html += '</div>';
+  html += '</div>';
 
-  if(sabadosDoMes.length > 0 && !(papelAtual === 'admin' && equipeAtual && !filtroVendedorId)){
-    html += '<h3>Sábados que vou trabalhar</h3>';
-    html += '<div class="sabados-grid">';
-    sabadosDoMes.forEach(function(dataStr){
-      var d = new Date(dataStr + 'T00:00:00');
-      var label = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0');
-      var ativo = sabadosUteis.indexOf(dataStr) !== -1;
-      html += '<div class="sabado-chip' + (ativo?' ativo':'') + '" data-sabado="' + dataStr + '">' + label + '</div>';
-    });
-    html += '</div>';
-    html += '<div style="border-top:1px solid var(--line); margin:14px 0;"></div>';
-  }
-
+  // Coluna direita: Lançar vendas
+  html += '<div class="metas-section" style="margin-bottom:0;">';
   html += '<h3>Lançar vendas do dia</h3>';
   html += '<div class="row2">';
   html += '<div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + hojeStr + '"></div>';
@@ -4149,9 +4147,9 @@ async function renderMetasView(){
   html += '</div>';
   html += '<div class="field"><label>Descrição (opcional)</label><input type="text" id="lanc-desc" placeholder="Ex: Venda balcão, pedido recorrente..."></div>';
   html += '<button class="btn-primary" id="btn-lancar-venda">Registrar lançamento</button>';
-  html += '</div>'; // fecha metas-section
-  html += '</div>'; // fecha div wrapper
-  html += '</div>'; // fecha metas-grid-full
+  html += '</div>';
+
+  html += '</div>';
 
   html += '<div class="metas-section metas-grid-full">';
   html += '<h3>Lançamentos do mês</h3>';
