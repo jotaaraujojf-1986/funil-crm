@@ -1102,31 +1102,35 @@ async function loadMetasMensais(ano){
   var query = aplicarFiltroUsuario(sb.from('metas_mensais').select('*'));
   var res = await query.eq('ano', ano).order('mes', {ascending:true});
   if(res.error){ console.error('Erro ao carregar metas mensais', res.error); return []; }
-  return res.data.map(function(r){ return {mes: r.mes, valor: Number(r.valor)||0}; });
+  return res.data.map(function(r){
+    return {
+      mes: r.mes,
+      valor: Number(r.valor)||0,
+      valorEsperada: Number(r.valor_esperada)||0,
+      valorDesafio: Number(r.valor_desafio)||0
+    };
+  });
 }
 
-async function salvarMetaMensal(ano, mes, valor){
+async function salvarMetaMensal(ano, mes, valorMinima, valorEsperada, valorDesafio){
   var uidSalvar = getUserIdParaSalvar();
   await sb.from('metas_mensais').delete()
     .eq('user_id', uidSalvar)
     .eq('ano', Number(ano))
     .eq('mes', Number(mes));
 
-  if(!valor || valor <= 0) return true;
+  if((!valorMinima || valorMinima <= 0) && (!valorEsperada || valorEsperada <= 0) && (!valorDesafio || valorDesafio <= 0)) return true;
 
   var res = await sb.from('metas_mensais').insert({
     user_id: uidSalvar,
     ano: Number(ano),
     mes: Number(mes),
-    valor: Number(valor),
+    valor: Number(valorMinima) || 0,
+    valor_esperada: Number(valorEsperada) || 0,
+    valor_desafio: Number(valorDesafio) || 0,
     equipe_id: equipeAtual ? equipeAtual.id : null
   });
-
-  if(res.error){
-    console.error('Erro ao salvar meta mensal', res.error);
-    showSyncError();
-    return false;
-  }
+  if(res.error){ console.error('Erro ao salvar meta', res.error); showSyncError(); return false; }
   return true;
 }
 
@@ -3908,6 +3912,9 @@ async function renderMetasView(){
     var found = metasMensaisAno.find(function(x){ return x.mes === m; });
     return found ? found.valor : 0;
   }
+  var metaEsperada = 0;
+  var metaDesafio = 0;
+
   // Admin vendo todos: soma as metas de todos os membros da equipe
   if(papelAtual === 'admin' && equipeAtual && !filtroVendedorId){
     var todasMetasMes = await Promise.all(
@@ -3925,6 +3932,12 @@ async function renderMetasView(){
     }, 0);
   } else {
     metaMensal = getMetaMes(mes);
+    var metaMensalData = metasMensaisAno.find(function(m){ return m.mes === mes; });
+    if(metaMensalData){
+      metaMensal = metaMensalData.valor || 0;
+      metaEsperada = metaMensalData.valorEsperada || 0;
+      metaDesafio = metaMensalData.valorDesafio || 0;
+    }
   }
   var metaDia = totalDiasUteis > 0 ? metaMensal / totalDiasUteis : 0;
   var totalLancado = lancamentos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
@@ -4005,13 +4018,61 @@ async function renderMetasView(){
   html += '<div class="kpi"><div class="num">' + diasUteisAteHoje + '</div><div class="lbl">Dias trabalhados</div></div>';
   html += '<div class="kpi"><div class="num" style="color:' + (diasRestantes <= 3 ? 'var(--red)' : diasRestantes <= 7 ? 'var(--amber-dark)' : 'var(--ink)') + ';">' + diasRestantes + '</div><div class="lbl">Dias úteis restantes</div></div>';
   html += '</div>';
-  html += '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pctMes + '%;"></div></div>';
-  html += '<p class="meta-box-sub">' + pctMes + '% da meta mensal · ' + (faltaMes > 0 ? 'faltam ' + fmtMoney(faltaMes) : 'meta mensal atingida! 🎉') + '</p>';
-  if(diasUteisAteHoje > 0){
-    html += diferenca >= 0
-      ? '<p class="meta-status-ahead">▲ Você está ' + fmtMoney(Math.abs(diferenca)) + ' à frente da meta acumulada até hoje</p>'
-      : '<p class="meta-status-behind">▼ Você está ' + fmtMoney(Math.abs(diferenca)) + ' abaixo da meta acumulada até hoje</p>';
+  html += '<div class="tres-metas-container">';
+
+  // Meta Mínima
+  var pctMinima = metaMensal > 0 ? Math.min(100, Math.round((totalLancado / metaMensal) * 100)) : 0;
+  var corMinima = pctMinima >= 100 ? 'var(--green)' : (pctMinima >= 70 ? 'var(--amber)' : 'var(--red)');
+  html += '<div class="meta-nivel">';
+  html += '<div class="meta-nivel-header">';
+  html += '<span class="meta-nivel-nome">🥉 Meta Mínima</span>';
+  html += '<span class="meta-nivel-valor">' + fmtMoney(metaMensal) + '</span>';
+  html += '<span class="meta-nivel-pct" style="color:' + corMinima + ';">' + pctMinima + '%</span>';
+  html += '</div>';
+  html += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctMinima + '%;background:' + corMinima + ';"></div></div>';
+  html += '<div class="meta-nivel-status" style="color:' + corMinima + ';">';
+  if(pctMinima >= 100) html += '✓ Meta mínima atingida!';
+  else html += 'Faltam ' + fmtMoney(metaMensal - totalLancado);
+  html += '</div>';
+  html += '</div>';
+
+  // Meta Esperada
+  if(metaEsperada > 0){
+    var pctEsperada = Math.min(100, Math.round((totalLancado / metaEsperada) * 100));
+    var corEsperada = pctEsperada >= 100 ? 'var(--green)' : (pctEsperada >= 70 ? 'var(--amber)' : 'var(--ink-soft)');
+    html += '<div class="meta-nivel">';
+    html += '<div class="meta-nivel-header">';
+    html += '<span class="meta-nivel-nome">🥈 Meta Esperada</span>';
+    html += '<span class="meta-nivel-valor">' + fmtMoney(metaEsperada) + '</span>';
+    html += '<span class="meta-nivel-pct" style="color:' + corEsperada + ';">' + pctEsperada + '%</span>';
+    html += '</div>';
+    html += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctEsperada + '%;background:' + corEsperada + ';"></div></div>';
+    html += '<div class="meta-nivel-status" style="color:' + corEsperada + ';">';
+    if(pctEsperada >= 100) html += '✓ Meta esperada atingida!';
+    else html += 'Faltam ' + fmtMoney(metaEsperada - totalLancado);
+    html += '</div>';
+    html += '</div>';
   }
+
+  // Meta Desafio
+  if(metaDesafio > 0){
+    var pctDesafio = Math.min(100, Math.round((totalLancado / metaDesafio) * 100));
+    var corDesafio = pctDesafio >= 100 ? 'var(--green)' : (pctDesafio >= 70 ? 'var(--amber)' : 'var(--ink-soft)');
+    html += '<div class="meta-nivel">';
+    html += '<div class="meta-nivel-header">';
+    html += '<span class="meta-nivel-nome">🥇 Meta Desafio</span>';
+    html += '<span class="meta-nivel-valor">' + fmtMoney(metaDesafio) + '</span>';
+    html += '<span class="meta-nivel-pct" style="color:' + corDesafio + ';">' + pctDesafio + '%</span>';
+    html += '</div>';
+    html += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctDesafio + '%;background:' + corDesafio + ';"></div></div>';
+    html += '<div class="meta-nivel-status" style="color:' + corDesafio + ';">';
+    if(pctDesafio >= 100) html += '✓ Meta desafio atingida!';
+    else html += 'Faltam ' + fmtMoney(metaDesafio - totalLancado);
+    html += '</div>';
+    html += '</div>';
+  }
+
+  html += '</div>';
   html += '</div>';
 
   // Card direito: sábados + lançamento
@@ -4090,11 +4151,15 @@ async function renderMetasView(){
   } else {
     html += '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;" id="planejador-metas-grid">';
     for(var pm = 0; pm < 12; pm++){
-      var metaPmFound = metasMensaisAno.find(function(x){ return x.mes === pm; });
-      var metaPmVal = metaPmFound ? metaPmFound.valor : 0;
-      html += '<div class="field" style="margin:0;">';
+      var metaMesVal = metasMensaisAno.find(function(m){ return m.mes === pm; });
+      var valMinima = metaMesVal && metaMesVal.valor ? fmtMoney(metaMesVal.valor) : '';
+      var valEsperada = metaMesVal && metaMesVal.valorEsperada ? fmtMoney(metaMesVal.valorEsperada) : '';
+      var valDesafio = metaMesVal && metaMesVal.valorDesafio ? fmtMoney(metaMesVal.valorDesafio) : '';
+      html += '<div class="field">';
       html += '<label>' + MESES_PT[pm].charAt(0).toUpperCase() + MESES_PT[pm].slice(1) + '</label>';
-      html += '<input type="text" inputmode="numeric" class="meta-mes-input" data-mes="' + pm + '" value="' + (metaPmVal > 0 ? formatValorParaInput(metaPmVal) : '') + '" placeholder="Sem meta">';
+      html += '<input type="text" class="meta-planejador-input" data-mes="' + pm + '" data-tipo="minima" placeholder="🥉 Mínima" value="' + valMinima + '" style="margin-bottom:4px;">';
+      html += '<input type="text" class="meta-planejador-input" data-mes="' + pm + '" data-tipo="esperada" placeholder="🥈 Esperada" value="' + valEsperada + '" style="margin-bottom:4px;">';
+      html += '<input type="text" class="meta-planejador-input" data-mes="' + pm + '" data-tipo="desafio" placeholder="🥇 Desafio" value="' + valDesafio + '">';
       html += '</div>';
     }
     html += '</div>';
@@ -4259,7 +4324,7 @@ async function renderMetasView(){
   });
 
   // Listeners do planejador
-  document.querySelectorAll('.meta-mes-input').forEach(function(input){
+  document.querySelectorAll('.meta-planejador-input').forEach(function(input){
     input.addEventListener('input', function(){
       this.value = maskValor(this.value);
     });
@@ -4272,31 +4337,23 @@ async function renderMetasView(){
       btn.disabled = true;
       btn.textContent = 'Salvando...';
 
-      var inputs = document.querySelectorAll('.meta-mes-input');
-      var erros = 0;
-
-      for(var i = 0; i < inputs.length; i++){
-        var inp = inputs[i];
-        var m = Number(inp.getAttribute('data-mes'));
-        var valorDigitado = inp.value.replace(/\D/g, '');
-        var v = valorDigitado ? parseValorMascarado(inp.value) : 0;
-        if(v > 0){
-          var ok = await salvarMetaMensal(anoAtual, m, v);
-          if(!ok) erros++;
-        } else {
-          // campo vazio ou zero: apaga do banco pra não ficar lixo
-          await sb.from('metas_mensais').delete()
-            .eq('user_id', currentUserId)
-            .eq('ano', Number(anoAtual))
-            .eq('mes', Number(m));
-        }
+      var promessas = [];
+      for(var sm = 0; sm < 12; sm++){
+        var inputMinima = document.querySelector('.meta-planejador-input[data-mes="' + sm + '"][data-tipo="minima"]');
+        var inputEsperada = document.querySelector('.meta-planejador-input[data-mes="' + sm + '"][data-tipo="esperada"]');
+        var inputDesafio = document.querySelector('.meta-planejador-input[data-mes="' + sm + '"][data-tipo="desafio"]');
+        var vMin = inputMinima ? parseValorMascarado(inputMinima.value) : 0;
+        var vEsp = inputEsperada ? parseValorMascarado(inputEsperada.value) : 0;
+        var vDes = inputDesafio ? parseValorMascarado(inputDesafio.value) : 0;
+        promessas.push(salvarMetaMensal(anoAtual, sm, vMin, vEsp, vDes));
       }
-
-      if(erros === 0){
-        toast('Planejamento de metas salvo!', 'sucesso');
-        marcarEtapaOnboarding('meta_definida');
-      } else {
+      var resultados = await Promise.all(promessas);
+      var algumErro = resultados.some(function(r){ return r === false; });
+      if(algumErro){
         toast('Algumas metas não foram salvas. Verifique sua conexão.', 'erro');
+      } else {
+        toast('Metas salvas com sucesso!', 'sucesso');
+        marcarEtapaOnboarding('meta_definida');
       }
 
       btn.disabled = false;
