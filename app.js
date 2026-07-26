@@ -4240,15 +4240,15 @@ async function renderMetasView(){
   } else {
     html += '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;" id="planejador-metas-grid">';
     for(var pm = 0; pm < 12; pm++){
-      var metaMesVal = metasMensaisAno.find(function(m){ return m.mes === pm; });
+      var metaMesVal = metasMensaisAno.find(function(m){ return Number(m.mes) === (pm + 1); });
       var valMinima = metaMesVal && metaMesVal.valor ? fmtMoney(metaMesVal.valor) : '';
       var valEsperada = metaMesVal && metaMesVal.valorEsperada ? fmtMoney(metaMesVal.valorEsperada) : '';
       var valDesafio = metaMesVal && metaMesVal.valorDesafio ? fmtMoney(metaMesVal.valorDesafio) : '';
       html += '<div class="field">';
       html += '<label>' + MESES_PT[pm].charAt(0).toUpperCase() + MESES_PT[pm].slice(1) + '</label>';
-      html += '<input type="text" class="meta-planejador-input" data-mes="' + pm + '" data-tipo="minima" placeholder="🥉 Mínima" value="' + valMinima + '" style="margin-bottom:4px;">';
-      html += '<input type="text" class="meta-planejador-input" data-mes="' + pm + '" data-tipo="esperada" placeholder="🥈 Esperada" value="' + valEsperada + '" style="margin-bottom:4px;">';
-      html += '<input type="text" class="meta-planejador-input" data-mes="' + pm + '" data-tipo="desafio" placeholder="🥇 Desafio" value="' + valDesafio + '">';
+      html += '<input type="text" class="meta-planejador-input" data-mes="' + (pm + 1) + '" data-tipo="minima" placeholder="🥉 Mínima" value="' + valMinima + '" style="margin-bottom:4px;">';
+      html += '<input type="text" class="meta-planejador-input" data-mes="' + (pm + 1) + '" data-tipo="esperada" placeholder="🥈 Esperada" value="' + valEsperada + '" style="margin-bottom:4px;">';
+      html += '<input type="text" class="meta-planejador-input" data-mes="' + (pm + 1) + '" data-tipo="desafio" placeholder="🥇 Desafio" value="' + valDesafio + '">';
       html += '</div>';
     }
     html += '</div>';
@@ -4428,13 +4428,14 @@ async function renderMetasView(){
 
       var promessas = [];
       for(var sm = 0; sm < 12; sm++){
-        var inputMinima = document.querySelector('.meta-planejador-input[data-mes="' + sm + '"][data-tipo="minima"]');
-        var inputEsperada = document.querySelector('.meta-planejador-input[data-mes="' + sm + '"][data-tipo="esperada"]');
-        var inputDesafio = document.querySelector('.meta-planejador-input[data-mes="' + sm + '"][data-tipo="desafio"]');
+        var mesSalvar = sm + 1;
+        var inputMinima = document.querySelector('.meta-planejador-input[data-mes="' + mesSalvar + '"][data-tipo="minima"]');
+        var inputEsperada = document.querySelector('.meta-planejador-input[data-mes="' + mesSalvar + '"][data-tipo="esperada"]');
+        var inputDesafio = document.querySelector('.meta-planejador-input[data-mes="' + mesSalvar + '"][data-tipo="desafio"]');
         var vMin = inputMinima ? parseValorMascarado(inputMinima.value) : 0;
         var vEsp = inputEsperada ? parseValorMascarado(inputEsperada.value) : 0;
         var vDes = inputDesafio ? parseValorMascarado(inputDesafio.value) : 0;
-        promessas.push(salvarMetaMensal(anoAtual, sm, vMin, vEsp, vDes));
+        promessas.push(salvarMetaMensal(anoAtual, mesSalvar, vMin, vEsp, vDes));
       }
       var resultados = await Promise.all(promessas);
       var algumErro = resultados.some(function(r){ return r === false; });
