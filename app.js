@@ -4123,105 +4123,81 @@ async function renderMetasView(){
 
   html += '</div>'; // fecha metas-duo-grid
 
-  html += '<div class="metas-section" style="margin-bottom:16px;">';
-  html += '<h3>Lançar vendas do dia</h3>';
-  html += '<div style="display:grid; grid-template-columns:auto 1fr; gap:20px; align-items:start;">';
+  html += '<div style="display:grid; grid-template-columns:1.6fr 1fr; gap:16px; align-items:start; margin-bottom:16px;">';
 
-  // Coluna esquerda: Sábados
-  if(sabadosDoMes.length > 0){
-    html += '<div>';
-    html += '<label style="font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.4px; display:block; margin-bottom:8px;">Sábados</label>';
-    html += '<div style="display:flex; flex-direction:column; gap:6px;">';
-    sabadosDoMes.forEach(function(dataStr){
-      var d = new Date(dataStr + 'T00:00:00');
-      var label = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0');
-      var ativo = sabadosUteis.indexOf(dataStr) !== -1;
-      html += '<div class="sabado-chip' + (ativo?' ativo':'') + '" data-sabado="' + dataStr + '" style="text-align:center;">' + label + '</div>';
-    });
-    html += '</div>';
-    html += '</div>';
-  } else {
-    html += '<div></div>';
-  }
-
-  // Coluna direita: Formulário
-  html += '<div>';
-  html += '<div class="row2" style="margin-bottom:10px;">';
-  html += '<div class="field" style="margin-bottom:0;"><label>Data</label><input type="date" id="lanc-data" value="' + hojeStr + '"></div>';
-  html += '<div class="field" style="margin-bottom:0;"><label>Valor vendido (R$)</label><input type="text" id="lanc-valor" inputmode="numeric" placeholder="0,00"></div>';
-  html += '</div>';
-  html += '<div class="field"><label>Descrição (opcional)</label><input type="text" id="lanc-desc" placeholder="Ex: Venda balcão, pedido recorrente..."></div>';
-  html += '<button class="btn-primary" id="btn-lancar-venda">Registrar lançamento</button>';
-  html += '</div>';
-
-  html += '</div>'; // fecha grid
-  html += '</div>';
-
-  html += '<div class="metas-section metas-grid-full">';
+  // COLUNA ESQUERDA: Calendário de lançamentos
+  html += '<div class="metas-section" style="margin-bottom:0;">';
   html += '<h3>Lançamentos do mês</h3>';
 
   // Montar mapa de lançamentos por data
   var lancMapDia = {};
   lancamentos.forEach(function(l){
-    if(!lancMapDia[l.data]) lancMapDia[l.data] = { total:0, desc:[] };
+    if(!lancMapDia[l.data]) lancMapDia[l.data] = { total:0 };
     lancMapDia[l.data].total += Number(l.valor) || 0;
-    if(l.descricao) lancMapDia[l.data].desc.push(l.descricao);
   });
 
-  // Gerar calendário do mês
+  // Gerar calendário
   var primeiroDia = new Date(anoAtual, mes, 1);
   var ultimoDia = new Date(anoAtual, mes + 1, 0);
-  var diaSemanaInicio = primeiroDia.getDay(); // 0=dom
+  var diaSemanaInicio = primeiroDia.getDay();
   var totalDias = ultimoDia.getDate();
   var diasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
-  html += '<div class="cal-lancamentos">';
-
-  // Cabeçalho dos dias da semana
   html += '<div class="cal-lanc-grid">';
-  diasSemana.forEach(function(d){
-    html += '<div class="cal-lanc-header">' + d + '</div>';
-  });
-
-  // Células vazias antes do primeiro dia
-  for(var v = 0; v < diaSemanaInicio; v++){
-    html += '<div class="cal-lanc-cell vazio"></div>';
-  }
-
-  // Dias do mês
+  diasSemana.forEach(function(d){ html += '<div class="cal-lanc-header">' + d + '</div>'; });
+  for(var v = 0; v < diaSemanaInicio; v++){ html += '<div class="cal-lanc-cell vazio"></div>'; }
   for(var dia = 1; dia <= totalDias; dia++){
-    var dataStr = anoAtual + '-' + String(mes + 1).padStart(2,'0') + '-' + String(dia).padStart(2,'0');
+    var dataStr = anoAtual + '-' + String(mes+1).padStart(2,'0') + '-' + String(dia).padStart(2,'0');
     var lancDia = lancMapDia[dataStr];
     var ehHoje = dataStr === todayStr();
-    var ehSabado = new Date(dataStr + 'T00:00:00').getDay() === 6;
-    var ehDomingo = new Date(dataStr + 'T00:00:00').getDay() === 0;
-    var ehSabadoUtil = sabadosUteis.indexOf(dataStr) !== -1;
-    var diaUtil = !ehDomingo && (!ehSabado || ehSabadoUtil);
-
-    var classeDia = 'cal-lanc-cell';
-    if(ehHoje) classeDia += ' hoje';
-    if(!diaUtil) classeDia += ' nao-util';
-    if(lancDia) classeDia += ' tem-lancamento';
-
-    html += '<div class="' + classeDia + '" data-data="' + dataStr + '">';
+    var ehSab = new Date(dataStr + 'T00:00:00').getDay() === 6;
+    var ehDom = new Date(dataStr + 'T00:00:00').getDay() === 0;
+    var ehSabUtil = sabadosUteis.indexOf(dataStr) !== -1;
+    var util = !ehDom && (!ehSab || ehSabUtil);
+    var cls = 'cal-lanc-cell' + (ehHoje?' hoje':'') + (!util?' nao-util':'') + (lancDia?' tem-lancamento':'');
+    html += '<div class="' + cls + '">';
     html += '<div class="cal-lanc-num">' + dia + '</div>';
-    if(lancDia){
-      html += '<div class="cal-lanc-valor">' + fmtMoney(lancDia.total) + '</div>';
-    }
+    if(lancDia) html += '<div class="cal-lanc-valor">' + fmtMoney(lancDia.total) + '</div>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  var totalMesLanc = lancamentos.reduce(function(s,l){ return s+(Number(l.valor)||0); }, 0);
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">';
+  html += '<span style="font-size:12px;color:var(--ink-soft);">' + lancamentos.length + ' lançamento(s)</span>';
+  html += '<span style="font-size:14px;font-weight:700;">Total: ' + fmtMoney(totalMesLanc) + '</span>';
+  html += '</div>';
+  html += '</div>'; // fecha card calendário
+
+  // COLUNA DIREITA: Sábados + Formulário
+  html += '<div style="display:flex; flex-direction:column; gap:12px;">';
+
+  // Sábados
+  if(sabadosDoMes.length > 0){
+    html += '<div class="metas-section" style="margin-bottom:0;">';
+    html += '<label style="font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:10px;">Sábados que vou trabalhar</label>';
+    html += '<div class="sabados-grid">';
+    sabadosDoMes.forEach(function(dataStr){
+      var d = new Date(dataStr + 'T00:00:00');
+      var label = d.getDate() + '/' + String(d.getMonth()+1).padStart(2,'0');
+      var ativo = sabadosUteis.indexOf(dataStr) !== -1;
+      html += '<div class="sabado-chip' + (ativo?' ativo':'') + '" data-sabado="' + dataStr + '">' + label + '</div>';
+    });
+    html += '</div>';
     html += '</div>';
   }
 
-  html += '</div>'; // fecha cal-lanc-grid
-
-  // Total do mês
-  var totalMes = lancamentos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);">';
-  html += '<span style="font-size:12px;color:var(--ink-soft);">' + lancamentos.length + ' lançamento(s) no mês</span>';
-  html += '<span style="font-size:14px;font-weight:700;color:var(--ink);">Total: ' + fmtMoney(totalMes) + '</span>';
+  // Formulário de lançamento
+  html += '<div class="metas-section" style="margin-bottom:0;">';
+  html += '<h3>Lançar vendas do dia</h3>';
+  html += '<div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + hojeStr + '"></div>';
+  html += '<div class="field"><label>Valor vendido (R$)</label><input type="text" id="lanc-valor" inputmode="numeric" placeholder="0,00"></div>';
+  html += '<div class="field"><label>Descrição (opcional)</label><input type="text" id="lanc-desc" placeholder="Ex: Venda balcão, pedido recorrente..."></div>';
+  html += '<button class="btn-primary" id="btn-lancar-venda" style="width:100%;">Registrar lançamento</button>';
   html += '</div>';
 
-  html += '</div>'; // fecha cal-lancamentos
-  html += '</div>'; // fecha metas-section
+  html += '</div>'; // fecha coluna direita
+  html += '</div>'; // fecha grid principal // fecha metas-section
 
   // Card: Planejador de metas mensais escaláveis
   html += '<div class="metas-section">';
