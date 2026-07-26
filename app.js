@@ -3909,8 +3909,16 @@ async function renderMetasView(){
   var hojeStr = todayStr();
 
   function getMetaMes(m){
-    var found = metasMensaisAno.find(function(x){ return x.mes === m; });
+    var found = metasMensaisAno.find(function(x){ return Number(x.mes) === (m + 1); });
     return found ? found.valor : 0;
+  }
+  function getMetaEsperadaMes(m){
+    var found = metasMensaisAno.find(function(x){ return Number(x.mes) === (m + 1); });
+    return found ? (Number(found.valorEsperada)||0) : 0;
+  }
+  function getMetaDesafioMes(m){
+    var found = metasMensaisAno.find(function(x){ return Number(x.mes) === (m + 1); });
+    return found ? (Number(found.valorDesafio)||0) : 0;
   }
   var metaEsperada = 0;
   var metaDesafio = 0;
@@ -3923,7 +3931,7 @@ async function renderMetasView(){
           .eq('equipe_id', equipeAtual.id)
           .eq('user_id', uid)
           .eq('ano', anoAtual)
-          .eq('mes', mes)
+          .eq('mes', mes + 1)
           .maybeSingle();
       })
     );
@@ -3932,12 +3940,8 @@ async function renderMetasView(){
     }, 0);
   } else {
     metaMensal = getMetaMes(mes);
-    var metaMensalData = metasMensaisAno.find(function(m){ return m.mes === mes; });
-    if(metaMensalData){
-      metaMensal = metaMensalData.valor || 0;
-      metaEsperada = metaMensalData.valorEsperada || 0;
-      metaDesafio = metaMensalData.valorDesafio || 0;
-    }
+    metaEsperada = getMetaEsperadaMes(mes);
+    metaDesafio = getMetaDesafioMes(mes);
   }
   var metaDia = totalDiasUteis > 0 ? metaMensal / totalDiasUteis : 0;
   var totalLancado = lancamentos.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
