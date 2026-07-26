@@ -4062,88 +4062,62 @@ async function renderMetasView(){
   // Linha 2: dois cards lado a lado (resumo do mês + sábados/lançamento)
   html += '<div class="metas-grid">';
 
-  // Card esquerdo: resumo do mês
+  var diasUteisNoMes = totalDiasUteis;
+
+  // Montar níveis do resumo mensal
+  var niveisMes = [];
+  if(metaMensal > 0){
+    var pctM = Math.min(100, Math.round((totalLancado / metaMensal) * 100));
+    niveisMes.push({ nome:'🥉 Mínima', meta:metaMensal, pct:pctM });
+  }
+  if(metaEsperada > 0){
+    var pctE = Math.min(100, Math.round((totalLancado / metaEsperada) * 100));
+    niveisMes.push({ nome:'🥈 Esperada', meta:metaEsperada, pct:pctE });
+  }
+  if(metaDesafio > 0){
+    var pctD = Math.min(100, Math.round((totalLancado / metaDesafio) * 100));
+    niveisMes.push({ nome:'🥇 Desafio', meta:metaDesafio, pct:pctD });
+  }
+
+  // Ordenar: não atingidos primeiro, atingidos no final
+  niveisMes.sort(function(a, b){
+    return (a.pct >= 100 ? 1 : 0) - (b.pct >= 100 ? 1 : 0);
+  });
+
   html += '<div class="metas-section">';
   html += '<h3>Meta de ' + MESES_PT[mes] + ' de ' + ano + '</h3>';
-  html += '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;">';
-  html += '<div class="kpi"><div class="num">' + fmtMoney(metaMensal) + '</div><div class="lbl">Meta do mês</div></div>';
-  html += '<div class="kpi"><div class="num">' + fmtMoney(metaDia) + '</div><div class="lbl">Meta por dia útil</div></div>';
-  html += '<div class="kpi"><div class="num">' + fmtMoney(totalLancado) + '</div><div class="lbl">Total lançado</div></div>';
-  html += '<div class="kpi"><div class="num">' + totalDiasUteis + '</div><div class="lbl">Dias úteis no mês</div></div>';
-  html += '<div class="kpi"><div class="num">' + diasUteisAteHoje + '</div><div class="lbl">Dias trabalhados</div></div>';
-  html += '<div class="kpi"><div class="num" style="color:' + (diasRestantes <= 3 ? 'var(--red)' : diasRestantes <= 7 ? 'var(--amber-dark)' : 'var(--ink)') + ';">' + diasRestantes + '</div><div class="lbl">Dias úteis restantes</div></div>';
-  html += '</div>';
-  html += '<div class="tres-metas-container">';
 
-  var niveisMensais = [];
-  if(metaMensal > 0){
-    var pctMinima = Math.min(100, Math.round((totalLancado / metaMensal) * 100));
-    var corMinima = pctMinima >= 100 ? 'var(--green)' : (pctMinima >= 70 ? 'var(--amber)' : 'var(--red)');
-    var htmlMinima = '';
-    htmlMinima += '<div class="meta-nivel">';
-    htmlMinima += '<div class="meta-nivel-header">';
-    htmlMinima += '<span class="meta-nivel-nome">🥉 Meta Mínima</span>';
-    htmlMinima += '<span class="meta-nivel-valor">' + fmtMoney(metaMensal) + '</span>';
-    htmlMinima += '<span class="meta-nivel-pct" style="color:' + corMinima + ';">' + pctMinima + '%</span>';
-    htmlMinima += '</div>';
-    htmlMinima += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctMinima + '%;background:' + corMinima + ';"></div></div>';
-    htmlMinima += '<div class="meta-nivel-status" style="color:' + corMinima + ';">';
-    if(pctMinima >= 100) htmlMinima += '✓ Meta mínima atingida!';
-    else htmlMinima += 'Faltam ' + fmtMoney(metaMensal - totalLancado);
-    htmlMinima += '</div>';
-    htmlMinima += '</div>';
-    niveisMensais.push({ nome:'🥉 Mínima', pct: pctMinima, html: htmlMinima });
-  }
+  niveisMes.forEach(function(n, idx){
+    var atingido = n.pct >= 100;
+    var metaPorDiaUtil = diasUteisNoMes > 0 ? n.meta / diasUteisNoMes : 0;
+    var corPct = atingido ? 'var(--green)' : (n.pct >= 70 ? 'var(--amber)' : 'var(--ink-soft)');
 
-  if(metaEsperada > 0){
-    var pctEsperada = Math.min(100, Math.round((totalLancado / metaEsperada) * 100));
-    var corEsperada = pctEsperada >= 100 ? 'var(--green)' : (pctEsperada >= 70 ? 'var(--amber)' : 'var(--ink-soft)');
-    var htmlEsperada = '';
-    htmlEsperada += '<div class="meta-nivel">';
-    htmlEsperada += '<div class="meta-nivel-header">';
-    htmlEsperada += '<span class="meta-nivel-nome">🥈 Meta Esperada</span>';
-    htmlEsperada += '<span class="meta-nivel-valor">' + fmtMoney(metaEsperada) + '</span>';
-    htmlEsperada += '<span class="meta-nivel-pct" style="color:' + corEsperada + ';">' + pctEsperada + '%</span>';
-    htmlEsperada += '</div>';
-    htmlEsperada += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctEsperada + '%;background:' + corEsperada + ';"></div></div>';
-    htmlEsperada += '<div class="meta-nivel-status" style="color:' + corEsperada + ';">';
-    if(pctEsperada >= 100) htmlEsperada += '✓ Meta esperada atingida!';
-    else htmlEsperada += 'Faltam ' + fmtMoney(metaEsperada - totalLancado);
-    htmlEsperada += '</div>';
-    htmlEsperada += '</div>';
-    niveisMensais.push({ nome:'🥈 Esperada', pct: pctEsperada, html: htmlEsperada });
-  }
+    html += '<div style="margin-bottom:12px;padding:14px 16px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;' + (atingido ? 'opacity:0.6;' : '') + '">';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">' + n.nome + '</div>';
 
-  if(metaDesafio > 0){
-    var pctDesafio = Math.min(100, Math.round((totalLancado / metaDesafio) * 100));
-    var corDesafio = pctDesafio >= 100 ? 'var(--green)' : (pctDesafio >= 70 ? 'var(--amber)' : 'var(--ink-soft)');
-    var htmlDesafio = '';
-    htmlDesafio += '<div class="meta-nivel">';
-    htmlDesafio += '<div class="meta-nivel-header">';
-    htmlDesafio += '<span class="meta-nivel-nome">🥇 Meta Desafio</span>';
-    htmlDesafio += '<span class="meta-nivel-valor">' + fmtMoney(metaDesafio) + '</span>';
-    htmlDesafio += '<span class="meta-nivel-pct" style="color:' + corDesafio + ';">' + pctDesafio + '%</span>';
-    htmlDesafio += '</div>';
-    htmlDesafio += '<div class="meta-nivel-barra"><div class="meta-nivel-fill" style="width:' + pctDesafio + '%;background:' + corDesafio + ';"></div></div>';
-    htmlDesafio += '<div class="meta-nivel-status" style="color:' + corDesafio + ';">';
-    if(pctDesafio >= 100) htmlDesafio += '✓ Meta desafio atingida!';
-    else htmlDesafio += 'Faltam ' + fmtMoney(metaDesafio - totalLancado);
-    htmlDesafio += '</div>';
-    htmlDesafio += '</div>';
-    niveisMensais.push({ nome:'🥇 Desafio', pct: pctDesafio, html: htmlDesafio });
-  }
+    if(atingido){
+      html += '<div class="meta-kpis-row">';
+      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">' + fmtMoney(n.meta) + '</div><div class="meta-lbl">Meta do mês</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">' + fmtMoney(totalLancado) + '</div><div class="meta-lbl">Total lançado</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num" style="color:var(--green);">+' + fmtMoney(totalLancado - n.meta) + '</div><div class="meta-lbl">Superado em</div></div>';
+      html += '</div>';
+      html += '<div style="height:5px;background:var(--green);border-radius:999px;margin-top:10px;"></div>';
+      html += '<p style="font-size:11px;font-weight:700;color:var(--green);margin-top:6px;">🎉 Parabéns, meta ' + n.nome.split(' ')[1] + ' alcançada!</p>';
+    } else {
+      html += '<div class="meta-kpis-row">';
+      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(n.meta) + '</div><div class="meta-lbl">Meta do mês</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(metaPorDiaUtil) + '</div><div class="meta-lbl">Meta por dia útil</div></div>';
+      html += '<div class="meta-kpi-item"><div class="meta-num">' + fmtMoney(totalLancado) + '</div><div class="meta-lbl">Total lançado</div></div>';
+      html += '</div>';
+      html += '<div style="height:5px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:10px;">';
+      html += '<div style="height:100%;width:' + n.pct + '%;background:' + corPct + ';border-radius:999px;transition:width .4s;"></div>';
+      html += '</div>';
+      html += '<p style="font-size:11px;color:var(--ink-faint);margin-top:6px;">' + n.pct + '% da meta · faltam ' + fmtMoney(n.meta - totalLancado) + '</p>';
+    }
 
-  niveisMensais.sort(function(a, b){
-    var atingidoA = a.pct >= 100 ? 1 : 0;
-    var atingidoB = b.pct >= 100 ? 1 : 0;
-    return atingidoA - atingidoB;
+    html += '</div>';
   });
 
-  niveisMensais.forEach(function(n){
-    html += n.html;
-  });
-
-  html += '</div>';
   html += '</div>';
 
   // Card direito: sábados + lançamento
