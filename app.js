@@ -4469,13 +4469,15 @@ async function renderMetasView(){
   html += '<div class="metas-section">';
   html += '<h3>Planejamento de metas por mês — ' + anoAtual + '</h3>';
   var limitesPlano = getLimitePlano();
-  if(papelAtual === 'admin' && equipeAtual && !filtroVendedorId && limitesPlano.usuarios > 1){
+  var ehAdminAgregado = papelAtual === 'admin' && equipeAtual && !filtroVendedorId && limitesPlano.usuarios > 1;
+
+  if(ehAdminAgregado){
     html += '<p class="aviso-info">📋 Você está vendo a visão agregada da equipe. Para definir metas individuais, selecione um vendedor no filtro.</p>';
   } else {
     html += '<p class="meta-dia-label" style="margin-bottom:12px;">Defina uma meta diferente para cada mês. Deixe em branco para usar a meta padrão (R$ ' + fmtMoney(metaMensal) + ').</p>';
   }
 
-  if(papelAtual === 'admin' && equipeAtual && !filtroVendedorId){
+  if(ehAdminAgregado){
     // Modo agregado: mostrar só os totais por mês, sem campos de edição
     html += '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;">';
     for(var pm2 = 0; pm2 < 12; pm2++){
