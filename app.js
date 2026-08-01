@@ -1603,7 +1603,7 @@ async function renderEquipeView(){
       btn.textContent = '✕ Fechar';
       formDiv.style.display = 'block';
       formDiv.innerHTML =
-        '<p style="font-size:13px; font-weight:700; margin:0 0 12px;">Editar: ' + escapeHtml(nomeAtual) + '</p>' +
+        field('Nome completo', '<input type="text" id="em-nome-' + uid + '" value="' + escapeHtml(nomeAtual) + '" placeholder="Nome completo">') +
         (ehEuMesmo
           ? ''
           : field('Novo nome de usuário', '<input type="text" id="em-username-' + uid + '" value="' + escapeHtml(usernameAtual) + '" placeholder="Ex: joao.silva">')
@@ -1613,6 +1613,8 @@ async function renderEquipeView(){
         '<button class="btn-primary" style="font-size:13px;" id="em-salvar-' + uid + '">Salvar alterações</button>';
 
       document.getElementById('em-salvar-' + uid).addEventListener('click', async function(){
+        var novoNome = (document.getElementById('em-nome-' + uid) || {}).value || '';
+        novoNome = novoNome.trim();
         var nova_senha = document.getElementById('em-senha-' + uid).value;
         var confirmar = document.getElementById('em-confirmar-' + uid).value;
         var novo_username = !ehEuMesmo && document.getElementById('em-username-' + uid)
@@ -1627,7 +1629,7 @@ async function renderEquipeView(){
           toast('As senhas não coincidem.', 'erro');
           return;
         }
-        if(!nova_senha && !novo_username){
+        if(!nova_senha && !novo_username && !novoNome){
           toast('Informe ao menos um campo para alterar.', 'erro');
           return;
         }
@@ -1645,10 +1647,12 @@ async function renderEquipeView(){
             btn2.textContent = 'Salvar alterações';
             return;
           }
-          toast('Senha alterada com sucesso!', 'sucesso');
-          formDiv.style.display = 'none';
-          btn.textContent = '✏️ Editar';
-          return;
+          if(!novoNome){
+            toast('Senha alterada com sucesso!', 'sucesso');
+            formDiv.style.display = 'none';
+            btn.textContent = '✏️ Editar';
+            return;
+          }
         }
 
         // Para outros usuários, chama a Edge Function
@@ -1656,6 +1660,7 @@ async function renderEquipeView(){
           var sessao = await sb.auth.getSession();
           var token = sessao.data.session.access_token;
           var payload = { target_user_id: uid };
+          if(novoNome) payload.nome = novoNome;
           if(nova_senha) payload.nova_senha = nova_senha;
           if(novo_username) payload.novo_username = novo_username;
 

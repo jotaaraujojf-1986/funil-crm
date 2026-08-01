@@ -52,7 +52,7 @@ serve(async (req) => {
       });
     }
 
-    const { target_user_id, nova_senha, novo_username } = await req.json();
+    const { target_user_id, nova_senha, novo_username, nome } = await req.json();
 
     if (!target_user_id) {
       return new Response(JSON.stringify({ error: "target_user_id é obrigatório" }), {
@@ -112,11 +112,21 @@ serve(async (req) => {
 
       const dominio = Deno.env.get("TRACTAR_DOMINIO") ?? "tractar.app";
       updates.email = novo_username + "@" + dominio;
+    }
 
-      // Atualizar username na tabela membros_equipe
+    // Atualizar dados na tabela membros_equipe
+    const updateData: any = {};
+    if (novo_username) {
+      updateData.username = novo_username;
+      updateData.email = updates.email;
+    }
+    if (nome) {
+      updateData.nome = nome;
+    }
+    if (Object.keys(updateData).length > 0) {
       await supabaseAdmin
         .from("membros_equipe")
-        .update({ username: novo_username, email: updates.email })
+        .update(updateData)
         .eq("id", membroAlvo.id);
     }
 
