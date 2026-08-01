@@ -4468,7 +4468,8 @@ async function renderMetasView(){
   // Card: Planejador de metas mensais escaláveis
   html += '<div class="metas-section">';
   html += '<h3>Planejamento de metas por mês — ' + anoAtual + '</h3>';
-  if(papelAtual === 'admin' && equipeAtual && !filtroVendedorId){
+  var limitesPlano = getLimitePlano();
+  if(papelAtual === 'admin' && equipeAtual && !filtroVendedorId && limitesPlano.usuarios > 1){
     html += '<p class="aviso-info">📋 Você está vendo a visão agregada da equipe. Para definir metas individuais, selecione um vendedor no filtro.</p>';
   } else {
     html += '<p class="meta-dia-label" style="margin-bottom:12px;">Defina uma meta diferente para cada mês. Deixe em branco para usar a meta padrão (R$ ' + fmtMoney(metaMensal) + ').</p>';
