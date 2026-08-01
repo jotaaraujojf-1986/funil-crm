@@ -4450,24 +4450,61 @@ async function renderMetasView(){
 
   // Registrar lançamento
   document.getElementById('btn-lancar-venda').addEventListener('click', async function(){
-    var data = document.getElementById('lanc-data').value || hojeStr;
-    var valor = parseValorMascarado(document.getElementById('lanc-valor').value);
-    var descricao = document.getElementById('lanc-desc').value.trim();
-    if(!valor || valor <= 0){
-      toast('Informe um valor maior que zero.', 'erro');
+    // Verificar se já existe lançamento do mesmo usuário na mesma data
+    var dataLanc = document.getElementById('lanc-data').value;
+    var valorLanc = parseValorMascarado(document.getElementById('lanc-valor').value);
+    var descLanc = document.getElementById('lanc-desc') ? document.getElementById('lanc-desc').value.trim() : '';
+
+    if(!dataLanc || !valorLanc || valorLanc <= 0){
+      toast('Informe data e valor válidos.', 'erro');
       return;
     }
-    var btn = this;
-    btn.disabled = true;
-    btn.textContent = 'Registrando...';
-    var novo = await criarLancamento(data, valor, descricao);
-    if(novo){
-      toast('Lançamento registrado!', 'sucesso');
-      renderMetasView();
+
+    var btnLancar = document.getElementById('btn-lancar-venda');
+    btnLancar.disabled = true;
+    btnLancar.textContent = 'Registrando...';
+
+    // Verificação de duplicados / upsert que some ao valor existente do dia
+    var userId = getUserIdParaSalvar();
+    var checkRes = await sb.from('lancamentos_diarios')
+      .select('id, valor, descricao')
+      .eq('user_id', userId)
+      .eq('data', dataLanc)
+      .maybeSingle();
+
+    var res;
+    if(checkRes.data){
+      var novoValor = (Number(checkRes.data.valor) || 0) + valorLanc;
+      var novaDesc = descLanc 
+        ? (checkRes.data.descricao ? checkRes.data.descricao + '; ' + descLanc : descLanc)
+        : checkRes.data.descricao;
+      res = await sb.from('lancamentos_diarios').update({
+        valor: novoValor,
+        descricao: novaDesc || null
+      }).eq('id', checkRes.data.id);
     } else {
-      btn.disabled = false;
-      btn.textContent = 'Registrar lançamento';
+      res = await sb.from('lancamentos_diarios').insert({
+        user_id: userId,
+        equipe_id: equipeAtual ? equipeAtual.id : null,
+        data: dataLanc,
+        valor: valorLanc,
+        descricao: descLanc || null
+      });
     }
+
+    btnLancar.disabled = false;
+    btnLancar.textContent = 'Registrar lançamento';
+
+    if(res.error){
+      console.error('Erro ao registrar lançamento', res.error);
+      toast('Erro ao registrar lançamento.', 'erro');
+      return;
+    }
+
+    document.getElementById('lanc-valor').value = '';
+    if(document.getElementById('lanc-desc')) document.getElementById('lanc-desc').value = '';
+    toast('Lançamento registrado!', 'sucesso');
+    renderMetasView();
   });
 
   // Excluir lançamento
