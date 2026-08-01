@@ -30,6 +30,71 @@ var papelAtual = null;
 var filtroVendedorId = '';
 var membrosDaEquipe = {};
 
+var LIMITES_PLANO = {
+  piloto:   { usuarios: 999, leads: 999, metas: true,  dashboard: true,  equipe: true  },
+  solo:     { usuarios: 1,   leads: 999, metas: true,  dashboard: true,  equipe: false },
+  equipe:   { usuarios: 999, leads: 999, metas: true,  dashboard: true,  equipe: true  },
+  business: { usuarios: 999, leads: 999, metas: true,  dashboard: true,  equipe: true  },
+  gratuito: { usuarios: 1,   leads: 30,  metas: false, dashboard: false, equipe: false }
+};
+
+var UPGRADE_MSGS = {
+  usuarios: {
+    titulo: 'Limite de usuários atingido',
+    texto: 'Seu plano atual não permite adicionar mais usuários. Faça upgrade para o plano Equipe e adicione vendedores ilimitados.',
+  },
+  leads: {
+    titulo: 'Limite de negócios atingido',
+    texto: 'O plano Gratuito permite até 30 negócios ativos. Faça upgrade para continuar adicionando negócios.',
+  },
+  metas: {
+    titulo: 'Funcionalidade não disponível',
+    texto: 'Metas e gráficos de evolução estão disponíveis a partir do plano Solo. Faça upgrade para acessar.',
+  },
+  dashboard: {
+    titulo: 'Funcionalidade não disponível',
+    texto: 'O Dashboard completo está disponível a partir do plano Solo. Faça upgrade para acessar.',
+  },
+  equipe: {
+    titulo: 'Gestão de equipe não disponível',
+    texto: 'O plano Solo é individual (1 usuário). Para criar uma equipe de vendas, faça upgrade para o plano Equipe.',
+  }
+};
+
+function getLimitePlano(){
+  var plano = equipeAtual ? (equipeAtual.plano || 'piloto') : 'piloto';
+  return LIMITES_PLANO[plano] || LIMITES_PLANO['piloto'];
+}
+
+function mostrarModalUpgrade(tipo){
+  var msg = UPGRADE_MSGS[tipo];
+  if(!msg) return;
+  customAlert(
+    msg.titulo + '\n\n' + msg.texto + '\n\nAcesse Configurações → Mudar plano para fazer upgrade.',
+    msg.titulo
+  );
+}
+
+async function verificarLimite(tipo){
+  var limites = getLimitePlano();
+  if(tipo === 'usuarios'){
+    if(limites.usuarios >= 999) return true;
+    var r = await sb.from('membros_equipe').select('id', {count:'exact'}).eq('equipe_id', equipeAtual.id);
+    var qtd = r.count || 0;
+    if(qtd >= limites.usuarios){ mostrarModalUpgrade('usuarios'); return false; }
+  }
+  if(tipo === 'leads'){
+    if(limites.leads >= 999) return true;
+    var r2 = await sb.from('leads').select('id', {count:'exact'}).eq('equipe_id', equipeAtual.id).neq('stage','fechado').neq('stage','perdido');
+    var qtd2 = r2.count || 0;
+    if(qtd2 >= limites.leads){ mostrarModalUpgrade('leads'); return false; }
+  }
+  if(tipo === 'metas' && !limites.metas){ mostrarModalUpgrade('metas'); return false; }
+  if(tipo === 'dashboard' && !limites.dashboard){ mostrarModalUpgrade('dashboard'); return false; }
+  if(tipo === 'equipe' && !limites.equipe){ mostrarModalUpgrade('equipe'); return false; }
+  return true;
+}
+
 var onboardingState = { etapasConcluidas: [], dispensado: false };
 var notificacoes = [];
 var painelNotifAberto = false;
@@ -318,6 +383,9 @@ async function loadLeadsFromDb(){
 }
 
 async function criarLeadNoDb(lead){
+  var podeAdicionarLead = await verificarLimite('leads');
+  if(!podeAdicionarLead) return null;
+
   var res = await sb.from('leads').insert(toDb(lead)).select().single();
   if(res.error){ console.error('Erro ao criar lead', res.error); return null; }
   return fromDb(res.data);
@@ -1316,6 +1384,12 @@ async function loadEquipe(){
 async function renderEquipeView(){
   if(papelAtual !== 'admin') return;
 
+  var podeEquipe = await verificarLimite('equipe');
+  if(!podeEquipe) {
+    document.getElementById('equipe-container').innerHTML = '<p class="anexo-vazio">Acesso restrito ao seu plano.</p>';
+    return;
+  }
+
   var container = document.getElementById('equipe-container');
   container.innerHTML = '<p class="anexo-vazio">Carregando equipe...</p>';
 
@@ -1578,6 +1652,9 @@ async function renderEquipeView(){
   });
 
   document.getElementById('btn-adicionar-membro').addEventListener('click', async function(){
+    var podeAdicionarUsuario = await verificarLimite('usuarios');
+    if(!podeAdicionarUsuario) return;
+
     var nome = document.getElementById('novo-membro-nome').value.trim();
     var username = document.getElementById('novo-membro-username').value.trim().toLowerCase();
     var senha = document.getElementById('novo-membro-senha').value;
@@ -5312,9 +5389,19 @@ document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSi
 document.getElementById('sidebar-backdrop').addEventListener('click', fecharSidebar);
 
 document.querySelectorAll('.sidebar-item').forEach(function(item){
-  item.addEventListener('click', function(){
+  item.addEventListener('click', async function(){
     var tab = item.getAttribute('data-tab');
     if(!tab) return;
+
+    if(tab === 'metas'){
+      var podeMetas = await verificarLimite('metas');
+      if(!podeMetas) return;
+    }
+    if(tab === 'dash'){
+      var podeDashboard = await verificarLimite('dashboard');
+      if(!podeDashboard) return;
+    }
+
     fecharSidebar();
     switchTab(tab);
   });
