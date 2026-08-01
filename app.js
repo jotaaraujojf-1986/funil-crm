@@ -69,29 +69,74 @@ function getLimitePlano(){
 function mostrarModalUpgrade(tipo){
   var msg = UPGRADE_MSGS[tipo];
   if(!msg) return;
-  customAlert(
-    msg.titulo + '\n\n' + msg.texto + '\n\nAcesse Configurações → Mudar plano para fazer upgrade.',
-    msg.titulo
-  );
+
+  // Reutilizar overlay-confirm mas como alerta (só botão OK + botão Mudar plano)
+  document.getElementById('confirm-titulo').textContent = msg.titulo;
+  document.getElementById('confirm-mensagem').textContent = msg.texto;
+
+  var overlay = document.getElementById('overlay-confirm');
+  var btnConfirmar = document.getElementById('confirm-btn-confirmar');
+  var btnCancelar = document.getElementById('confirm-btn-cancelar');
+
+  // Transformar temporariamente em modal de upgrade
+  btnConfirmar.textContent = 'Mudar plano';
+  btnCancelar.textContent = 'Fechar';
+
+  overlay.classList.add('open');
+
+  function limpar(){
+    overlay.classList.remove('open');
+    btnConfirmar.textContent = 'Confirmar';
+    btnCancelar.textContent = 'Cancelar';
+    btnConfirmar.onclick = null;
+    btnCancelar.onclick = null;
+  }
+
+  btnConfirmar.onclick = function(){
+    limpar();
+    window.location.href = 'planos.html';
+  };
+  btnCancelar.onclick = function(){
+    limpar();
+  };
 }
 
 async function verificarLimite(tipo){
   var limites = getLimitePlano();
+
   if(tipo === 'usuarios'){
     if(limites.usuarios >= 999) return true;
-    var r = await sb.from('membros_equipe').select('id', {count:'exact'}).eq('equipe_id', equipeAtual.id);
+    if(!equipeAtual) return true;
+    var r = await sb.from('membros_equipe').select('*', {count:'exact', head:true}).eq('equipe_id', equipeAtual.id);
     var qtd = r.count || 0;
     if(qtd >= limites.usuarios){ mostrarModalUpgrade('usuarios'); return false; }
+    return true;
   }
+
   if(tipo === 'leads'){
     if(limites.leads >= 999) return true;
-    var r2 = await sb.from('leads').select('id', {count:'exact'}).eq('equipe_id', equipeAtual.id).neq('stage','fechado').neq('stage','perdido');
+    if(!equipeAtual) return true;
+    var r2 = await sb.from('leads').select('*', {count:'exact', head:true}).eq('equipe_id', equipeAtual.id).not('stage', 'in', '("fechado","perdido")');
     var qtd2 = r2.count || 0;
     if(qtd2 >= limites.leads){ mostrarModalUpgrade('leads'); return false; }
+    return true;
   }
-  if(tipo === 'metas' && !limites.metas){ mostrarModalUpgrade('metas'); return false; }
-  if(tipo === 'dashboard' && !limites.dashboard){ mostrarModalUpgrade('dashboard'); return false; }
-  if(tipo === 'equipe' && !limites.equipe){ mostrarModalUpgrade('equipe'); return false; }
+
+  if(tipo === 'metas'){
+    if(!limites.metas){ mostrarModalUpgrade('metas'); return false; }
+    return true;
+  }
+
+  if(tipo === 'dashboard'){
+    if(!limites.dashboard){ mostrarModalUpgrade('dashboard'); return false; }
+    return true;
+  }
+
+  if(tipo === 'equipe'){
+    if(!limites.equipe){ mostrarModalUpgrade('equipe'); return false; }
+    return true;
+  }
+
   return true;
 }
 
