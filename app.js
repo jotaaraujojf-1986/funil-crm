@@ -1507,7 +1507,7 @@ async function renderEquipeView(){
   html += '</div>';
 
   // Coluna direita: adicionar membro
-  html += '<div class="metas-section">';
+  html += '<div class="metas-section" id="form-novo-membro">';
   html += '<h3>Adicionar vendedor</h3>';
   html += '<p class="meta-dia-label" style="margin-bottom:14px;">Crie o acesso para um novo membro. O vendedor fará login com o nome de usuário e senha definidos aqui.</p>';
   html += field('Nome completo', '<input type="text" id="novo-membro-nome" placeholder="Ex: João Silva">');
@@ -1749,14 +1749,58 @@ async function renderEquipeView(){
         return;
       }
 
-      toast(dados.mensagem || 'Acesso criado com sucesso!', 'sucesso');
+      toast('Acesso criado com sucesso!', 'sucesso');
       document.getElementById('novo-membro-nome').value = '';
       document.getElementById('novo-membro-username').value = '';
       document.getElementById('novo-membro-senha').value = '';
       btn.disabled = false;
       btn.textContent = 'Criar acesso';
-      renderEquipeView();
+
+      await renderEquipeView();
       atualizarFiltroVendedores();
+
+      // Mostrar card de credenciais
+      var credCard = document.getElementById('card-credenciais-novo');
+      if(!credCard){
+        credCard = document.createElement('div');
+        credCard.id = 'card-credenciais-novo';
+        credCard.style.cssText = 'background:rgba(46,125,79,0.1);border:1px solid rgba(46,125,79,0.3);border-radius:10px;padding:14px 16px;margin-top:16px;';
+        document.getElementById('form-novo-membro').appendChild(credCard);
+      }
+      credCard.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+          '<span style="font-size:13px;font-weight:700;color:var(--green);">✓ Acesso criado — credenciais:</span>' +
+          '<button id="btn-copiar-credenciais" style="font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid var(--green);background:transparent;color:var(--green);cursor:pointer;font-family:inherit;">📋 Copiar</button>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:6px;">' +
+          '<div style="display:flex;justify-content:space-between;font-size:13px;">' +
+            '<span style="color:var(--ink-soft);">URL:</span>' +
+            '<span style="font-family:monospace;font-weight:700;">app.tractar.com.br</span>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:13px;">' +
+            '<span style="color:var(--ink-soft);">Usuário:</span>' +
+            '<span style="font-family:monospace;font-weight:700;" id="cred-username-novo">' + username + '</span>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:13px;">' +
+            '<span style="color:var(--ink-soft);">Senha:</span>' +
+            '<span style="font-family:monospace;font-weight:700;" id="cred-senha-novo">' + senha + '</span>' +
+          '</div>' +
+        '</div>';
+
+      document.getElementById('btn-copiar-credenciais').addEventListener('click', function(){
+        var texto =
+          'Acesso ao Tractar\n' +
+          'URL: app.tractar.com.br\n' +
+          'Usuário: ' + username + '\n' +
+          'Senha: ' + senha;
+        navigator.clipboard.writeText(texto).then(function(){
+          var b = document.getElementById('btn-copiar-credenciais');
+          b.textContent = '✓ Copiado!';
+          b.style.background = 'var(--green)';
+          b.style.color = '#fff';
+          setTimeout(function(){ b.textContent = '📋 Copiar'; b.style.background = 'transparent'; b.style.color = 'var(--green)'; }, 2000);
+        });
+      });
 
     }catch(err){
       console.error('Erro ao criar usuário', err);
