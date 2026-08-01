@@ -1384,12 +1384,6 @@ async function loadEquipe(){
 async function renderEquipeView(){
   if(papelAtual !== 'admin') return;
 
-  var podeEquipe = await verificarLimite('equipe');
-  if(!podeEquipe) {
-    document.getElementById('equipe-container').innerHTML = '<p class="anexo-vazio">Acesso restrito ao seu plano.</p>';
-    return;
-  }
-
   var container = document.getElementById('equipe-container');
   container.innerHTML = '<p class="anexo-vazio">Carregando equipe...</p>';
 
@@ -5528,7 +5522,8 @@ function switchTab(tab){
   if(periodoEl) periodoEl.style.display = (tab === 'funil' || tab === 'dash') ? 'flex' : 'none';
   var filtroVendEl = document.getElementById('filtro-vendedor');
   if(filtroVendEl){
-    filtroVendEl.style.display = (papelAtual === 'admin' && tab !== 'equipe') ? '' : 'none';
+    var limites = getLimitePlano();
+    filtroVendEl.style.display = (papelAtual === 'admin' && limites.usuarios > 1 && tab !== 'equipe') ? '' : 'none';
   }
 
   // Renderizar a seção ativa
@@ -5644,7 +5639,8 @@ function showApp(){
 
   var selFiltroVendedor = document.getElementById('filtro-vendedor');
   if(selFiltroVendedor){
-    if(papelAtual === 'admin'){
+    var limites = getLimitePlano();
+    if(papelAtual === 'admin' && limites.usuarios > 1){
       selFiltroVendedor.style.display = '';
       atualizarFiltroVendedores();
       loadMembrosDaEquipe();
