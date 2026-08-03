@@ -2756,17 +2756,23 @@ function render(){
     col.style.setProperty('--stage-color', stage.color);
     col.setAttribute('data-stage', stage.id);
 
-    col.addEventListener('dragover', function(e){
-      e.preventDefault();
-      col.classList.add('dragover');
+    col.addEventListener('dragover', function(ev){
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'move';
+      col.classList.add('drag-over');
     });
-    col.addEventListener('dragleave', function(){
-      col.classList.remove('dragover');
+
+    col.addEventListener('dragleave', function(ev){
+      // Só remove o highlight se realmente saiu da coluna
+      if(!col.contains(ev.relatedTarget)){
+        col.classList.remove('drag-over');
+      }
     });
-    col.addEventListener('drop', function(e){
-      e.preventDefault();
-      col.classList.remove('dragover');
-      var id = e.dataTransfer.getData('text/plain');
+
+    col.addEventListener('drop', function(ev){
+      ev.preventDefault();
+      col.classList.remove('drag-over');
+      var id = ev.dataTransfer.getData('text/plain');
       var lead = leads.find(function(l){ return l.id === id; });
       if(lead && lead.stage !== stage.id){
         var stageAnterior = lead.stage;

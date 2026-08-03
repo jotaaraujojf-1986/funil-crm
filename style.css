@@ -193,6 +193,12 @@ body{
   background:rgba(232,163,23,0.10);
   border-color:var(--amber);
 }
+.drag-over {
+  background: rgba(232,163,23,0.06) !important;
+  border-radius: 10px;
+  outline: 2px dashed rgba(232,163,23,0.4);
+  outline-offset: -4px;
+}
 .col-head{
   display:flex;
   align-items:baseline;
