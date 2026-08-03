@@ -2919,9 +2919,12 @@ function buildCard(lead, stageColor){
 
     // Informações em grade
     '<div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin-bottom:8px;">' +
-      (tempoTexto ? '<div style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">Tempo na etapa</div><div style="font-size:11px;color:var(--ink-soft);font-weight:500;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (dias + (dias === 1 ? ' dia' : ' dias')) + '</div>' : '') +
-      (followUpTexto ? '<div style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">Próxima ação</div><div style="font-size:11px;color:' + followUpCor + ';font-weight:500;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + followUpTexto + '</div>' : '') +
-      (atividadeTexto ? '<div style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">Atividade</div><div style="font-size:11px;color:var(--ink-soft);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(lead.atividadeTipo || '') + '</div>' : '') +
+      '<div style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">Tempo na etapa</div>' +
+      '<div style="font-size:11px;color:var(--ink-soft);font-weight:500;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ((lead.stage !== 'fechado' && lead.stage !== 'perdido') ? (dias + (dias === 1 ? ' dia' : ' dias')) : '—') + '</div>' +
+      '<div style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">Próxima ação</div>' +
+      '<div style="font-size:11px;color:' + (followUpTexto ? followUpCor : 'var(--ink-soft)') + ';font-weight:500;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (followUpTexto || '—') + '</div>' +
+      '<div style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">Atividade</div>' +
+      '<div style="font-size:11px;color:var(--ink-soft);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (lead.atividadeTipo ? escapeHtml(lead.atividadeTipo) : '—') + '</div>' +
     '</div>' +
 
     // Rodapé: avatar + nome do vendedor + botão follow-up

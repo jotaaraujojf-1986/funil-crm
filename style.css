@@ -188,8 +188,8 @@ body{
   min-height:200px;
   transition:background .15s ease;
   border:1px dashed transparent;
-  flex: 0 0 260px;
-  width: 260px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 .column.dragover{
   background:rgba(232,163,23,0.10);
@@ -212,6 +212,7 @@ body{
   padding:4px 6px 12px;
   border-bottom:3px solid var(--stage-color, var(--steel));
   margin-bottom:10px;
+  width: 100%;
 }
 .col-head .title{
   font-family:'Outfit', sans-serif;
@@ -997,6 +998,7 @@ html[data-theme="dark"] .btn-concluir-followup{ background:#183a27; color:#55d08
 .board-headers .col-head-cell{
   border-bottom:3px solid var(--cell-color, var(--steel));
   padding-bottom:8px;
+  width: 100%;
 }
 .board-headers .col-head-cell .title{
   font-family:'Outfit', sans-serif;
