@@ -188,6 +188,8 @@ body{
   min-height:200px;
   transition:background .15s ease;
   border:1px dashed transparent;
+  flex: 0 0 260px;
+  width: 260px;
 }
 .column.dragover{
   background:rgba(232,163,23,0.10);
@@ -198,6 +200,10 @@ body{
   border-radius: 10px;
   outline: 2px dashed rgba(232,163,23,0.4);
   outline-offset: -4px;
+}
+.kanban-cards {
+  min-height: 120px;
+  padding-bottom: 16px;
 }
 .col-head{
   display:flex;

@@ -2760,28 +2760,33 @@ function render(){
     col.style.setProperty('--stage-color', stage.color);
     col.setAttribute('data-stage', stage.id);
 
-    col.addEventListener('dragover', function(ev){
+    var colCards = document.createElement('div');
+    colCards.className = 'kanban-cards';
+    colCards.setAttribute('data-stage', stage.id);
+
+    colCards.addEventListener('dragover', function(ev){
       ev.preventDefault();
       ev.dataTransfer.dropEffect = 'move';
-      col.classList.add('drag-over');
+      colCards.classList.add('drag-over');
     });
 
-    col.addEventListener('dragleave', function(ev){
-      // Só remove o highlight se realmente saiu da coluna
-      if(!col.contains(ev.relatedTarget)){
-        col.classList.remove('drag-over');
+    colCards.addEventListener('dragleave', function(ev){
+      if(!colCards.contains(ev.relatedTarget)){
+        colCards.classList.remove('drag-over');
       }
     });
 
-    col.addEventListener('drop', function(ev){
+    colCards.addEventListener('drop', function(ev){
       ev.preventDefault();
-      col.classList.remove('drag-over');
+      colCards.classList.remove('drag-over');
       var id = ev.dataTransfer.getData('text/plain');
       var lead = leads.find(function(l){ return l.id === id; });
-      if(lead && lead.stage !== stage.id){
+      var stageDestino = colCards.getAttribute('data-stage')
+        || colCards.closest('[data-stage]').getAttribute('data-stage');
+      if(lead && lead.stage !== stageDestino){
         var stageAnterior = lead.stage;
         var etapaAnteriorTimestamp = lead.etapaAlteradaEm;
-        setStage(lead, stage.id);
+        setStage(lead, stageDestino);
         var erro = validarCamposObrigatorios(lead);
         if(erro){
           lead.stage = stageAnterior;
@@ -2801,7 +2806,7 @@ function render(){
       var empty = document.createElement('div');
       empty.className = 'empty-col';
       empty.textContent = 'Arraste um cliente para aqui';
-      col.appendChild(empty);
+      colCards.appendChild(empty);
     } else {
       stageLeads
         .slice()
@@ -2811,10 +2816,11 @@ function render(){
           return new Date(a.nextFollowUp) - new Date(b.nextFollowUp);
         })
         .forEach(function(lead){
-          col.appendChild(buildCard(lead, stage.color));
+          colCards.appendChild(buildCard(lead, stage.color));
         });
     }
 
+    col.appendChild(colCards);
     board.appendChild(col);
   });
 
