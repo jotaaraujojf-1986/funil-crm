@@ -5956,6 +5956,8 @@ async function iniciarApp(){
     return;
   }
 
+  await verificarStatusPagamento();
+
   showApp();
   await Promise.all([
     loadLeadsFromDb(),
@@ -6041,6 +6043,89 @@ document.getElementById('overlay-minha-conta').addEventListener('click', functio
   if(e.target.id === 'overlay-minha-conta')
     document.getElementById('overlay-minha-conta').classList.remove('open');
 });
+
+async function verificarStatusPagamento() {
+  if (papelAtual !== 'admin' || !equipeAtual) return;
+
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+
+  const { data: pags } = await sb
+    .from('pagamentos')
+    .select('id,data_vencimento,status')
+    .eq('equipe_id', equipeAtual.id)
+    .in('status', ['pendente','atrasado'])
+    .order('data_vencimento', { ascending: false })
+    .limit(1);
+
+  if (!pags || pags.length === 0) return;
+
+  const p = pags[0];
+  const venc = new Date(p.data_vencimento + 'T00:00:00');
+  const diasRestantes = Math.ceil((venc.getTime() - hoje.getTime()) / 86400000);
+
+  // Bloqueio: equipe suspensa ou mais de 3 dias em atraso
+  if (!equipeAtual.ativo || diasRestantes < -3) {
+    mostrarTelaBloqueio();
+    return;
+  }
+
+  // Aviso: entre 0 e 7 dias para vencer
+  if (diasRestantes <= 7) {
+    mostrarBannerAviso(diasRestantes);
+  }
+}
+
+function mostrarTelaBloqueio() {
+  // Esconder o app inteiro
+  document.getElementById('app').classList.add('hidden');
+
+  // Criar tela de bloqueio se não existir
+  var tela = document.getElementById('tela-bloqueio');
+  if (!tela) {
+    tela = document.createElement('div');
+    tela.id = 'tela-bloqueio';
+    tela.style.cssText = 'position:fixed;inset:0;background:#141618;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:Inter,sans-serif;';
+    tela.innerHTML =
+      '<div style="background:#22272B;border:1px solid #2E3338;border-radius:18px;padding:48px 40px;max-width:440px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.5)">' +
+        '<div style="width:64px;height:64px;background:#E05252;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px">&#128274;</div>' +
+        '<h2 style="font-family:Outfit,sans-serif;font-size:22px;font-weight:800;color:#E8EAF0;margin-bottom:10px">Acesso suspenso</h2>' +
+        '<p style="font-size:14px;color:#8B9099;margin-bottom:28px;line-height:1.6">Seu plano est&aacute; com pagamento em atraso. Para regularizar e recuperar o acesso, entre em contato conosco pelo WhatsApp.</p>' +
+        '<a href="https://wa.me/5562982134790?text=Ol%C3%A1%2C%20preciso%20regularizar%20o%20pagamento%20do%20Tractar" target="_blank" ' +
+          'style="display:inline-flex;align-items:center;gap:10px;background:#25D366;color:#fff;border:none;border-radius:10px;padding:14px 28px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none">' +
+          '&#128172; Falar no WhatsApp' +
+        '</a>' +
+        '<p style="font-size:12px;color:#4A5058;margin-top:20px">Ap&oacute;s a confirma&ccedil;&atilde;o do pagamento seu acesso ser&aacute; restaurado em at&eacute; 24h.</p>' +
+      '</div>';
+    document.body.appendChild(tela);
+  }
+  tela.style.display = 'flex';
+}
+
+function mostrarBannerAviso(diasRestantes) {
+  var banner = document.getElementById('banner-pagamento');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'banner-pagamento';
+    // Inserir antes do conteúdo principal
+    var appEl = document.getElementById('app');
+    if (appEl) appEl.insertBefore(banner, appEl.firstChild);
+  }
+
+  var cor = diasRestantes <= 0 ? '#E05252' : diasRestantes <= 3 ? '#E8A317' : '#5B9BD5';
+  var icone = diasRestantes <= 0 ? '&#9888;' : '&#128197;';
+  var texto = diasRestantes <= 0
+    ? 'Pagamento em atraso! Regularize para evitar a suspens&atilde;o do acesso.'
+    : 'Seu plano vence em <strong>' + diasRestantes + ' dia' + (diasRestantes > 1 ? 's' : '') + '</strong>. Renove para manter o acesso.';
+
+  banner.style.cssText = 'background:'+cor+';color:#fff;padding:10px 24px;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:100;';
+  banner.innerHTML =
+    '<span>' + icone + ' ' + texto + '</span>' +
+    '<a href="https://wa.me/5562982134790?text=Ol%C3%A1%2C%20quero%20renovar%20meu%20plano%20Tractar" target="_blank" ' +
+      'style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap">' +
+      'Regularizar agora' +
+    '</a>';
+}
 
 iniciarApp();
 
