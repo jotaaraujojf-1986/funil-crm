@@ -1750,6 +1750,10 @@ async function renderEquipeView(){
       }
 
       toast('Acesso criado com sucesso!', 'sucesso');
+
+      // Atualizar valor do próximo pagamento pendente
+      await atualizarValorPagamentoPendente();
+
       document.getElementById('novo-membro-nome').value = '';
       document.getElementById('novo-membro-username').value = '';
       document.getElementById('novo-membro-senha').value = '';
@@ -6131,6 +6135,38 @@ function mostrarBannerAviso(diasRestantes) {
       'style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap">' +
       'Regularizar agora' +
     '</a>';
+}
+
+async function atualizarValorPagamentoPendente() {
+  if (!equipeAtual) return;
+
+  // Só atualiza nos planos por usuário
+  var plano = equipeAtual.plano;
+  if (plano !== 'equipe' && plano !== 'business') return;
+
+  // Contar membros ativos atuais
+  var { count } = await sb
+    .from('membros_equipe')
+    .select('*', { count: 'exact', head: true })
+    .eq('equipe_id', equipeAtual.id)
+    .eq('ativo', true);
+
+  var qtd = count || 1;
+  var novoValor = plano === 'equipe' ? qtd * 39 : 0; // business: manual
+
+  // Buscar próximo pagamento pendente
+  var { data: pags } = await sb
+    .from('pagamentos')
+    .select('id')
+    .eq('equipe_id', equipeAtual.id)
+    .eq('status', 'pendente')
+    .order('data_vencimento', { ascending: true })
+    .limit(1);
+
+  if (!pags || pags.length === 0) return;
+
+  // Atualizar o valor
+  await sb.from('pagamentos').update({ valor: novoValor }).eq('id', pags[0].id);
 }
 
 iniciarApp();
