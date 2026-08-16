@@ -4143,7 +4143,6 @@ async function salvarDetalheCliente(id){
   if(typeof render === 'function') render();
 }
 window.salvarDetalheCliente = salvarDetalheCliente;
-}
 
 async function openClienteModal(clienteId){
   var cliente = clientes.find(function(c){ return c.id === clienteId; });
