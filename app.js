@@ -2763,13 +2763,14 @@ function render(){
   }
 
   var isMobile = window.innerWidth <= 768;
+  var isFunilAtivo = document.getElementById('board') && document.getElementById('board').style.display !== 'none';
 
   if(!etapaMobileAtiva || !STAGES.some(function(s){ return s.id === etapaMobileAtiva; })){
     if(STAGES.length > 0) etapaMobileAtiva = STAGES[0].id;
   }
 
   var selectEtapa = document.getElementById('etapa-mobile-select');
-  if(isMobile){
+  if(isMobile && isFunilAtivo){
     if(!selectEtapa){
       selectEtapa = document.createElement('select');
       selectEtapa.id = 'etapa-mobile-select';
@@ -6064,6 +6065,13 @@ function switchTab(tab){
   if(filtroVendEl){
     var limites = getLimitePlano();
     filtroVendEl.style.display = (papelAtual === 'admin' && limites.usuarios > 1 && tab !== 'equipe') ? '' : 'none';
+  }
+
+  // Dropdown de etapas mobile: mostrar exclusivamente na aba Funil
+  var selectEtapaEl = document.getElementById('etapa-mobile-select');
+  if(selectEtapaEl){
+    var isMobile = window.innerWidth <= 768;
+    selectEtapaEl.style.display = (isMobile && tab === 'funil') ? 'inline-block' : 'none';
   }
 
   // Renderizar a seção ativa

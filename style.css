@@ -1836,10 +1836,17 @@ html[data-theme="dark"] #sidebar-nav{
     min-width: 40px;
   }
 
-  /* CABEÇALHO COMPACTO NO MOBILE */
+  /* CABEÇALHO COMPACTO NO MOBILE (GRID 3+2 FIXO, SEM OVERFLOW) */
   .header {
     flex-wrap: wrap !important;
     padding: 10px 12px !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+
+  .brand {
+    display: flex !important;
+    align-items: center !important;
     gap: 8px !important;
   }
 
@@ -1852,33 +1859,50 @@ html[data-theme="dark"] #sidebar-nav{
   }
 
   .stats {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    scroll-snap-type: x mandatory !important;
-    -webkit-overflow-scrolling: touch !important;
-    gap: 8px !important;
-    padding-bottom: 4px !important;
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 6px !important;
     width: 100% !important;
     max-width: 100% !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    scroll-snap-type: none !important;
+    padding: 0 !important;
+    margin-top: 4px !important;
   }
 
-  .stat {
-    scroll-snap-align: start !important;
-    flex: 0 0 auto !important;
-    min-width: 95px !important;
-    padding: 6px 10px !important;
+  .stats .stat {
+    min-width: 0 !important;
+    padding: 6px 4px !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
   }
+
+  /* 3 cards na primeira linha */
+  .stats .stat:nth-child(1) { grid-column: 1 / span 2 !important; }
+  .stats .stat:nth-child(2) { grid-column: 3 / span 2 !important; }
+  .stats .stat:nth-child(3) { grid-column: 5 / span 2 !important; }
+
+  /* 2 cards centralizados na segunda linha */
+  .stats .stat:nth-child(4) { grid-column: 2 / span 2 !important; }
+  .stats .stat:nth-child(5) { grid-column: 4 / span 2 !important; }
 
   .stat .num {
-    font-size: 15px !important;
-    line-height: 1.2 !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .stat .lbl {
-    font-size: 9px !important;
-    letter-spacing: 0.3px !important;
+    font-size: 8.5px !important;
+    letter-spacing: 0.2px !important;
     white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-top: 2px !important;
   }
 
   /* KANBAN — etapa unica via dropdown no mobile */
