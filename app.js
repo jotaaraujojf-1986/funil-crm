@@ -5681,6 +5681,12 @@ function showCriarEquipe(){
     '</div>';
 
   document.getElementById('btn-logout-criar-equipe').addEventListener('click', async function(){
+    localStorage.removeItem('session_token');
+    if(currentUserId){
+      await sb.from('membros_equipe')
+        .update({ session_token: null })
+        .eq('user_id', currentUserId);
+    }
     await sb.auth.signOut();
     location.reload();
   });
@@ -5902,6 +5908,12 @@ document.getElementById('overlay-config').addEventListener('click', function(e){
 
 document.getElementById('btn-logout').addEventListener('click', async function(){
   fecharSidebar();
+  localStorage.removeItem('session_token');
+  if(currentUserId){
+    await sb.from('membros_equipe')
+      .update({ session_token: null })
+      .eq('user_id', currentUserId);
+  }
   await sb.auth.signOut();
   currentUserId = null;
   showLogin();
@@ -5959,6 +5971,62 @@ document.getElementById('filtro-tarefa-status').addEventListener('change', funct
 document.getElementById('filtro-tarefa-categoria').addEventListener('change', function(){ renderTarefasView(); });
 document.getElementById('filtro-tarefa-prioridade').addEventListener('change', function(){ renderTarefasView(); });
 
+function gerarToken() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+async function registrarSessionToken(userId) {
+  var token = gerarToken();
+  localStorage.setItem('session_token', token);
+  await sb.from('membros_equipe')
+    .update({ session_token: token })
+    .eq('user_id', userId);
+  return token;
+}
+
+async function verificarSessionToken() {
+  var tokenLocal = localStorage.getItem('session_token');
+  if (!tokenLocal || !currentUserId) return;
+
+  var { data } = await sb
+    .from('membros_equipe')
+    .select('session_token')
+    .eq('user_id', currentUserId)
+    .single();
+
+  if (!data || data.session_token !== tokenLocal) {
+    // Token divergiu — outro dispositivo fez login
+    localStorage.removeItem('session_token');
+    await sb.auth.signOut();
+    mostrarAvisoSessaoEncerrada();
+  }
+}
+
+// Iniciar verificação periódica
+setInterval(verificarSessionToken, 120000); // a cada 2 minutos
+
+function mostrarAvisoSessaoEncerrada() {
+  // Esconder o app
+  document.getElementById('app').classList.add('hidden');
+
+  // Criar tela de aviso
+  var tela = document.getElementById('tela-sessao-encerrada');
+  if (!tela) {
+    tela = document.createElement('div');
+    tela.id = 'tela-sessao-encerrada';
+    tela.style.cssText = 'position:fixed;inset:0;background:#141618;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:Inter,sans-serif;';
+    tela.innerHTML =
+      '<div style="background:#22272B;border:1px solid #2E3338;border-radius:18px;padding:48px 40px;max-width:420px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.5)">' +
+        '<div style="width:64px;height:64px;background:#E8A317;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px">&#128274;</div>' +
+        '<h2 style="font-family:Outfit,sans-serif;font-size:22px;font-weight:800;color:#E8EAF0;margin-bottom:10px">Sessão encerrada</h2>' +
+        '<p style="font-size:14px;color:#8B9099;margin-bottom:28px;line-height:1.6">Sua sessão foi encerrada porque este acesso foi feito em outro dispositivo. Faça login novamente para continuar.</p>' +
+        '<button onclick="location.reload()" style="background:#E8A317;color:#1A252F;border:none;border-radius:10px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer">Fazer login novamente</button>' +
+      '</div>';
+    document.body.appendChild(tela);
+  }
+  tela.style.display = 'flex';
+}
+
 async function iniciarApp(){
   var sessionRes = await sb.auth.getSession();
   var session = sessionRes.data.session;
@@ -5974,6 +6042,8 @@ async function iniciarApp(){
     showCriarEquipe();
     return;
   }
+
+  await registrarSessionToken(currentUserId);
 
   await verificarStatusPagamento();
 
