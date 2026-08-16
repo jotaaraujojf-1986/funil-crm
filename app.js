@@ -443,6 +443,7 @@ async function criarLeadNoDb(lead){
 }
 
 async function atualizarLeadNoDb(lead){
+  console.log('Salvando lead:', lead.responsavel, lead.cnpj, lead.tipo);
   var res = await sb.from('leads').update(toDb(lead)).eq('id', lead.id);
   if(res.error){ console.error('Erro ao atualizar lead', res.error); showSyncError(); }
 }
@@ -3028,7 +3029,12 @@ function openModal(id){
             '</div>' +
             field('Tags', '<div class="tags-input-container"><div class="tags-chips" id="f-tags-chips"></div><div style="display:flex; gap:8px;"><input type="text" id="f-tags-input" autocomplete="off" placeholder="Digite uma tag..." class="campo-padrao campo-padrao-flex"><button type="button" class="btn-primary" id="btn-add-tag-novo-negocio" style="padding:8px 14px; font-size:13px;">Adicionar</button></div></div>') +
           '</div>'
-        : '') +
+        :
+          '<div class="row2">' +
+            field('CNPJ (opcional)', '<input id="f-cnpj" type="text" value="' + escapeHtml(lead.cnpj || '') + '" placeholder="00.000.000/0000-00">') +
+            field('Responsável (opcional)', '<input id="f-responsavel" type="text" value="' + escapeHtml(lead.responsavel || '') + '" placeholder="Nome de quem você fala na empresa">') +
+          '</div>'
+        ) +
 
         '<div class="row2" style="align-items:start;">' +
           '<div class="modal-trello-secao" style="margin-bottom:0;">' +
