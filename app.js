@@ -394,7 +394,10 @@ function fromDb(row){
     motivoPerda: row.motivo_perda || '',
     etapaAlteradaEm: row.etapa_alterada_em || row.created_at,
     atividadeTipo: row.proxima_atividade_tipo || '',
-    atividadeDesc: row.proxima_atividade_desc || ''
+    atividadeDesc: row.proxima_atividade_desc || '',
+    cnpj: row.cnpj || '',
+    responsavel: row.responsavel || '',
+    tipo: row.tipo || 'fisica'
   };
 }
 
@@ -416,7 +419,10 @@ function toDb(lead){
     motivo_perda: lead.motivoPerda || null,
     etapa_alterada_em: lead.etapaAlteradaEm || new Date().toISOString(),
     proxima_atividade_tipo: lead.atividadeTipo || null,
-    proxima_atividade_desc: lead.atividadeDesc || null
+    proxima_atividade_desc: lead.atividadeDesc || null,
+    cnpj: lead.cnpj || null,
+    responsavel: lead.responsavel || null,
+    tipo: lead.tipo || 'fisica'
   };
 }
 
@@ -464,7 +470,7 @@ function clienteFromDb(row){
     cnpj: row.cnpj || '',
     tags: Array.isArray(row.tags) ? row.tags : [],
     responsavel: row.responsavel || '',
-    tipo: row.tipo || 'juridica'
+    tipo: row.tipo || 'fisica'
   };
 }
 
@@ -479,7 +485,7 @@ function clienteToDb(cliente){
     criado: cliente.criado || todayStr(),
     cnpj: cliente.cnpj || null,
     responsavel: cliente.responsavel || null,
-    tipo: cliente.tipo || 'juridica',
+    tipo: cliente.tipo || 'fisica',
     tags: cliente.tags || []
   };
 }
