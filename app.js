@@ -3823,9 +3823,326 @@ function renderClientesView(){
 
   grid.querySelectorAll('.cliente-card').forEach(function(card){
     card.addEventListener('click', function(){
-      openClienteModal(card.getAttribute('data-id'));
+      var cid = card.getAttribute('data-id');
+      var cliente = clientes.find(function(c){ return c.id === cid; });
+      if(cliente){
+        abrirDetalheCliente(cliente);
+      } else {
+        openClienteModal(cid);
+      }
     });
   });
+}
+
+function parseMoney(v){
+  return parseValorMascarado(v);
+}
+
+function getOrCreateOverlayDetalheCliente(){
+  var overlay = document.getElementById('overlay-detalhe-cliente');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'overlay-detalhe-cliente';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(28,31,34,0.65);z-index:99999;display:none;align-items:stretch;justify-content:flex-end;opacity:0;transition:opacity 0.25s ease;';
+
+    var drawer = document.createElement('div');
+    drawer.id = 'modal-detalhe-cliente-drawer';
+    drawer.style.cssText = 'width:480px;max-width:90vw;height:100%;background:var(--panel);color:var(--ink);box-shadow:-6px 0 32px rgba(0,0,0,0.3);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.25s ease;overflow:hidden;';
+
+    overlay.appendChild(drawer);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) fecharDetalheCliente();
+    });
+  }
+  return overlay;
+}
+
+function fecharDetalheCliente(){
+  var overlay = document.getElementById('overlay-detalhe-cliente');
+  var drawer = document.getElementById('modal-detalhe-cliente-drawer');
+  if(overlay && drawer){
+    overlay.style.opacity = '0';
+    drawer.style.transform = 'translateX(100%)';
+    setTimeout(function(){
+      overlay.style.display = 'none';
+    }, 250);
+  }
+}
+window.fecharDetalheCliente = fecharDetalheCliente;
+
+function abrirDetalheCliente(cliente){
+  if(!cliente) return;
+  var overlay = getOrCreateOverlayDetalheCliente();
+  var drawer = document.getElementById('modal-detalhe-cliente-drawer');
+
+  var negs = negociacoesDoCliente(cliente.id);
+  var lead = negs.length > 0 ? negs[0] : null;
+
+  var tipoVal = cliente.tipo || (lead ? lead.tipo : 'juridica');
+  var stageObj = STAGES.find(function(s){ return s.id === (lead ? lead.stage : 'lead'); }) || STAGES[0];
+  var canalVal = cliente.canal || (lead ? lead.canal : 'whatsapp');
+  var atvTipoVal = lead ? (lead.atividadeTipo || '') : '';
+
+  var canalKeys = Object.keys(CANAIS);
+  var canalOptionsHtml = canalKeys.map(function(k){
+    return '<option value="' + k + '"' + (canalVal === k ? ' selected' : '') + '>' + escapeHtml(CANAIS[k]) + '</option>';
+  }).join('');
+  if(canalKeys.indexOf('instagram') === -1 && canalVal === 'instagram'){
+    canalOptionsHtml += '<option value="instagram" selected>Instagram</option>';
+  }
+
+  drawer.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel);">' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<h2 style="margin:0;font-size:18px;font-weight:700;color:var(--ink);font-family:\'Outfit\',sans-serif;">Detalhes do Cliente</h2>' +
+      '</div>' +
+      '<button type="button" onclick="fecharDetalheCliente()" style="background:none;border:none;color:var(--ink-soft);font-size:20px;cursor:pointer;padding:4px 8px;">✕</button>' +
+    '</div>' +
+
+    '<div style="flex:1;overflow-y:auto;padding:24px;">' +
+
+      // SEÇÃO 1 — Identificação
+      '<div style="margin-bottom:20px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line)">Identificação</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Tipo</label>' +
+          '<select id="det-tipo" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+            '<option value="juridica"' + (tipoVal === 'juridica' ? ' selected' : '') + '>Pessoa Jurídica (CNPJ)</option>' +
+            '<option value="fisica"' + (tipoVal === 'fisica' ? ' selected' : '') + '>Pessoa Física (CPF)</option>' +
+          '</select>' +
+        '</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Nome / Empresa</label>' +
+          '<input type="text" id="det-nome" value="' + escapeHtml(cliente.nome || (lead ? lead.nome : '')) + '" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+        '</div>' +
+
+        '<div id="det-pj-campos" style="display:' + (tipoVal === 'fisica' ? 'none' : 'block') + ';">' +
+          '<div style="margin-bottom:12px">' +
+            '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">CNPJ / CPF</label>' +
+            '<input type="text" id="det-cnpj" value="' + escapeHtml(cliente.cnpj || (lead ? lead.cnpj : '') || '') + '" placeholder="00.000.000/0000-00" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+          '</div>' +
+
+          '<div style="margin-bottom:12px">' +
+            '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Nome do responsável</label>' +
+            '<input type="text" id="det-responsavel" value="' + escapeHtml(cliente.responsavel || (lead ? lead.responsavel : '') || '') + '" placeholder="Nome do contato na empresa" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      // SEÇÃO 2 — Contato
+      '<div style="margin-bottom:20px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line)">Contato</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Telefone / WhatsApp</label>' +
+          '<input type="text" id="det-contato" value="' + maskTelefone(cliente.contato || (lead ? lead.contato : '') || '') + '" placeholder="(32) 99999-9999" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+        '</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Canal de origem</label>' +
+          '<select id="det-canal" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+            canalOptionsHtml +
+          '</select>' +
+        '</div>' +
+      '</div>' +
+
+      // SEÇÃO 3 — Comercial
+      '<div style="margin-bottom:20px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line)">Comercial</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Valor do negócio (R$)</label>' +
+          '<input type="text" id="det-valor" value="' + formatValorParaInput(lead ? lead.valor : 0) + '" placeholder="0,00" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+        '</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Etapa atual do funil</label>' +
+          '<div style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;display:flex;align-items:center;">' +
+            '<span class="badge-stage" style="background:' + stageObj.color + ';padding:3px 8px;border-radius:4px;color:#fff;font-size:11px;font-weight:700;">' + stageObj.label + '</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Data de criação</label>' +
+          '<div style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink-soft);font-size:13px;font-family:Inter,sans-serif;">' + (fmtDateBR(cliente.criado || (lead ? lead.criado : '')) || '—') + '</div>' +
+        '</div>' +
+
+        (lead && lead.fechadoEm ?
+          '<div style="margin-bottom:12px">' +
+            '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Data de fechamento</label>' +
+            '<div style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink-soft);font-size:13px;font-family:Inter,sans-serif;">' + fmtDateBR(lead.fechadoEm) + '</div>' +
+          '</div>'
+        : '') +
+
+        (lead && lead.stage === 'perdido' ?
+          '<div style="margin-bottom:12px">' +
+            '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Motivo da perda</label>' +
+            '<div style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink-soft);font-size:13px;font-family:Inter,sans-serif;">' + escapeHtml(lead.motivoPerda || '—') + '</div>' +
+          '</div>'
+        : '') +
+      '</div>' +
+
+      // SEÇÃO 4 — Acompanhamento
+      '<div style="margin-bottom:20px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line)">Acompanhamento</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Próximo follow-up</label>' +
+          '<input type="date" id="det-followup" value="' + (lead ? (lead.nextFollowUp || '') : '') + '" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+        '</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Tipo da próxima atividade</label>' +
+          '<select id="det-atv-tipo" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+            '<option value="">Nenhuma</option>' +
+            '<option value="Ligar"' + (atvTipoVal === 'Ligar' ? ' selected' : '') + '>Ligar</option>' +
+            '<option value="Enviar proposta"' + (atvTipoVal === 'Enviar proposta' ? ' selected' : '') + '>Enviar proposta</option>' +
+            '<option value="Reunião"' + (atvTipoVal === 'Reunião' ? ' selected' : '') + '>Reunião</option>' +
+            '<option value="Visita"' + (atvTipoVal === 'Visita' ? ' selected' : '') + '>Visita</option>' +
+            '<option value="Outro"' + (atvTipoVal === 'Outro' ? ' selected' : '') + '>Outro</option>' +
+          '</select>' +
+        '</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Descrição da próxima atividade</label>' +
+          '<input type="text" id="det-atv-desc" value="' + escapeHtml(lead ? (lead.atividadeDesc || '') : '') + '" placeholder="Ex: Ligar confirmando prazo" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none">' +
+        '</div>' +
+      '</div>' +
+
+      // SEÇÃO 5 — Notas
+      '<div style="margin-bottom:20px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line)">Notas</div>' +
+
+        '<div style="margin-bottom:12px">' +
+          '<label style="display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Notas / Observações</label>' +
+          '<textarea id="det-notas" placeholder="Detalhes, preferências ou notas sobre o cliente..." style="width:100%;height:90px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;font-family:Inter,sans-serif;outline:none;resize:vertical;">' + escapeHtml(cliente.notas || (lead ? lead.notas : '') || '') + '</textarea>' +
+        '</div>' +
+      '</div>' +
+
+    '</div>' +
+
+    '<div style="padding:16px 24px;border-top:1px solid var(--line);background:var(--panel);display:flex;justify-content:space-between;align-items:center;gap:12px;">' +
+      '<button type="button" class="btn-ghost" onclick="fecharDetalheCliente()">Fechar</button>' +
+      '<button type="button" class="btn-primary" id="btn-save-detalhe" onclick="salvarDetalheCliente(\'' + cliente.id + '\')">Salvar alterações</button>' +
+    '</div>';
+
+  var selTipo = document.getElementById('det-tipo');
+  if(selTipo){
+    selTipo.addEventListener('change', function(){
+      var pjCampos = document.getElementById('det-pj-campos');
+      if(pjCampos){
+        pjCampos.style.display = this.value === 'juridica' ? 'block' : 'none';
+      }
+    });
+  }
+
+  var inputValor = document.getElementById('det-valor');
+  if(inputValor){
+    inputValor.addEventListener('input', function(){
+      this.value = maskValor(this.value);
+    });
+  }
+
+  var inputContato = document.getElementById('det-contato');
+  if(inputContato){
+    inputContato.addEventListener('input', function(){
+      this.value = maskTelefone(this.value);
+    });
+  }
+
+  overlay.style.display = 'flex';
+  setTimeout(function(){
+    overlay.style.opacity = '1';
+    drawer.style.transform = 'translateX(0)';
+  }, 10);
+}
+window.abrirDetalheCliente = abrirDetalheCliente;
+
+async function salvarDetalheCliente(id){
+  var btnSave = document.getElementById('btn-save-detalhe');
+  if(btnSave){
+    btnSave.disabled = true;
+    btnSave.textContent = 'Salvando...';
+  }
+
+  var nome = document.getElementById('det-nome') ? document.getElementById('det-nome').value.trim() : '';
+  var tipo = document.getElementById('det-tipo') ? document.getElementById('det-tipo').value : 'juridica';
+  var cnpj = document.getElementById('det-cnpj') ? document.getElementById('det-cnpj').value.trim() || null : null;
+  var responsavel = document.getElementById('det-responsavel') ? document.getElementById('det-responsavel').value.trim() || null : null;
+  var contato = document.getElementById('det-contato') ? document.getElementById('det-contato').value.trim() || null : null;
+  var canal = document.getElementById('det-canal') ? document.getElementById('det-canal').value || null : null;
+  var valor = document.getElementById('det-valor') ? parseMoney(document.getElementById('det-valor').value) || 0 : 0;
+  var next_follow_up = document.getElementById('det-followup') ? document.getElementById('det-followup').value || null : null;
+  var proxima_atividade_tipo = document.getElementById('det-atv-tipo') ? document.getElementById('det-atv-tipo').value || null : null;
+  var proxima_atividade_desc = document.getElementById('det-atv-desc') ? document.getElementById('det-atv-desc').value.trim() || null : null;
+  var notas = document.getElementById('det-notas') ? document.getElementById('det-notas').value.trim() || null : null;
+
+  var leadObj = leads.find(function(l){ return l.id === id || l.clienteId === id; });
+  var targetLeadId = leadObj ? leadObj.id : id;
+
+  var resLead = await sb.from('leads').update({
+    nome: nome,
+    tipo: tipo,
+    cnpj: cnpj,
+    responsavel: responsavel,
+    contato: contato,
+    canal: canal,
+    valor: valor,
+    next_follow_up: next_follow_up,
+    proxima_atividade_tipo: proxima_atividade_tipo,
+    proxima_atividade_desc: proxima_atividade_desc,
+    notas: notas,
+  }).eq('id', targetLeadId);
+
+  if(resLead.error){
+    console.error('Erro ao salvar lead no Supabase:', resLead.error);
+  }
+
+  await sb.from('clientes').update({
+    nome: nome,
+    tipo: tipo,
+    cnpj: cnpj,
+    responsavel: responsavel,
+    contato: contato,
+    canal: canal,
+    notas: notas
+  }).eq('id', id);
+
+  var cliIdx = clientes.findIndex(function(c){ return c.id === id; });
+  if(cliIdx !== -1){
+    clientes[cliIdx].nome = nome;
+    clientes[cliIdx].tipo = tipo;
+    clientes[cliIdx].cnpj = cnpj || '';
+    clientes[cliIdx].responsavel = responsavel || '';
+    clientes[cliIdx].contato = contato || '';
+    clientes[cliIdx].canal = canal || '';
+    clientes[cliIdx].notas = notas || '';
+  }
+
+  if(leadObj){
+    leadObj.nome = nome;
+    leadObj.tipo = tipo;
+    leadObj.cnpj = cnpj || '';
+    leadObj.responsavel = responsavel || '';
+    leadObj.contato = contato || '';
+    leadObj.canal = canal || '';
+    leadObj.valor = valor;
+    leadObj.nextFollowUp = next_follow_up;
+    leadObj.atividadeTipo = proxima_atividade_tipo || '';
+    leadObj.atividadeDesc = proxima_atividade_desc || '';
+    leadObj.notas = notas || '';
+  }
+
+  toast('Dados do cliente salvos com sucesso!', 'sucesso');
+  fecharDetalheCliente();
+  renderClientesView();
+  if(typeof render === 'function') render();
+}
+window.salvarDetalheCliente = salvarDetalheCliente;
 }
 
 async function openClienteModal(clienteId){
