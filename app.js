@@ -6585,6 +6585,42 @@ async function atualizarValorPagamentoPendente() {
 
 iniciarApp();
 
+// Criar overlay da sidebar
+var sidebarOverlay = document.getElementById('sidebar-overlay');
+if(!sidebarOverlay){
+  sidebarOverlay = document.createElement('div');
+  sidebarOverlay.id = 'sidebar-overlay';
+  document.body.appendChild(sidebarOverlay);
+}
+
+// Botao hamburguer
+document.addEventListener('click', function(e){
+  var btn = e.target.closest('#btn-menu-mobile');
+  if(btn){
+    var sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar-nav');
+    if(sidebar) sidebar.classList.toggle('mobile-open');
+    if(sidebarOverlay) sidebarOverlay.classList.toggle('open');
+  }
+});
+
+// Fechar sidebar ao clicar no overlay
+if(sidebarOverlay){
+  sidebarOverlay.addEventListener('click', function(){
+    var sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar-nav');
+    if(sidebar) sidebar.classList.remove('mobile-open');
+    sidebarOverlay.classList.remove('open');
+  });
+}
+
+// Fechar sidebar ao navegar
+document.querySelectorAll('.nav-item, .sidebar-item').forEach(function(item){
+  item.addEventListener('click', function(){
+    var sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar-nav');
+    if(sidebar) sidebar.classList.remove('mobile-open');
+    if(sidebarOverlay) sidebarOverlay.classList.remove('open');
+  });
+});
+
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/service-worker.js')
