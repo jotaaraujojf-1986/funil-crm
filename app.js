@@ -3518,14 +3518,17 @@ async function renderMetaMensal(){
   var metaEsp = res.data ? Number(res.data.valor_esperada)||0 : 0;
   var metaDes = res.data ? Number(res.data.valor_desafio)||0 : 0;
 
-  // Calcular valor fechado no mes atual
-  var fechadosMes = leads.filter(function(l){
-    if(l.stage !== 'fechado' || !l.fechadoEm) return false;
-    var d = new Date(l.fechadoEm + 'T00:00:00');
-    return d.getFullYear() === anoAtual && d.getMonth() === mesAtual - 1;
-  });
-  var valorFechado = fechadosMes.reduce(function(s,l){
-    return s + (Number(l.valor)||0);
+  var primeiroDiaMes = anoAtual + '-' + String(mesAtual).padStart(2,'0') + '-01';
+  var ultimoDiaMes = new Date(anoAtual, mesAtual, 0).toISOString().slice(0,10);
+
+  var resLanc = await sb.from('lancamentos_diarios')
+    .select('valor')
+    .eq('equipe_id', equipeAtual ? equipeAtual.id : null)
+    .gte('data', primeiroDiaMes)
+    .lte('data', ultimoDiaMes);
+
+  var valorFechado = (resLanc.data || []).reduce(function(s, l){
+    return s + (Number(l.valor) || 0);
   }, 0);
 
   // Se nao ha metas definidas
