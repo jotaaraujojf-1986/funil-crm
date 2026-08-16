@@ -2761,11 +2761,25 @@ function render(){
     }).join('');
   }
 
+  var isMobile = window.innerWidth <= 768;
+
   STAGES.forEach(function(stage){
     var col = document.createElement('div');
-    col.className = 'column';
+    col.className = 'column kanban-col';
     col.style.setProperty('--stage-color', stage.color);
     col.setAttribute('data-stage', stage.id);
+
+    var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
+    var stageTotalValor = stageLeads.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+
+    if(isMobile){
+      var colHeader = document.createElement('div');
+      colHeader.className = 'kanban-col-header column-header';
+      colHeader.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--bg2); border-radius:8px; font-weight:700; color:var(--ink); cursor:pointer; margin-bottom:6px; border-left:4px solid ' + stage.color + ';';
+      colHeader.innerHTML = '<span>' + escapeHtml(stage.label) + ' <span style="font-size:12px; font-weight:600; color:var(--ink-soft);">(' + stageLeads.length + ') · ' + fmtMoney(stageTotalValor) + '</span></span>' +
+        (isMobile ? '<span class="toggle-icon" style="font-size:10px;margin-left:6px">▼</span>' : '');
+      col.appendChild(colHeader);
+    }
 
     var colCards = document.createElement('div');
     colCards.className = 'kanban-cards';
@@ -2807,8 +2821,6 @@ function render(){
       }
     });
 
-    var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
-
     if(stageLeads.length === 0){
       var empty = document.createElement('div');
       empty.className = 'empty-col';
@@ -2830,6 +2842,23 @@ function render(){
     col.appendChild(colCards);
     board.appendChild(col);
   });
+
+  // Toggle coluna no mobile
+  if(isMobile){
+    var headers = board.querySelectorAll('.kanban-col-header, .col-head-cell, .column-header');
+    headers.forEach(function(header){
+      header.addEventListener('click', function(){
+        var col = header.closest('.kanban-col, .column, [data-stage]');
+        var cards = col ? col.querySelector('.kanban-cards') : null;
+        if(cards){
+          var isOpen = cards.style.display !== 'none';
+          cards.style.display = isOpen ? 'none' : '';
+          var toggleIcon = header.querySelector('.toggle-icon');
+          if(toggleIcon) toggleIcon.textContent = isOpen ? '▶' : '▼';
+        }
+      });
+    });
+  }
 
   document.querySelectorAll('.btn-concluir-followup').forEach(function(btn){
     btn.addEventListener('click', async function(e){

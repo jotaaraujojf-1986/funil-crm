@@ -1835,4 +1835,34 @@ html[data-theme="dark"] #sidebar-nav{
     min-width: 40px;
   }
 
+  /* KANBAN — lista no mobile */
+  #board-headers {
+    display: none !important;
+  }
+
+  .kanban-board, [class*="kanban-board"], [class*="funil-board"], .board, #board {
+    flex-direction: column !important;
+    overflow-x: unset !important;
+    gap: 0 !important;
+  }
+
+  /* Cada coluna ocupa largura total */
+  .kanban-col, [class*="kanban-col"], [class*="stage-col"], .column {
+    width: 100% !important;
+    min-width: unset !important;
+    flex: unset !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Header da coluna — clicavel para expandir/recolher */
+  .kanban-col-header, [class*="col-header"], .column-header {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  /* Cards ficam menores no mobile */
+  .kanban-cards, [class*="kanban-cards"] {
+    padding: 8px !important;
+  }
+
 }
