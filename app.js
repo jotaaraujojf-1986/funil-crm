@@ -2962,7 +2962,7 @@ function buildCard(lead, stageColor){
 function openModal(id){
   var isNew = !id;
   var lead = isNew
-    ? {id: uid(), nome:'', contato:'', canal:'whatsapp', interesse:'', valor:'', stage:'lead', nextFollowUp: null, notas:'', criado: todayStr(), clienteId:null, motivoPerda:'', anexos:[]}
+    ? {id: uid(), nome:'', contato:'', canal:'whatsapp', interesse:'', valor:'', stage:'lead', nextFollowUp: null, notas:'', criado: todayStr(), clienteId:null, motivoPerda:'', anexos:[], responsavel:'', cnpj:'', tipo:'fisica'}
     : leads.find(function(l){ return l.id === id; });
 
   if(!lead) return;
@@ -3245,6 +3245,12 @@ function openModal(id){
     lead.atividadeDesc = document.getElementById('f-atividade-desc').value.trim();
     var motivoEl = document.getElementById('f-motivo-perda');
     lead.motivoPerda = motivoEl ? motivoEl.value.trim() : (lead.stage === 'perdido' ? lead.motivoPerda : '');
+    var respEl = document.getElementById('f-responsavel');
+    if (respEl) lead.responsavel = respEl.value.trim();
+    var cnpjEl = document.getElementById('f-cnpj');
+    if (cnpjEl) lead.cnpj = cnpjEl.value.replace(/\D/g, '');
+    var tipoRadio = document.querySelector('input[name="tipo-cli"]:checked');
+    if (tipoRadio) lead.tipo = tipoRadio.value;
 
     var erroValidacao = validarCamposObrigatorios(lead);
     if(erroValidacao){
