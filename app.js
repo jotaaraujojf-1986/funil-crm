@@ -3498,46 +3498,86 @@ function weekKey(dateStr){
   return d.getFullYear() + '-S' + String(week).padStart(2,'0');
 }
 
-function renderMetaMensal(){
+async function renderMetaMensal(){
   var area = document.getElementById('meta-mensal-area');
-
-  if(!metaMensal || metaMensal <= 0){
-    area.innerHTML = '<div class="meta-box">' +
-      '<div class="meta-box-head"><h3>Meta de vendas</h3></div>' +
-      '<p class="anexo-vazio" style="margin:0;">Nenhuma meta mensal definida. Clique em ⚙️ no topo da página para configurar.</p>' +
-    '</div>';
-    return;
-  }
+  if(!area) return;
 
   var hoje = new Date();
   var anoAtual = hoje.getFullYear();
-  var mesAtual = hoje.getMonth();
+  var mesAtual = hoje.getMonth() + 1; // 1-12
 
+  // Buscar metas do mes atual no banco
+  var res = await sb.from('metas_mensais')
+    .select('*')
+    .eq('equipe_id', equipeAtual ? equipeAtual.id : null)
+    .eq('ano', anoAtual)
+    .eq('mes', mesAtual)
+    .maybeSingle();
+
+  var metaMin = res.data ? Number(res.data.valor)||0 : 0;
+  var metaEsp = res.data ? Number(res.data.valor_esperada)||0 : 0;
+  var metaDes = res.data ? Number(res.data.valor_desafio)||0 : 0;
+
+  // Calcular valor fechado no mes atual
   var fechadosMes = leads.filter(function(l){
     if(l.stage !== 'fechado' || !l.fechadoEm) return false;
     var d = new Date(l.fechadoEm + 'T00:00:00');
-    return d.getFullYear() === anoAtual && d.getMonth() === mesAtual;
+    return d.getFullYear() === anoAtual && d.getMonth() === mesAtual - 1;
   });
-  var valorFechadoMes = fechadosMes.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
-  var pct = Math.min(100, Math.round((valorFechadoMes / metaMensal) * 100));
-  var faltam = Math.max(0, metaMensal - valorFechadoMes);
+  var valorFechado = fechadosMes.reduce(function(s,l){
+    return s + (Number(l.valor)||0);
+  }, 0);
 
-  area.innerHTML = '<div class="meta-box">' +
-    '<div class="meta-box-head">' +
-      '<h3>Meta de vendas — ' + MESES_PT[mesAtual] + '</h3>' +
-      '<span class="pct">' + pct + '%</span>' +
-    '</div>' +
-    '<div class="meta-barra-fundo"><div class="meta-barra-preenchida" style="width:' + pct + '%;"></div></div>' +
-    '<p class="meta-box-sub">' + fmtMoney(valorFechadoMes) + ' de ' + fmtMoney(metaMensal) +
-      (faltam > 0 ? ' · faltam ' + fmtMoney(faltam) : ' · meta atingida! 🎉') +
-    '</p>' +
-  '</div>';
+  // Se nao ha metas definidas
+  if(!metaMin && !metaEsp && !metaDes){
+    area.innerHTML =
+      '<div class="meta-box">' +
+        '<div class="meta-box-head"><h3>Metas de vendas</h3></div>' +
+        '<p class="anexo-vazio" style="margin:0">Nenhuma meta definida para este m\u00EAs. Acesse a aba Metas para configurar.</p>' +
+      '</div>';
+    return;
+  }
+
+  var MESES = ['Janeiro','Fevereiro','Mar\u00E7o','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  function barraProgresso(valor, meta, cor){
+    if(!meta) return '';
+    var pct = Math.min(100, Math.round((valor / meta) * 100));
+    var faltam = Math.max(0, meta - valor);
+    return (
+      '<div style="margin-bottom:14px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+          '<span style="font-size:12px;font-weight:600;color:var(--ink-soft)">' + cor.label + '</span>' +
+          '<span style="font-size:12px;font-weight:700;color:var(--ink)">' + pct + '%</span>' +
+        '</div>' +
+        '<div style="height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:4px">' +
+          '<div style="width:' + pct + '%;height:100%;background:' + cor.color + ';border-radius:4px;transition:width .4s"></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft)">' +
+          '<span>' + fmtMoney(valor) + ' de ' + fmtMoney(meta) + '</span>' +
+          '<span>' + (faltam > 0 ? 'Faltam ' + fmtMoney(faltam) : '\u2713 Atingida!') + '</span>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  area.innerHTML =
+    '<div class="meta-box">' +
+      '<div class="meta-box-head">' +
+        '<h3>Metas de vendas \u2014 ' + MESES[mesAtual-1] + '</h3>' +
+        '<span style="font-size:12px;color:var(--ink-soft)">Realizado: <strong style="color:var(--ink)">' + fmtMoney(valorFechado) + '</strong></span>' +
+      '</div>' +
+      (metaMin ? barraProgresso(valorFechado, metaMin, {label:'\uD83E\uDD49 M\u00EDnima', color:'#5B9BD5'}) : '') +
+      (metaEsp ? barraProgresso(valorFechado, metaEsp, {label:'\uD83E\uDD48 Esperada', color:'#E8A317'}) : '') +
+      (metaDes ? barraProgresso(valorFechado, metaDes, {label:'\uD83E\uDD47 Desafio', color:'#2E7D4F'}) : '') +
+    '</div>';
 }
 
-function renderDashboard(){
+async function renderDashboard(){
   destroyCharts();
 
-  renderMetaMensal();
+  await renderMetaMensal();
 
   var leadsFiltrados = leads.filter(dentroDoPeriodo);
 
