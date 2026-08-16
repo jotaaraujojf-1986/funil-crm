@@ -22,6 +22,7 @@ var currentUserId = null;
 var leads = [];
 var clientes = [];
 var filtroAtivo = 'todos';
+var etapaMobileAtiva = 'lead';
 var periodoTipo = 'todos';
 var periodoInicio = null;
 var periodoFim = null;
@@ -2763,7 +2764,49 @@ function render(){
 
   var isMobile = window.innerWidth <= 768;
 
-  STAGES.forEach(function(stage){
+  if(!etapaMobileAtiva || !STAGES.some(function(s){ return s.id === etapaMobileAtiva; })){
+    if(STAGES.length > 0) etapaMobileAtiva = STAGES[0].id;
+  }
+
+  var selectEtapa = document.getElementById('etapa-mobile-select');
+  if(isMobile){
+    if(!selectEtapa){
+      selectEtapa = document.createElement('select');
+      selectEtapa.id = 'etapa-mobile-select';
+      selectEtapa.className = 'select-etapa-mobile';
+      var toolbar = document.querySelector('.toolbar');
+      if(toolbar){
+        var periodoFiltro = toolbar.querySelector('.periodo-filtro');
+        if(periodoFiltro){
+          periodoFiltro.insertAdjacentElement('afterend', selectEtapa);
+        } else {
+          toolbar.appendChild(selectEtapa);
+        }
+      }
+    }
+    if(selectEtapa){
+      selectEtapa.style.display = 'inline-block';
+      selectEtapa.innerHTML = STAGES.map(function(stage){
+        var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
+        var stageTotalValor = stageLeads.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+        var labelStr = stage.label + ' (' + stageLeads.length + ') \u00B7 ' + fmtMoney(stageTotalValor);
+        return '<option value="' + stage.id + '"' + (etapaMobileAtiva === stage.id ? ' selected' : '') + '>' + escapeHtml(labelStr) + '</option>';
+      }).join('');
+
+      selectEtapa.onchange = function(){
+        etapaMobileAtiva = this.value;
+        render();
+      };
+    }
+  } else {
+    if(selectEtapa) selectEtapa.style.display = 'none';
+  }
+
+  var stagesParaRenderizar = isMobile
+    ? STAGES.filter(function(s){ return s.id === etapaMobileAtiva; })
+    : STAGES;
+
+  stagesParaRenderizar.forEach(function(stage){
     var col = document.createElement('div');
     col.className = 'column kanban-col';
     col.style.setProperty('--stage-color', stage.color);
@@ -2771,15 +2814,6 @@ function render(){
 
     var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
     var stageTotalValor = stageLeads.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
-
-    if(isMobile){
-      var colHeader = document.createElement('div');
-      colHeader.className = 'kanban-col-header column-header';
-      colHeader.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--bg2); border-radius:8px; font-weight:700; color:var(--ink); cursor:pointer; margin-bottom:6px; border-left:4px solid ' + stage.color + ';';
-      colHeader.innerHTML = '<span>' + escapeHtml(stage.label) + ' <span style="font-size:12px; font-weight:600; color:var(--ink-soft);">(' + stageLeads.length + ') · ' + fmtMoney(stageTotalValor) + '</span></span>' +
-        (isMobile ? '<span class="toggle-icon" style="font-size:10px;margin-left:6px">▼</span>' : '');
-      col.appendChild(colHeader);
-    }
 
     var colCards = document.createElement('div');
     colCards.className = 'kanban-cards';
@@ -2812,7 +2846,7 @@ function render(){
         if(erro){
           lead.stage = stageAnterior;
           lead.etapaAlteradaEm = etapaAnteriorTimestamp;
-          toast(erro + ' Abra o card e complete essa informação antes de mover.', 'erro');
+          toast(erro + ' Abra o card e complete essa informa\u00E7\u00E3o antes de mover.', 'erro');
           render();
           return;
         }
@@ -2824,7 +2858,7 @@ function render(){
     if(stageLeads.length === 0){
       var empty = document.createElement('div');
       empty.className = 'empty-col';
-      empty.textContent = 'Arraste um cliente para aqui';
+      empty.textContent = 'Nenhum cliente nesta etapa';
       colCards.appendChild(empty);
     } else {
       stageLeads
@@ -2842,23 +2876,6 @@ function render(){
     col.appendChild(colCards);
     board.appendChild(col);
   });
-
-  // Toggle coluna no mobile
-  if(isMobile){
-    var headers = board.querySelectorAll('.kanban-col-header, .col-head-cell, .column-header');
-    headers.forEach(function(header){
-      header.addEventListener('click', function(){
-        var col = header.closest('.kanban-col, .column, [data-stage]');
-        var cards = col ? col.querySelector('.kanban-cards') : null;
-        if(cards){
-          var isOpen = cards.style.display !== 'none';
-          cards.style.display = isOpen ? 'none' : '';
-          var toggleIcon = header.querySelector('.toggle-icon');
-          if(toggleIcon) toggleIcon.textContent = isOpen ? '▶' : '▼';
-        }
-      });
-    });
-  }
 
   document.querySelectorAll('.btn-concluir-followup').forEach(function(btn){
     btn.addEventListener('click', async function(e){
