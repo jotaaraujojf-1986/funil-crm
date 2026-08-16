@@ -1865,4 +1865,85 @@ html[data-theme="dark"] #sidebar-nav{
     padding: 8px !important;
   }
 
+  /* TELA DE METAS */
+  .metas-duo-grid, [class*="metas-duo"], [class*="metas-grid"], .metas-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  [class*="meta-card"], [class*="meta-nivel"], .meta-card, .metas-section {
+    padding: 14px !important;
+  }
+
+  [class*="metas-ano-grid"], [class*="planejamento-grid"], .metas-grid-ano {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* TELA DE CLIENTES */
+  [class*="clientes-filtros"], [class*="filtros-row"], .clientes-view > div {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  [class*="clientes-filtros"] input,
+  [class*="clientes-filtros"] select,
+  .busca-cliente-input {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  [class*="cliente-row"], [class*="clientes-table"] tr, .cliente-card {
+    display: block !important;
+    margin-bottom: 10px !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--line) !important;
+    padding: 12px !important;
+  }
+  [class*="clientes-table"] td {
+    display: block !important;
+    border: none !important;
+    padding: 2px 0 !important;
+  }
+  [class*="clientes-table"] thead {
+    display: none !important;
+  }
+
+  /* DRAWER DE DETALHES DO CLIENTE */
+  #modal-detalhe-cliente-drawer {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 16px 16px 0 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    top: auto !important;
+    height: 90vh !important;
+  }
+
+  /* TELA DE DASHBOARD */
+  canvas, [class*="chart"], .chart-wrap {
+    max-height: 220px !important;
+  }
+
+  .topbar, .header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .topbar-actions, .toolbar {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  /* LANÇAMENTOS E CALENDÁRIO */
+  [class*="lancamentos-grid"], [class*="metas-grid-main"], .dash-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  [class*="calendario"], .calendario-view, .cal-grid {
+    font-size: 11px !important;
+  }
+  [class*="cal-cell"], [class*="calendario-dia"], .cal-cell {
+    min-height: 36px !important;
+    padding: 2px !important;
+  }
+
 }
