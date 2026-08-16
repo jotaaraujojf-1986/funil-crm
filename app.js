@@ -2906,6 +2906,7 @@ function buildCard(lead, stageColor){
     // Cabeçalho: nome + canal + valor
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">' +
       '<p class="name" style="margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(lead.nome) + '</p>' +
+      (lead.responsavel ? '<p style="margin:0 0 4px;font-size:11px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(lead.responsavel) + '</p>' : '') +
       waBtnHtml +
     '</div>' +
     '<p class="meta" style="margin:0 0 8px;">' + escapeHtml(canalLabel) + '<span class="dot"></span><span class="value">' + fmtMoney(lead.valor) + '</span></p>' +
