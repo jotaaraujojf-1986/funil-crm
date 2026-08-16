@@ -2763,44 +2763,28 @@ function render(){
   }
 
   var isMobile = window.innerWidth <= 768;
-  var isFunilAtivo = document.getElementById('board') && document.getElementById('board').style.display !== 'none';
 
   if(!etapaMobileAtiva || !STAGES.some(function(s){ return s.id === etapaMobileAtiva; })){
     if(STAGES.length > 0) etapaMobileAtiva = STAGES[0].id;
   }
 
-  var selectEtapa = document.getElementById('etapa-mobile-select');
-  if(isMobile && isFunilAtivo){
-    if(!selectEtapa){
-      selectEtapa = document.createElement('select');
-      selectEtapa.id = 'etapa-mobile-select';
-      selectEtapa.className = 'select-etapa-mobile';
-      var toolbar = document.querySelector('.toolbar');
-      if(toolbar){
-        var periodoFiltro = toolbar.querySelector('.periodo-filtro');
-        if(periodoFiltro){
-          periodoFiltro.insertAdjacentElement('afterend', selectEtapa);
-        } else {
-          toolbar.appendChild(selectEtapa);
-        }
-      }
-    }
-    if(selectEtapa){
-      selectEtapa.style.display = 'inline-block';
-      selectEtapa.innerHTML = STAGES.map(function(stage){
-        var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
-        var stageTotalValor = stageLeads.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
-        var labelStr = stage.label + ' (' + stageLeads.length + ') \u00B7 ' + fmtMoney(stageTotalValor);
-        return '<option value="' + stage.id + '"' + (etapaMobileAtiva === stage.id ? ' selected' : '') + '>' + escapeHtml(labelStr) + '</option>';
-      }).join('');
+  if(isMobile){
+    var selectEtapa = document.createElement('select');
+    selectEtapa.id = 'etapa-mobile-select';
+    selectEtapa.className = 'select-etapa-mobile';
+    selectEtapa.innerHTML = STAGES.map(function(stage){
+      var stageLeads = visible.filter(function(l){ return l.stage === stage.id; });
+      var stageTotalValor = stageLeads.reduce(function(s,l){ return s + (Number(l.valor)||0); }, 0);
+      var labelStr = stage.label + ' (' + stageLeads.length + ') \u00B7 ' + fmtMoney(stageTotalValor);
+      return '<option value="' + stage.id + '"' + (etapaMobileAtiva === stage.id ? ' selected' : '') + '>' + escapeHtml(labelStr) + '</option>';
+    }).join('');
 
-      selectEtapa.onchange = function(){
-        etapaMobileAtiva = this.value;
-        render();
-      };
-    }
-  } else {
-    if(selectEtapa) selectEtapa.style.display = 'none';
+    selectEtapa.onchange = function(){
+      etapaMobileAtiva = this.value;
+      render();
+    };
+
+    board.appendChild(selectEtapa);
   }
 
   var stagesParaRenderizar = isMobile
@@ -6065,13 +6049,6 @@ function switchTab(tab){
   if(filtroVendEl){
     var limites = getLimitePlano();
     filtroVendEl.style.display = (papelAtual === 'admin' && limites.usuarios > 1 && tab !== 'equipe') ? '' : 'none';
-  }
-
-  // Dropdown de etapas mobile: mostrar exclusivamente na aba Funil
-  var selectEtapaEl = document.getElementById('etapa-mobile-select');
-  if(selectEtapaEl){
-    var isMobile = window.innerWidth <= 768;
-    selectEtapaEl.style.display = (isMobile && tab === 'funil') ? 'inline-block' : 'none';
   }
 
   // Renderizar a seção ativa

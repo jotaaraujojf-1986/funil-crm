@@ -1905,21 +1905,21 @@ html[data-theme="dark"] #sidebar-nav{
     margin-top: 2px !important;
   }
 
-  /* KANBAN — etapa unica via dropdown no mobile */
-  #etapa-mobile-select {
-    display: inline-block !important;
+  /* KANBAN — etapa unica via dropdown no mobile (exclusivo do container #board do Funil) */
+  #board #etapa-mobile-select {
+    display: block;
     font-family: 'Inter', sans-serif;
     font-size: 13px;
     font-weight: 600;
-    padding: 8px 12px;
+    padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid var(--line);
     background: var(--panel);
     color: var(--ink);
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
-    margin: 4px 0;
+    margin-bottom: 10px;
   }
 
   #board-headers {
