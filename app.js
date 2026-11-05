@@ -293,6 +293,9 @@ function toast(mensagem, tipo){
 
 function customConfirm(mensagem, titulo){
   return new Promise(function(resolve){
+    var ovConfirm = document.getElementById('overlay-confirm');
+    if(ovConfirm){ document.body.appendChild(ovConfirm); }
+
     document.getElementById('confirm-titulo').textContent = titulo || 'Confirmar ação';
     document.getElementById('confirm-mensagem').textContent = mensagem;
     var overlay = document.getElementById('overlay-confirm');
@@ -3941,7 +3944,7 @@ function getOrCreateOverlayDetalheCliente(){
   if(!overlay){
     overlay = document.createElement('div');
     overlay.id = 'overlay-detalhe-cliente';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(28,31,34,0.65);z-index:99999;display:none;align-items:stretch;justify-content:flex-end;opacity:0;transition:opacity 0.25s ease;';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(28,31,34,0.65);z-index:1000;display:none;align-items:stretch;justify-content:flex-end;opacity:0;transition:opacity 0.25s ease;';
 
     var drawer = document.createElement('div');
     drawer.id = 'modal-detalhe-cliente-drawer';

@@ -326,6 +326,14 @@ body{
   z-index:50;
 }
 .overlay.open{ display:flex; }
+
+#overlay-confirm, .overlay-confirm {
+  z-index: 10000 !important;
+}
+
+#overlay-detalhe-cliente {
+  z-index: 1000;
+}
 .modal{
   background:var(--panel);
   border-radius:16px;
