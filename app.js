@@ -1483,11 +1483,11 @@ async function renderEquipeView(){
   if(equipeAtual.foto_url){
     fotoHtml = '<div style="position:relative; width:64px; height:64px; flex:0 0 64px;">' +
       '<img src="' + equipeAtual.foto_url + '?t=' + Date.now() + '" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid var(--amber);">' +
-      (papelAtual === 'admin' ? '<label for="input-foto-equipe" style="position:absolute; bottom:0; right:0; background:var(--amber); color:var(--steel-dark); border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;" title="Alterar foto">✏️</label>' : '') +
+      (papelAtual === 'admin' ? '<label for="input-foto-equipe" style="position:absolute; bottom:0; right:0; background:var(--amber); color:#FFFFFF; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;" title="Alterar foto">✏️</label>' : '') +
     '</div>';
   } else {
     fotoHtml = '<div style="position:relative; width:64px; height:64px; flex:0 0 64px;">' +
-      '<div class="membro-avatar" style="width:64px; height:64px; font-size:24px; background:var(--amber); color:var(--steel-dark);">' + (equipeAtual.nome || 'E').slice(0,2).toUpperCase() + '</div>' +
+      '<div class="membro-avatar" style="width:64px; height:64px; font-size:24px; background:var(--amber); color:#FFFFFF;">' + (equipeAtual.nome || 'E').slice(0,2).toUpperCase() + '</div>' +
       (papelAtual === 'admin' ? '<label for="input-foto-equipe" style="position:absolute; bottom:0; right:0; background:var(--panel); border:1px solid var(--line); color:var(--ink-soft); border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;" title="Adicionar foto">📷</label>' : '') +
     '</div>';
   }
@@ -3681,11 +3681,11 @@ async function renderDashboard(){
         labels: semanasOrdenadas.length ? semanasOrdenadas : ['Sem dados ainda'],
         datasets: [{
           data: semanasOrdenadas.length ? semanasOrdenadas.map(function(k){ return porSemana[k]; }) : [0],
-          borderColor: '#E8A317',
-          backgroundColor: 'rgba(232,163,23,0.15)',
+          borderColor: '#14808C',
+          backgroundColor: 'rgba(20,128,140,0.15)',
           fill: true,
           tension: 0.3,
-          pointBackgroundColor: '#E8A317'
+          pointBackgroundColor: '#14808C'
         }]
       },
       options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
