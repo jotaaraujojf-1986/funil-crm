@@ -539,6 +539,27 @@ async function excluirClienteNoDb(id){
   if(res.error){ console.error('Erro ao excluir cliente', res.error); showSyncError(); }
 }
 
+async function excluirClienteConfirmado(id){
+  var res = await sb.from('clientes').delete().eq('id', id).select('id');
+  if(res.error){
+    console.error('Erro ao excluir cliente', res.error);
+    toast('Erro ao excluir cliente: ' + res.error.message, 'erro');
+    return;
+  }
+  if(!res.data || res.data.length === 0){
+    toast('Nao foi possivel excluir: voce nao tem permissao para este cliente.', 'erro');
+    return;
+  }
+  clientes = clientes.filter(function(c){ return c.id !== id; });
+  leads.forEach(function(l){ if(l.clienteId === id){ l.clienteId = ''; } });
+  // fechar o painel de detalhes se estiver aberto
+  var ov = document.getElementById('overlay-detalhe-cliente');
+  if(ov){ ov.classList.remove('open'); ov.style.display = 'none'; }
+  toast('Cliente excluido.');
+  renderClientesView();
+}
+window.excluirClienteConfirmado = excluirClienteConfirmado;
+
 // ---------- Interações (histórico de contato) ----------
 
 function interacaoFromDb(row){
@@ -3896,7 +3917,10 @@ function renderClientesView(){
   }).join('');
 
   grid.querySelectorAll('.cliente-card').forEach(function(card){
-    card.addEventListener('click', function(){
+    card.addEventListener('click', function(ev){
+      if(ev.target.closest('[data-excluir-cliente], .btn-excluir-cliente, button')){
+        return;
+      }
       var cid = card.getAttribute('data-id');
       var cliente = clientes.find(function(c){ return c.id === cid; });
       if(cliente){
@@ -4100,9 +4124,22 @@ function abrirDetalheCliente(cliente){
     '</div>' +
 
     '<div style="padding:16px 24px;border-top:1px solid var(--line);background:var(--panel);display:flex;justify-content:space-between;align-items:center;gap:12px;">' +
-      '<button type="button" class="btn-ghost" onclick="fecharDetalheCliente()">Fechar</button>' +
-      '<button type="button" class="btn-primary" id="btn-save-detalhe" onclick="salvarDetalheCliente(\'' + cliente.id + '\')">Salvar alterações</button>' +
+      '<button type="button" class="btn-danger btn-excluir-cliente" id="btn-del-detalhe-cliente" data-excluir-cliente="' + cliente.id + '">Excluir cliente</button>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<button type="button" class="btn-ghost" onclick="fecharDetalheCliente()">Fechar</button>' +
+        '<button type="button" class="btn-primary" id="btn-save-detalhe" onclick="salvarDetalheCliente(\'' + cliente.id + '\')">Salvar alterações</button>' +
+      '</div>' +
     '</div>';
+
+  var btnDel = document.getElementById('btn-del-detalhe-cliente');
+  if(btnDel){
+    btnDel.addEventListener('click', async function(ev){
+      ev.stopPropagation();
+      var ok = await customConfirm('Isso também exclui todo o histórico de interações. Essa ação não pode ser desfeita.', 'Excluir definitivamente este cliente?');
+      if(!ok) return;
+      await excluirClienteConfirmado(cliente.id);
+    });
+  }
 
   var selTipo = document.getElementById('det-tipo');
   if(selTipo){
@@ -4294,7 +4331,7 @@ async function openClienteModal(clienteId){
     '<button class="btn-primary" id="btn-add-interacao" style="margin-top:8px;">Registrar interação</button>' +
 
     '<div class="modal-actions">' +
-      '<button class="btn-danger" id="btn-del-cliente">Excluir cliente</button>' +
+      '<button class="btn-danger btn-excluir-cliente" id="btn-del-cliente" data-excluir-cliente="' + cliente.id + '">Excluir cliente</button>' +
       '<div class="right-actions"><button class="btn-ghost" id="btn-fechar-cliente">Fechar</button></div>' +
     '</div>';
 
@@ -4338,18 +4375,12 @@ async function openClienteModal(clienteId){
 
   document.getElementById('btn-fechar-cliente').addEventListener('click', closeClienteModal);
 
-  document.getElementById('btn-del-cliente').addEventListener('click', async function(){
-    if(negs.length > 0){
-      toast('Este cliente tem ' + negs.length + ' negócio(s) vinculado(s). Exclua ou desvincule os negócios antes de excluir o cliente.', 'erro');
-      return;
-    }
+  document.getElementById('btn-del-cliente').addEventListener('click', async function(ev){
+    ev.stopPropagation();
     var ok = await customConfirm('Isso também exclui todo o histórico de interações. Essa ação não pode ser desfeita.', 'Excluir definitivamente este cliente?');
     if(!ok) return;
-    await excluirClienteNoDb(clienteId);
-    clientes = clientes.filter(function(c){ return c.id !== clienteId; });
+    await excluirClienteConfirmado(clienteId);
     closeClienteModal();
-    renderClientesView();
-    toast('Cliente excluído.', 'sucesso');
   });
 
   document.getElementById('btn-editar-cliente').addEventListener('click', function(){
